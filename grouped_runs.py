@@ -1,3 +1,5 @@
+#/Applications/anaconda3/envs/nilearn/bin/python
+
 import argparse
 import os
 import glob
@@ -35,6 +37,7 @@ class grouped_runs():
         # Initialize an empty array
         arr = np.zeros((n_voxels, nconds, nruns))
         for ci, cond in enumerate(videos.video_name):
+            print(f'{ci}: {cond}')
             cond = cond.split('.mp4')[0]
             # Get all the files for the current condition
             files = sorted(glob.glob(f'{self.data_dir}/betas/sub-{self.sid}/*cond-{cond}*beta.npy'))
@@ -42,6 +45,8 @@ class grouped_runs():
                 arr[..., ci, ri] = np.load(file).flatten()
 
         # Save the subject data
+        if self.run_type == 'train':
+            arr = arr.mean(axis=-1)
         np.save(f'{self.out_dir}/sub-{self.sid}_{self.run_type}-data.npy', arr)
 
 def main():

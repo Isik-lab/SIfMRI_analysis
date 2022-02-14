@@ -1,79 +1,77 @@
+#/Applications/anaconda3/envs/nilearn/bin/python
+
 import argparse
 import os
 import glob
-import numpy as np
+from natsort import natsorted
+from tqdm import tqdm
+import itertools
+
 import pandas as pd
+import numpy as np
 
-from nilearn import surface, datasets, plotting
+from nilearn import image
 import matplotlib.pyplot as plt
-import nibabel as nib
-
-def corr2d(a, b):
-    a_m = a - a.mean(axis=0)
-    b_m = b - b.mean(axis=0)
-
-    r = np.zeros(b.shape[0])
-    for i in range(b.shape[0]):
-        r[i] = (a_m[i, :] @ b_m[i, :]) / (np.sqrt((a_m[i, :] @ a_m[i, :]) * (b_m[i, :] @ b_m[i, :])))
-    return r
+import seaborn as sns
 
 class reliability():
     def __init__(self, args):
         self.process = 'reliability'
         self.data_dir = args.data_dir
-        self.out_dir = f'{args.out_dir}/{self.process}'
+        self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        if not os.path.exists(self.out_dir):
-            os.mkdir(self.out_dir)
+        if not os.path.exists(f'{self.out_dir}/{self.process}'):
+            os.mkdir(f'{self.out_dir}/{self.process}')
         if not os.path.exists(self.figure_dir):
             os.mkdir(self.figure_dir)
             
             
     def run(self):
-        test_videos = pd.read_csv(f'{self.data_dir}/annotations/test.csv')
-        nconds = len(test_videos)
+        rois = ['EVC', 'MT', 'EBA', 'PPA', 'TOS', 'RSC', 'LOC',  'FFA', 'OFA', '-STS', 'biomotion', 'SIpSTS', 'TPJ', 'DMPFC']
+        roi_names = ['EVC', 'MT', 'EBA', 'PPA', 'OPA', 'RSC', 'LOC',  'FFA', 'OFA', 'faceSTS', 'biomotion', 'SIpSTS', 'TPJ', 'DMPFC']
+        n_subjs = 4
         
-        # Load an ROI file to get meta data about the images
-        im = nib.load(f'{self.data_dir}/ROI_masks/sub-01/sub-01_region-EVC_mask.nii.gz')
-        vol = im.shape
-        n_voxels = np.prod(vol)
-        affine = im.affine
-        
-        for i in range(1,5):
-            sid = str(i).zfill(2)
-        
-            files = sorted(glob.glob(f'{self.data_dir}/betas/sub-{sid}/*beta.npy'))
+        reliability = np.zeros((len(rois), n_subjs))
+        for sid_ in range(n_subjs):
+            sid = str(sid_+1).zfill(2)
+            r_map = np.load(f'{self.out_dir}/subject_reliability/sub-{sid}/sub-{sid}_stat-rho_statmap.npy')
+            variance = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_test-data.npy').mean(axis=-1).std(axis=-1)
+                            
+            for iroi, (roi, roi_name) in enumerate(zip(rois, roi_names)):
+                #activity in ROI
+                print(f'{self.data_dir}/ROI_masks/sub-{sid}/*{roi}*nooverlap.nii.gz')
+                mask = image.load_img(glob.glob(f'{self.data_dir}/ROI_masks/sub-{sid}/*{roi}*nooverlap.nii.gz')[0])
+                mask = np.array(mask.dataobj, dtype='bool').flatten()
+                roi_r = r_map[mask]
 
-            # Find the test runs
-            runs = []
-            for f in files:
-                if test_videos.iloc[0,0].split('.mp4')[0] in f:
-                    runs.append(f.split('run-')[-1].split('_')[0])
+                #Remove nan values (these are voxels that do not vary across the different videos)
+                inds = ~np.isnan(variance[mask])
+                reliability[iroi, sid_] = roi_r[inds].mean()
+                            
+        subjects = [f'sub-{i+1:02d}' for i in range(n_subjs)]
 
-            # Save info about number of runs and conditions
-            nruns = len(runs)
-            half = int(nruns/2)
+        noise_ceiling = pd.DataFrame(reliability.T, columns=roi_names, index=subjects)
+        noise_ceiling.reset_index(inplace=True)
+        noise_ceiling.rename(columns={'index': 'Subjects'}, inplace=True)
+        noise_ceiling = pd.melt(noise_ceiling, id_vars='Subjects', 
+                 var_name='ROIs',
+                 value_vars=roi_names, value_name='Pearson r')
 
-            for ri, run in enumerate(runs):
-                # Get all the files for the current run
-                files = sorted(glob.glob(f'{self.data_dir}/betas/sub-{self.sid}/*run-{run}*beta.npy'))
-                # Initialize an empty array for the current run
-                arr = np.zeros((n_voxels, nconds, nruns))
-                fi = 0
-                # Append all conditions to the current array, except for the crowd condition
-                for f in files:
-                    if not 'crowd' in f:
-                        arr[..., fi, ri] = np.load(f).flatten()
-                        fi += 1
-            
-            # Save the subject data
-            np.save(f'{self.out_dir}/sub-{sid}_test-data.npy', arr)
-
+        noise_ceiling['Explained variance'] = noise_ceiling['Pearson r']**2
+        noise_ceiling.to_csv(f'{self.out_dir}/{self.process}/noise_ceiling.csv', index=False)
+                            
+        sns.set(style='white', context='paper')
+        fig, ax = plt.subplots()
+        sns.barplot(x='ROIs', y='Pearson r',
+                data=noise_ceiling, ax=ax, color='#ADDDF2')
+        ax.set_xticklabels(ax.get_xticklabels(),rotation=45)
+        sns.despine(left=True)
+        plt.tight_layout()
+        plt.savefig(f'{self.figure_dir}/roi_noise_ceiling.pdf')
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=int)
     parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/input_data')
     parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/output_data')
     parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/figures')

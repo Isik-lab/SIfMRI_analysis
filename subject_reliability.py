@@ -64,7 +64,7 @@ class subject_reliability():
 
         #Save the numpy array
         r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}/sub-{self.sid}_stat-rho_statmap.npy'
-        np.save(r_name, r_im)
+        np.save(r_name, r_map)
 
         #vol to surf
         fsaverage = datasets.fetch_surf_fsaverage()
