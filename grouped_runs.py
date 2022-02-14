@@ -31,22 +31,27 @@ class grouped_runs():
         files = sorted(glob.glob(f'{self.data_dir}/betas/sub-{self.sid}/*beta.npy'))
         if self.run_type == 'test':
             nruns = int((len(files) / 6) * 2)
+            arr = np.zeros((n_voxels, nconds, nruns))
         else:
             nruns = int(len(files) / 6)
+            arr = np.zeros((n_voxels, nconds))
         
         # Initialize an empty array
-        arr = np.zeros((n_voxels, nconds, nruns))
+        
         for ci, cond in enumerate(videos.video_name):
             print(f'{ci}: {cond}')
             cond = cond.split('.mp4')[0]
             # Get all the files for the current condition
             files = sorted(glob.glob(f'{self.data_dir}/betas/sub-{self.sid}/*cond-{cond}*beta.npy'))
             for ri, file in enumerate(files):
-                arr[..., ci, ri] = np.load(file).flatten()
-
+                if self.run_type == 'test': 
+                    arr[..., ci, ri] = np.load(file).flatten()
+                else:
+                    arr[..., ci] += np.load(file).flatten()
+                    
         # Save the subject data
-        if self.run_type == 'train':
-            arr = arr.mean(axis=-1)
+        if self.run_type =='train':
+                arr[..., ci] /= nruns
         np.save(f'{self.out_dir}/sub-{self.sid}_{self.run_type}-data.npy', arr)
 
 def main():

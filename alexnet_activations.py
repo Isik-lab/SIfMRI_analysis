@@ -1,3 +1,5 @@
+# /Applications/anaconda3/envs/pytorch/bin/python
+
 import argparse
 import glob
 from tqdm import tqdm
