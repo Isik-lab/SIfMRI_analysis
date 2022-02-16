@@ -42,7 +42,7 @@ class voxelwise_encoding():
         start = time.time()
         rs = regress.outer_ridge_2d(X, control_model, beta_map,
                                     n_features, kf)
-        print(f'Finished in {(time.time() - start)/60:.2f} minutes')
+        print(f'Finished regression in {(time.time() - start)/60:.2f} minutes')
 
         r_out = np.zeros((n_features, im_arr.shape[0]))
         r_out[:, im_arr > reliability_thresh] = rs

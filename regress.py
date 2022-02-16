@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Ridge, RidgeCV
 import tools
+from tqdm import tqdm
 
 def inner_ridge(X_train_, y_train_, X_test_, n_features, n_splits=4): 
     #Standardize X
@@ -49,10 +53,7 @@ def outer_ridge_2d(X, X_control, y, n_features, splitter,
     y_pred = np.zeros((n_splits, n_features, n_condpersplit, n_voxels))
     y_true = np.zeros((n_splits, n_condpersplit, n_voxels))
     test_inds = np.zeros((n_splits, n_condpersplit), dtype='int')
-    loops = ''
-    for i, (train_index, test_index) in enumerate(splitter.split(X)):
-        loops += '.'
-        print(loops)
+    for i, (train_index, test_index) in tqdm(enumerate(splitter.split(X)), total=n_splits):
         # Split the training and test data
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
