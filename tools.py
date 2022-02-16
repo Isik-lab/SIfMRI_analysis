@@ -4,9 +4,12 @@ def corr2d(x, y):
     x_m = x - x.mean(axis=0)
     y_m = y - y.mean(axis=0)
 
-    r = np.zeros(y_m.shape[0])
+    r = np.ones(y_m.shape[0]) * np.NaN
     for i in range(y_m.shape[0]): 
-        r[i] = (x_m[i, :] @ y_m[i, :]) / (np.sqrt((x_m[i, :] @ x_m[i, :]) * (y_m[i, :] @ y_m[i, :]))) 
+        num = x_m[i, :] @ y_m[i, :]
+        denom = np.sqrt((x_m[i, :] @ x_m[i, :]) * (y_m[i, :] @ y_m[i, :]))
+        if denom != 0:
+            r[i] = num / denom
     return r
 
 def corr1d(x, y):
@@ -49,39 +52,16 @@ def bootstrap(a, b, test_inds, n_samples=int(5e3)):
         r_var[i] = corr1d(a[inds], b)
     return r_var
             
-def mask(path, stat_map):
-    from nilearn import image
-    
+def mask(stat_map, path=None):
     #activity in ROI
-    mask = image.load_img(path)
-    mask = np.array(mask.dataobj, dtype='bool').flatten()
-    roi_activation = stat_map[mask, :]
+    if path is not None:
+        from nilearn import image
+        m = image.load_img(path)
+        m = np.array(m.dataobj, dtype='bool').flatten()
+    else:
+        m = np.ones(stat_map.shape[0], dtype='bool')
+    roi_activation = stat_map[m, :]
 
     #Remove nan values (these are voxels that do not vary across the different videos)
     inds = ~np.any(np.isnan(roi_activation), axis=1)
-    return roi_activation[inds, ...]
-
-def regression(X_train_, y_train_, X_test_, features): 
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.linear_model import Ridge, RidgeCV
-    
-    #Standardize X
-    scaler = StandardScaler()
-    X_train_ = scaler.fit_transform(X_train_)
-
-    #Ridge CV to get the alpha parameter
-    clf = RidgeCV(cv=4).fit(X_train_, y_train_)
-
-    #Fit the Ridge model with the found best alpha
-    lr = Ridge(fit_intercept=False, alpha=clf.alpha_).fit(X_train_, y_train_)
-
-    #Scale testing 
-    mean = scaler.mean_[:X_test_.shape[1]]
-    var = scaler.var_[:X_test_.shape[1]]
-    X_test_ = (X_test_ - mean)/var
-    
-    y_pred = np.zeros((len(features), X_test.shape[0]))
-    for ifeature, feature in enumerate(features):
-        y_pred[ifeature, :] = X_test_[:, ifeature] * lr.coef_[ifeature]
-    return y_pred
-    
+    return roi_activation[inds, ...], inds
