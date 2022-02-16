@@ -40,6 +40,7 @@ def outer_ridge_2d(X, X_control, y, n_features, splitter,
     y, y_inds = tools.mask(y, mask_path)
     
     # Get counts
+    y = y.T
     n_voxels = y.shape[-1]
     n_splits = splitter.n_splits
     n_condpersplit = int(n_conditions/n_splits)
@@ -48,7 +49,10 @@ def outer_ridge_2d(X, X_control, y, n_features, splitter,
     y_pred = np.zeros((n_splits, n_features, n_condpersplit, n_voxels))
     y_true = np.zeros((n_splits, n_condpersplit, n_voxels))
     test_inds = np.zeros((n_splits, n_condpersplit), dtype='int')
+    loops = ''
     for i, (train_index, test_index) in enumerate(splitter.split(X)):
+        loops += '.'
+        print(loops)
         # Split the training and test data
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
@@ -68,5 +72,5 @@ def outer_ridge_2d(X, X_control, y, n_features, splitter,
     # Get the prediction accuracy per feature
     rs = np.zeros((n_features, tot_voxels))
     for ifeature in range(n_features):
-        rs[ifeature, y_inds] = tools.corr2d(y_true, y_pred[ifeature, ...])
+        rs[ifeature, y_inds] = tools.corr2d(y_true.T, y_pred[ifeature, ...].T)
     return rs
