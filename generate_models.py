@@ -32,7 +32,7 @@ class generate_models():
         layer = 2
         alexnet = zscore(np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv{layer}_avgframe.npy'), axis=-1)
 
-        pca = PCA(svd_solver='full', n_components=50)
+        pca = PCA(svd_solver='full', n_components=20)
         alexnet = pca.fit_transform(alexnet.T)
 
         fig, ax = plt.subplots()
@@ -41,7 +41,7 @@ class generate_models():
         
         # Optical flow
         of = zscore(np.load(f'{self.out_dir}/of_activations/of_adelsonbergen.npy'), axis=0)
-        pca = PCA(svd_solver='full', n_components=15)
+        pca = PCA(svd_solver='full', n_components=20)
         of = pca.fit_transform(of)
 
         fig, ax = plt.subplots()

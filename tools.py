@@ -63,8 +63,11 @@ def mask(stat_map, path=None):
         m = np.array(m.dataobj, dtype='bool').flatten()
     else:
         m = np.ones(stat_map.shape[0], dtype='bool')
-    roi_activation = stat_map[m, :]
+    roi_activation = stat_map[m, ...]
 
     #Remove nan values (these are voxels that do not vary across the different videos)
-    inds = ~np.any(np.isnan(roi_activation), axis=1)
+    if len(stat_map.shape) == 2:
+        inds = ~np.any(np.isnan(roi_activation), axis=1)
+    else:
+        inds = np.ones(roi_activation.shape[0], dtype='bool')
     return roi_activation[inds, ...], inds

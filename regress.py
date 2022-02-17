@@ -69,9 +69,4 @@ def outer_ridge_2d(X, X_control, y, n_features, splitter,
         y_pred[i, ...] = inner_ridge(X_train, y_train, X_test, n_features)
     y_pred = np.swapaxes(y_pred, 0, 1).reshape((n_features, n_conditions, -1))
     y_true = y_true.reshape((n_conditions, n_voxels))
-    
-    # Get the prediction accuracy per feature
-    rs = np.zeros((n_features, tot_voxels))
-    for ifeature in range(n_features):
-        rs[ifeature, y_inds] = tools.corr2d(y_true.T, y_pred[ifeature, ...].T)
-    return rs
+    return y_true, y_pred, test_inds

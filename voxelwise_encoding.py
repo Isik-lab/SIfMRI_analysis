@@ -40,13 +40,20 @@ class voxelwise_encoding():
 
         print('Starting regression')
         start = time.time()
-        rs = regress.outer_ridge_2d(X, control_model, beta_map,
-                                    n_features, kf)
+        true, pred, inds = regress.outer_ridge_2d(X, control_model, beta_map,
+                                                           n_features, kf)
         print(f'Finished regression in {(time.time() - start)/60:.2f} minutes')
 
-        r_out = np.zeros((n_features, im_arr.shape[0]))
-        r_out[:, im_arr > reliability_thresh] = rs
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_predict.npy', r_out)
+        ytrue = np.zeros((beta_map.shape[-1], im_arr.shape[0]))
+        ytrue[:, im_arr > reliability_thresh] = true
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-true.npy', ytrue)
+        
+        ypred = np.zeros((n_features, beta_map.shape[-1], im_arr.shape[0]))
+        ypred[:, :, im_arr > reliability_thresh] = pred
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-pred.npy', ypred)
+        
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_test-inds.npy', inds)
+        
 
 def main():
     parser = argparse.ArgumentParser()
