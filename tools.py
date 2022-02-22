@@ -3,11 +3,11 @@
 
 import numpy as np
 from tqdm import tqdm
-        
+
 def corr2d(x, y):
     x_m = x - x.mean(axis=0)
     y_m = y - y.mean(axis=0)
-    
+
     r = np.sum((x_m * y_m), axis=0) / np.sqrt(np.sum((x_m * x_m), axis=0) * np.sum((y_m * y_m), axis=0))
     return r
 
@@ -29,7 +29,7 @@ def corr1d(x, y):
         return np.NaN
 
 def permutation_test(a, b, test_inds=None,
-                     n_perm=int(5e3), H0='greater'): 
+                     n_perm=int(5e3), H0='greater'):
     r_true = corr1d(a, b)
     r_null = np.zeros(n_perm)
     for i in range(n_perm):
@@ -49,10 +49,11 @@ def permutation_test(a, b, test_inds=None,
     return r_true, p, r_null
 
 def permutation_test2d(a, b, test_inds=None,
-                     n_perm=int(5e3), H0='greater'): 
+                     n_perm=int(5e3), H0='greater'):
     r_true = corr2d(a, b)
     r_null = np.zeros((n_perm, a.shape[-1]))
-    for i in tqdm(range(n_perm), total=n_perm):
+    for i in range(n_perm):
+        print(f'Starting permutation {i}')
         inds = np.random.default_rng(i).permutation(test_inds.shape[0])
         inds = test_inds[inds, :].flatten()
         a_shuffle = a[inds, :]
@@ -65,7 +66,7 @@ def permutation_test2d(a, b, test_inds=None,
         p = 1 - (np.sum(r_true >= r_null, axis=0) / n_perm)
     elif H0 == 'less':
         p = 1 - (np.sum(r_true <= r_null, axis=0) / n_perm)
-    
+
     p[np.isnan(r_true)] = np.NaN
     r_null[:, np.isnan(r_true)] = np.NaN
     return r_true, p, r_null
@@ -77,7 +78,7 @@ def bootstrap(a, b, test_inds, n_samples=int(5e3)):
         inds = test_inds[inds, :].flatten()
         r_var[i] = corr1d(a[inds], b)
     return r_var
-            
+
 def mask(stat_map, path=None):
     #activity in ROI
     if path is not None:
