@@ -54,12 +54,13 @@ class voxelwise_encoding():
                 np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_ps.npy', ps)
                 np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_rs-null.npy', rs_null)
         else:
-            print(f'Starting feature {fi+1} of {n_features}')
+            print(f'Starting permutation test')
             rs, ps, rs_null = tools.permutation_test2d(true, pred[self.feature_num,...], test_inds=inds)
             print('Saving outputs')
             np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_rs.npy', rs)
             np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_ps.npy', ps)
             np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_rs-null.npy', rs_null)
+            print('Done')
 
 
 def main():
