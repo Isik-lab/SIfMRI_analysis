@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --job-name=regress
 #SBATCH --time=12:00:00
-#SBATCH --partition=express
+#SBATCH --partition=shared
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=6
 #SBATCH --mail-type=end
