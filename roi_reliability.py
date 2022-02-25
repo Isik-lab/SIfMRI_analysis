@@ -14,9 +14,9 @@ from nilearn import image
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-class reliability():
+class roi_reliability():
     def __init__(self, args):
-        self.process = 'reliability'
+        self.process = 'roi_reliability'
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -76,7 +76,7 @@ def main():
     parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/output_data')
     parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/figures')
     args = parser.parse_args()
-    reliability(args).run()
+    roi_reliability(args).run()
 
 if __name__ == '__main__':
     main()

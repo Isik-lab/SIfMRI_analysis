@@ -10,15 +10,6 @@ from nilearn import surface, datasets, plotting
 import matplotlib.pyplot as plt
 import nibabel as nib
 
-def corr2d(a, b):
-    a_m = a - a.mean(axis=0)
-    b_m = b - b.mean(axis=0)
-
-    r = np.zeros(b.shape[0])
-    for i in range(b.shape[0]):
-        r[i] = (a_m[i, :] @ b_m[i, :]) / (np.sqrt((a_m[i, :] @ a_m[i, :]) * (b_m[i, :] @ b_m[i, :])))
-    return r
-
 class subject_reliability():
     def __init__(self, args):
         self.sid = sid = str(args.s_num).zfill(2)
