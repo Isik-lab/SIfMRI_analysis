@@ -1,10 +1,12 @@
-#cache and checkpoints
+#checkpoints
 scripts/.ipynb_checkpoints
 scripts/.ipynb_checkpoints/*
 .ipynb_checkpoints
 .ipynb_checkpoints/*
-scripts/__pycache__
-scripts/__pycache__/*
+
+#cache
+src/__pycache__
+src/__pycache__/*
 
 #input_data
 data
