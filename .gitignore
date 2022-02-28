@@ -1,8 +1,6 @@
 #checkpoints
-scripts/.ipynb_checkpoints
-scripts/.ipynb_checkpoints/*
-.ipynb_checkpoints
-.ipynb_checkpoints/*
+notebooks/.ipynb_checkpoints
+notebooks/.ipynb_checkpoints/*
 
 #cache
 src/__pycache__
