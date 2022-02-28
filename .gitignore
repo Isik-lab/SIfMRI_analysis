@@ -14,4 +14,8 @@ data/*
 results
 results/*
 
+#pycharm project
+.idea
 
+#pip project
+scr.egg-info
