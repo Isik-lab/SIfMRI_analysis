@@ -1,5 +1,17 @@
-# ipynb checkpoints
+#cache and checkpoints
+scripts/.ipynb_checkpoints
+scripts/.ipynb_checkpoints/*
 .ipynb_checkpoints
 .ipynb_checkpoints/*
-__pycache__
-__pycache__/*
+scripts/__pycache__
+scripts/__pycache__/*
+
+#input_data
+input_data
+input_data/*
+
+#output_data
+output_data
+output_data/*
+
+

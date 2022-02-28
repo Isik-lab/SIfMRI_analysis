@@ -36,7 +36,7 @@ class voxelwise_encoding():
 
         # load the beta values and filter to reliable voxels
         beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_train-data.npy')
-        im_arr = np.load(f'{self.out_dir}/subject_reliability/sub-{self.sid}/sub-{self.sid}_stat-rho_statmap.npy')
+        im_arr = np.load(f'{self.out_dir}/group_reliability/sub-all_stat-rho_statmap.npy')
         beta_map = beta_map[im_arr > reliability_thresh, :]
 
         print('Starting regression')
@@ -44,23 +44,26 @@ class voxelwise_encoding():
         true, pred, inds = regress.outer_ridge_2d(X, control_model, beta_map,
                                                            n_features, kf)
         print(f'Finished regression in {(time.time() - start)/60:.2f} minutes')
-
-        if not self.feature_num:
-            for fi, feature in enumerate(features):
-                print(f'Starting feature {fi+1} of {n_features}')
-                rs, ps, rs_null = tools.permutation_test2d(true, pred[fi,...], test_inds=inds)
-                print('Saving outputs')
-                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_rs.npy', rs)
-                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_ps.npy', ps)
-                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_rs-null.npy', rs_null)
-        else:
-            print(f'Starting permutation test')
-            rs, ps, rs_null = tools.permutation_test2d(true, pred[self.feature_num,...], test_inds=inds)
-            print('Saving outputs')
-            np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_rs.npy', rs)
-            np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_ps.npy', ps)
-            np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_rs-null.npy', rs_null)
-            print('Done')
+        print('Saving outputs')
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y.npy', true)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_yhat.npy', pred)
+        
+#         if not self.feature_num:
+#             for fi, feature in enumerate(features):
+#                 print(f'Starting feature {fi+1} of {n_features}')
+#                 rs, ps, rs_null = tools.permutation_test2d(true, pred[fi,...], test_inds=inds)
+#                 print('Saving outputs')
+#                 np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_rs.npy', rs)
+#                 np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_ps.npy', ps)
+#                 np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{feature}_rs-null.npy', rs_null)
+#         else:
+#             print(f'Starting permutation test')
+#             rs, ps, rs_null = tools.permutation_test2d(true, pred[self.feature_num,...], test_inds=inds)
+#             print('Saving outputs')
+#             np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_rs.npy', rs)
+#             np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_ps.npy', ps)
+#             np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{features[self.feature_num]}_rs-null.npy', rs_null)
+#             print('Done')
 
 
 def main():
