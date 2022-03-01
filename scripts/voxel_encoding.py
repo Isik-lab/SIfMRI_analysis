@@ -17,11 +17,10 @@ class VoxelEncoding:
         self.sid = str(args.s_num).zfill(2)
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.feature_num = args.feature_num
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
             os.mkdir(f'{self.out_dir}/{self.process}')
 
-    def run(self):
+    def run(self, regression_splits=10, random_state=1):
         control_model = np.load(f'{self.out_dir}/generate_models/control_model.npy')
         X = np.load(f'{self.out_dir}/generate_models/annotated_model.npy')
 
@@ -31,18 +30,18 @@ class VoxelEncoding:
         n_features = len(features)
 
         # Initialize KF splitter
-        kf = KFold(n_splits=10, shuffle=True, random_state=1)
+        kf = KFold(n_splits=regression_splits, shuffle=True, random_state=random_state)
 
         # load the beta values and mask to reliable voxels
         beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_train-data.npy')
         mask = np.load(f'{self.out_dir}/group_reliability/sub-all_reliability-mask.npy')
-        beta_map = beta_map[mask, :]
+        indices = np.where(mask)[0]
+        beta_map = beta_map[indices, :]
 
         # Run the regression and print out the timing
         print('Starting regression')
         start = time.time()
-        y_true, y_pred, indices = regress.outer_ridge_2d(X, control_model, beta_map,
-                                                   n_features, kf)
+        y_true, y_pred, indices = regress.cross_validated_ridge(X, control_model, beta_map, n_features, kf)
         print(f'Finished regression in {(time.time() - start) / 60:.2f} minutes')
 
         # Save the outputs of the code
@@ -57,7 +56,6 @@ class VoxelEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int)
-    parser.add_argument('--feature_num', '-f', type=int, default=None)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

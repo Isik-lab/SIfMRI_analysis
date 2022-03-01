@@ -7,10 +7,10 @@
 #SBATCH --mail-type=end
 
 sid=$1
-num=$2
+feature=$2
 
 ml anaconda
 conda activate nilearn
-python voxelwise_encoding.py -s $sid -f $num \
--data /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SI_fMRI/input_data \
--output /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SI_fMRI/output_data
+python voxel_permutation.py -s $sid -f $feature \
+-data /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SI_fMRI/data/raw \
+-output /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SI_fMRI/data/interim

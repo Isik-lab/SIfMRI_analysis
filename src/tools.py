@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import numpy as np
+from tqdm import tqdm
 
 def corr2d(x, y):
     x_m = x - x.mean(axis=0)
@@ -9,6 +10,7 @@ def corr2d(x, y):
 
     numer = np.sum((x_m * y_m), axis=0)
     denom = np.sqrt(np.sum((x_m * x_m), axis=0) * np.sum((y_m * y_m), axis=0))
+    denom[denom == 0] = np.NaN
     return numer / denom
 
 def corr1d(x, y):
@@ -48,14 +50,13 @@ def permutation_test(a, b, test_inds=None,
 
     return r_true, p, r_null
 
-def permutation_test2d(a, b, test_inds=None,
+def permutation_test_2d(a, b, test_inds=None,
                      n_perm=int(5e3), H0='greater'):
     r_true = corr2d(a, b)
     r_null = np.zeros((n_perm, a.shape[-1]))
-    for i in range(n_perm):
-        print(f'Starting permutation {i}')
-        inds = np.random.default_rng(i).permutation(test_inds.shape[0])
-        inds = test_inds[inds, :].flatten()
+    for i in tqdm(range(n_perm), total=n_perm):
+        inds = np.random.default_rng(i).permutation(test_inds.shape[1])
+        inds = test_inds[:, inds].flatten()
         a_shuffle = a[inds, :]
         r_null[i, :] = corr2d(a_shuffle, b)
 
