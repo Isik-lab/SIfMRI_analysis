@@ -1,7 +1,6 @@
 nibabel
 nilearn
 scikit-learn
-scikit-learn-intelex
 pandas
 numpy
 matplotlib
