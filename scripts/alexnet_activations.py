@@ -1,4 +1,5 @@
-# /Applications/anaconda3/envs/pytorch/bin/python
+#!/usr/bin/env python
+# coding: utf-8
 
 import argparse
 import glob
