@@ -11,9 +11,9 @@ class VoxelPermutation():
     def __init__(self, args):
         self.process = 'VoxelPermutation'
         self.sid = str(args.s_num).zfill(2)
-        self.feature =  args.feature
+        self.feature = args.feature
         self.data_dir = args.data_dir
-        self.out_dir = f'{args.out_dir}/{self.process}'
+        self.out_dir = args.out_dir
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
             os.mkdir(f'{self.out_dir}/{self.process}')
 
