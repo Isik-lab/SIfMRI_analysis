@@ -42,7 +42,7 @@ class VoxelPermutation():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int)
-    parser.add_argument('--feature', '-f', type=int, default=None)
+    parser.add_argument('--feature', '-f', type=str, default=None)
     parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
     args = parser.parse_args()
