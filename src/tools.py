@@ -2,14 +2,14 @@
 # coding: utf-8
 
 import numpy as np
-from tqdm import tqdm
 
 def corr2d(x, y):
     x_m = x - x.mean(axis=0)
     y_m = y - y.mean(axis=0)
 
-    r = np.sum((x_m * y_m), axis=0) / np.sqrt(np.sum((x_m * x_m), axis=0) * np.sum((y_m * y_m), axis=0))
-    return r
+    numer = np.sum((x_m * y_m), axis=0)
+    denom = np.sqrt(np.sum((x_m * x_m), axis=0) * np.sum((y_m * y_m), axis=0))
+    return numer / denom
 
 def corr1d(x, y):
     """
@@ -74,7 +74,8 @@ def permutation_test2d(a, b, test_inds=None,
 def bootstrap(a, b, test_inds, n_samples=int(5e3)):
     r_var = np.zeros(n_samples)
     for i in range(n_samples):
-        inds = np.random.default_rng(i).choice(np.arange(test_inds.shape[0]), size=test_inds.shape[0])
+        inds = np.random.default_rng(i).choice(np.arange(test_inds.shape[0]),
+                                               size=test_inds.shape[0])
         inds = test_inds[inds, :].flatten()
         r_var[i] = corr1d(a[inds], b)
     return r_var

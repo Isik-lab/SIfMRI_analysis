@@ -1,0 +1,13 @@
+nibabel
+nilearn
+scikit-learn
+scikit-learn-intelex
+pandas
+numpy
+matplotlib
+seaborn
+tqdm
+time
+jupyterlab
+argparse
+glob2
