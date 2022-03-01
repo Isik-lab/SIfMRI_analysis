@@ -19,3 +19,8 @@ results/*
 
 #pip project
 scr.egg-info
+
+#DS_Store
+.DS_Store
+*/.DS_Store
+*/*/.DS_Store
