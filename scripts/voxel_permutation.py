@@ -11,7 +11,8 @@ class VoxelPermutation():
     def __init__(self, args):
         self.process = 'VoxelPermutation'
         self.sid = str(args.s_num).zfill(2)
-        self.feature = args.feature.replace("_", " ")
+        self.feature_snake = args.feature.replace("_", " ")
+        self.feature = self.feature_snake.replace("_", " ")
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
@@ -28,15 +29,18 @@ class VoxelPermutation():
         indices = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_indices.npy')
         return true, pred[feature_index, ...], indices
 
+    def save_perm_results(self, r_true, p, r_null):
+        print('Saving output')
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_rs.npy', r_true)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_ps.npy', p)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_rs-nulldist.npy', r_null)
+        print('Completed successfully!')
+
     def run(self):
         feature_index = self.get_feature_index()
         y_true, y_pred, test_inds = self.load_regression_output(feature_index)
         r_true, p, r_null = tools.permutation_test_2d(y_true, y_pred, test_inds=test_inds)
-
-        print('Saving output')
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_r_true.npy', r_true)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_p.npy', p)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_r_null.npy', r_null)
+        self.save_perm_results(r_true, p, r_null)
 
 
 def main():
