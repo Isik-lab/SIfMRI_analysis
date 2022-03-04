@@ -10,7 +10,11 @@ from src import tools
 class VoxelPermutation():
     def __init__(self, args):
         self.process = 'VoxelPermutation'
-        self.sid = str(args.s_num).zfill(2)
+        self.n_subjs = args.n_subjs
+        if args.s_num == 'all':
+            self.sid = args.s_num
+        else:
+            self.sid = str(int(args.s_num)).zfill(2)
         self.feature_snake = args.feature.replace("_", " ")
         self.feature = self.feature_snake.replace("_", " ")
         self.data_dir = args.data_dir
@@ -45,7 +49,8 @@ class VoxelPermutation():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=int)
+    parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--n_subjs', '-n', type=int, default=4)
     parser.add_argument('--feature', '-f', type=str, default=None)
     parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
