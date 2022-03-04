@@ -14,7 +14,11 @@ from sklearn.model_selection import KFold
 class VoxelEncoding:
     def __init__(self, args):
         self.process = 'VoxelEncoding'
-        self.sid = str(args.s_num).zfill(2)
+        self.n_subjs = args.n_subjs
+        if args.s_num == 'all':
+            self.sid = args.s_num
+        else:
+            self.sid = str(int(args.s_num)).zfill(2)
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
@@ -33,7 +37,17 @@ class VoxelEncoding:
         kf = KFold(n_splits=regression_splits, shuffle=True, random_state=random_state)
 
         # load the beta values and mask to reliable voxels
-        beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_train-data.npy')
+        if self.sid == 'all':
+            beta_map = None
+            for i in range(self.n_subjs):
+                sid = str(i+1).zfill(2)
+                if beta_map is None:
+                    beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_train-data.npy')
+                else:
+                    beta_map += np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_train-data.npy')
+            beta_map /= self.n_subjs
+        else:
+            beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_train-data.npy')
         mask = np.load(f'{self.out_dir}/group_reliability/sub-all_reliability-mask.npy')
         indices = np.where(mask)[0]
         beta_map = beta_map[indices, :]
@@ -55,7 +69,8 @@ class VoxelEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=int)
+    parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--n_subjs', '-n', type=int, default=4)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
