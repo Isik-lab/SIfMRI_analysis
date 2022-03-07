@@ -3,16 +3,12 @@
 
 import argparse
 import os
-import glob
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-
-from nilearn import datasets, surface, plotting
-import matplotlib.pyplot as plt
+from nilearn import plotting
 import nibabel as nib
-
-import tools
+from src import tools
 
 class group_reliability():
     def __init__(self, args):
@@ -24,6 +20,18 @@ class group_reliability():
             os.mkdir(f'{args.out_dir}/{self.process}')
         if not os.path.exists(self.figure_dir):
             os.mkdir(self.figure_dir)
+
+    def rm_EVC(self, mask):
+        evc = nib.load(f'{self.data_dir}/ROI_masks/sub-01/sub-01_region-EVC_mask_nooverlap.nii.gz')
+        evc = np.array(evc.dataobj, dtype='bool')
+        evc = np.invert(evc)
+        mask = mask.reshape(evc.shape)
+
+        # remove EVC
+        inds = np.where(np.invert(evc))
+        mask[inds] = 0
+
+        return mask.flatten()
 
     def run(self, threshold=0.279, group='test', n_subjs=4):
         test_videos = pd.read_csv(f'{self.data_dir}/annotations/{group}.csv')
@@ -72,6 +80,10 @@ class group_reliability():
         r_name = f'{self.out_dir}/{self.process}/sub-all_reliability-mask.npy'
         np.save(r_name, r_mask)
 
+        # remove the EVC and save
+        r_mask = self.rm_EVC(r_mask)
+        np.save(f'{self.out_dir}/group_reliability/sub-all_reliability-mask_noEVC.npy', r_mask)
+
         # Plot in the volume
         print('saving figures')
         plotting.plot_stat_map(r_im, display_mode='ortho',
@@ -87,9 +99,9 @@ class group_reliability():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/input_data')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/output_data')
-    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/figures')
+    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
+    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     group_reliability(args).run()
 

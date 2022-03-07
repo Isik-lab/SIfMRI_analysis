@@ -18,7 +18,10 @@ import itertools
 
 class PlotEncoding():
     def __init__(self, args):
-        self.sid = str(args.s_num).zfill(2)
+        if args.s_num == 'all':
+            self.sid = args.s_num
+        else:
+            self.sid = str(int(args.s_num)).zfill(2)
         self.process = 'PlotEncoding'
         self.cmap = sns.color_palette(args.seaborn_palette, as_cmap=True)
         self.feature = args.feature
@@ -158,7 +161,7 @@ class PlotEncoding():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=int)
+    parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--feature', '-f', type=str)
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--seaborn_palette', '-palette', type=str, default='magma')
