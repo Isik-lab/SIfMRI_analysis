@@ -122,4 +122,4 @@ def ridge(X_train, y_train,
     model, betas = outer_ridge(X_train, y_train, alpha)
 
     # Prediction
-    return predict(model, X_test)
+    return model.coef_, predict(model, X_test)
