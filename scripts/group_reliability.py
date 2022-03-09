@@ -6,7 +6,7 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from nilearn import plotting
+from nilearn import plotting, image, datasets
 import nibabel as nib
 from src import tools
 
@@ -33,6 +33,14 @@ class group_reliability():
 
         return mask.flatten()
 
+    def brain_indices(self, affine, shape):
+        mask = datasets.load_mni152_brain_mask()
+        mask = image.resample_img(mask, target_affine=affine,
+                                        target_shape=shape, interpolation='nearest')
+        mask = np.array(mask.dataobj, dtype='bool').flatten()
+        inverted_mask = np.invert(mask)
+        return np.where(inverted_mask)[0]
+
     def run(self, threshold=0.279, group='test', n_subjs=4):
         test_videos = pd.read_csv(f'{self.data_dir}/annotations/{group}.csv')
         nconds = len(test_videos)
@@ -42,7 +50,7 @@ class group_reliability():
         vol = im.shape
         n_voxels = np.prod(vol)
         affine = im.affine
-        
+
         even = np.zeros((n_voxels, nconds)) 
         odd = np.zeros_like(even)
         print('loading betas...')
@@ -57,6 +65,11 @@ class group_reliability():
         # Get the average of the even and odd runs across subjects
         even /= n_subjs
         odd /= n_subjs
+
+        # Remove signal coming from outside the brain
+        indices = self.brain_indices(affine, vol)
+        even[indices, :] = 0
+        odd[indices, :] = 0
         
         # Compute the correlation
         print('computing the correlation')
@@ -72,7 +85,7 @@ class group_reliability():
         print('saving reliability numpy arr')
         r_name = f'{self.out_dir}/{self.process}/sub-all_stat-rho_statmap.npy'
         np.save(r_name, r_map)
-        
+
         #Save the mask
         print('saving reliability mask')
         r_mask = np.zeros_like(r_map, dtype='int')
@@ -99,9 +112,12 @@ class group_reliability():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
+    parser.add_argument('--data_dir', '-data', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
+    parser.add_argument('--figure_dir', '-figures', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     group_reliability(args).run()
 
