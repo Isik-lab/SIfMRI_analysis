@@ -63,6 +63,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--n_subjs', '-n', type=int, default=4)
+    parser.add_argument('--by_feature', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--feature', '-f', type=str, default=None)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
