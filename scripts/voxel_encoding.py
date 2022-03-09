@@ -15,6 +15,8 @@ class VoxelEncoding:
     def __init__(self, args):
         self.process = 'VoxelEncoding'
         self.n_subjs = args.n_subjs
+        self.include_control = args.include_control
+        self.by_feature = args.by_feature
         if args.s_num == 'all':
             self.sid = args.s_num
         else:
@@ -55,7 +57,10 @@ class VoxelEncoding:
         # Run the regression and print out the timing
         print('Starting regression')
         start = time.time()
-        y_true, y_pred, indices = regress.cross_validated_ridge(X, control_model, beta_map, n_features, kf)
+        y_true, y_pred, indices = regress.cross_validated_ridge(X, control_model, beta_map,
+                                                                n_features, kf,
+                                                                include_control=self.include_control,
+                                                                by_feature=self.by_feature)
         print(f'Finished regression in {(time.time() - start) / 60:.2f} minutes')
 
         # Save the outputs of the code
@@ -70,6 +75,8 @@ class VoxelEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--by_feature', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_subjs', '-n', type=int, default=4)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
