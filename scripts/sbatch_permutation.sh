@@ -9,7 +9,7 @@
 sid=$1
 
 ml anaconda
-conda activate nilearn
+conda activate nibabel
 python voxel_permutation.py -s $sid \
 -data /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw \
 -output /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim
