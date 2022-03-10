@@ -4,6 +4,7 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import RidgeCV, Ridge
+from sklearn.decomposition import PCA
 from tqdm import tqdm
 
 
@@ -48,6 +49,10 @@ def predict_by_feature(X_test_, y_train_, betas, n_features):
 def predict(model, X_test_):
     return model.predict(X_test_)
 
+def pca(X_train_, X_test_):
+    pca_ = PCA(svd_solver='full', whiten=True)
+    X_train_ = pca_.fit_transform(X_train_)
+    return X_train_, pca_.transform(X_test_)
 
 def cross_validated_ridge(X, X_control,
                           y, n_features,
@@ -88,6 +93,9 @@ def cross_validated_ridge(X, X_control,
             X_train, X_test = scale_by_feature(X_train, X_test, n_features)
         else:
             X_train, X_test = scale(X_train, X_test)
+
+        # Orthogonalize
+        X_train, X_test = pca(X_train, X_test)
 
         # Find alpha
         alpha = inner_ridge(X_train, y_train)
