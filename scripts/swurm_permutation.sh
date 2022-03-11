@@ -11,6 +11,7 @@ for feature in "${features[@]}"; do
   sbatch sbatch_permutation.sh "all" "${feature}"
 done
 
+# Not by features
 for sid in $(seq 1 4); do
   echo sbatch_permutation.sh "${sid}" "not_by_feature"
   sbatch sbatch_permutation.sh "${sid}" "not_by_feature"
