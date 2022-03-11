@@ -16,37 +16,53 @@ from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import itertools
 
+from statsmodels.stats.multitest import multipletests
+
+def correct(ps_, rs_, p_crit=1e-2):
+    sig_bool, ps_corrected, _, _ = multipletests(ps_, alpha=p_crit, method='fdr_by')
+    indices = np.where(sig_bool)[0]
+    return sig_bool, rs_[indices].min()
+
+
+def filter_r(rs, ps):
+    ps, threshold = correct(ps, rs)
+    ps = np.invert(ps)
+    indices = np.where(ps)[0]
+    rs[indices] = 0
+    return rs, threshold
+
+
+def save(arr, out_name, mode='npy'):
+    if mode == 'npy':
+        np.save(out_name, arr)
+    elif mode == 'nii':
+        nib.save(arr, out_name)
+
+
 class PlotEncoding():
     def __init__(self, args):
+        self.process = 'PlotEncoding'
         if args.s_num == 'all':
             self.sid = args.s_num
         else:
             self.sid = str(int(args.s_num)).zfill(2)
-        self.process = 'PlotEncoding'
-        self.cmap = sns.color_palette(args.seaborn_palette, as_cmap=True)
         self.feature = args.feature
-        self.out_dir = args.out_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}/sub-{self.sid}'
+        self.cmap = sns.color_palette(args.seaborn_palette, as_cmap=True)
+        self.stat_dir = args.stat_dir
+        self.mask_dir = args.mask_dir
+        self.figure_dir = f'{args.figure_dir}/{self.process}'
         if not os.path.exists(self.figure_dir):
             os.mkdir(self.figure_dir)
         self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
 
-    def mkNifti(self, mask, name, im, zeros=True):
+    def mkNifti(self, mask, arr, im, zeros=True):
         if zeros:
             out_im = np.zeros(mask.size)
         else:
             out_im = np.ones(mask.size)
         inds = np.where(mask)[0]
-        out_im[inds] = np.load(name)
+        out_im[inds] = arr
         return nib.Nifti1Image(out_im.reshape(im.shape), affine=im.affine)
-
-    def filter_r(self, r, p, hemi, crit=5e-2):
-        r = surface.vol_to_surf(r, self.fsaverage[f'pial_{hemi}'])
-        p = surface.vol_to_surf(p, self.fsaverage[f'pial_{hemi}'])
-
-        i = np.where(p >= crit)[0]
-        r[i] = 0
-        return r
 
     def _colorbar_from_array(self, array, threshold, cmap):
         """Generate a custom colorbar for an array.
@@ -97,7 +113,8 @@ class PlotEncoding():
 
         cbar_h = .25
         title_h = .25 * (title is not None)
-        w, h = plt.figaspect((len(modes) + cbar_h + title_h) / len(hemis))
+        # Set the aspect ratio, but then make the figure twice as big to increase resolution
+        w, h = plt.figaspect((len(modes) + cbar_h + title_h) / len(hemis)) * 2
         fig = plt.figure(figsize=(w, h), constrained_layout=False)
         height_ratios = [title_h] + [1.] * len(modes) + [cbar_h]
         grid = gridspec.GridSpec(
@@ -140,33 +157,44 @@ class PlotEncoding():
             fig.savefig(output_file, bbox_inches="tight")
             plt.close(fig)
 
+    def vol_to_surf(self, im, hemi):
+        return surface.vol_to_surf(im, surf_mesh=self.fsaverage[f'pial_{hemi}'], radius=2.)
+
+    def load(self):
+        mask_im = nib.load(f'{self.mask_dir}/sub-all_stat-rho_statmap.nii.gz')
+        mask = np.load(f'{self.mask_dir}/sub-all_reliability-mask.npy')
+        rs = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs.npy')
+        ps = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_ps.npy')
+        rs, threshold = filter_r(rs, ps)
+        save(rs, f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs-filtered.npy')
+        rs = self.mkNifti(mask, rs, mask_im)
+        save(rs, f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs-filtered.nii.gz',
+             mode='nii')
+
+        texture = {'left': self.vol_to_surf(rs, 'left'),
+                   'right': self.vol_to_surf(rs, 'right')}
+        return texture, threshold
+
     def run(self):
         # load reliability files
-        mask = np.load(f'{self.out_dir}/group_reliability/sub-all_reliability-mask.npy')
-        mask_im = nib.load(f'{self.out_dir}/group_reliability/sub-all_stat-rho_statmap.nii.gz')
-
-        name = f'{self.out_dir}/VoxelPermutation/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs.npy'
-        rs = self.mkNifti(mask, name, mask_im)
-
-        name = f'{self.out_dir}/VoxelPermutation/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_ps.npy'
-        ps = self.mkNifti(mask, name, mask_im, zeros=False)
-
-        texture = {'left': self.filter_r(rs, ps, hemi='left'),
-                   'right': self.filter_r(rs, ps, hemi='right')}
-
-        name = f'{self.figure_dir}/sub-{self.sid}_feature-{self.feature}.png'
-        self.plot_stats(texture, title=self.feature.capitalize(),
-                        cmap=self.cmap, output_file=name)
+        texture, threshold = self.load()
+        name = f'{self.figure_dir}/sub-{self.sid}.png'
+        self.plot_stats(texture, cmap=self.cmap,
+                        output_file=name, threshold=threshold)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
-    parser.add_argument('--feature', '-f', type=str)
+    parser.add_argument('--feature', '-f', type=str, default='all')
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--seaborn_palette', '-palette', type=str, default='magma')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figure', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
+    parser.add_argument('--mask_dir', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/Reliability')
+    parser.add_argument('--stat_dir', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/VoxelPermutation')
+    parser.add_argument('--figure_dir', '-figure', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     PlotEncoding(args).run()
 

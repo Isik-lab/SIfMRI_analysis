@@ -95,7 +95,8 @@ def cross_validated_ridge(X, X_control,
             X_train, X_test = scale(X_train, X_test)
 
         # Orthogonalize
-        X_train, X_test = pca(X_train, X_test)
+        if not by_feature:
+            X_train, X_test = pca(X_train, X_test)
 
         # Find alpha
         alpha = inner_ridge(X_train, y_train)

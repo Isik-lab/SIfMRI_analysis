@@ -50,7 +50,7 @@ class VoxelEncoding:
             beta_map /= self.n_subjs
         else:
             beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_train-data.npy')
-        mask = np.load(f'{self.out_dir}/group_reliability/sub-all_reliability-mask.npy')
+        mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy')
         indices = np.where(mask)[0]
         beta_map = beta_map[indices, :]
 
@@ -66,9 +66,9 @@ class VoxelEncoding:
         # Save the outputs of the code
         print('Saving outputs')
         start = time.time()
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y_true.npy', y_true)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y_pred.npy', y_pred)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_indices.npy', indices)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y_true_by_feature-{self.by_feature}.npy', y_true)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y_pred_by_feature-{self.by_feature}.npy', y_pred)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_indices_by_feature-{self.by_feature}.npy', indices)
         print(f'Finished saving in {(time.time() - start) / 60:.2f} minutes')
 
 

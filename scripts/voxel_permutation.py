@@ -33,9 +33,9 @@ class VoxelPermutation():
         return features.index(self.feature)
 
     def load(self):
-        pred = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_y_pred.npy')
-        true = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_y_true.npy')
-        indices = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_indices.npy')
+        pred = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_y_pred_by_feature-{self.by_feature}.npy')
+        true = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_y_true_by_feature-{self.by_feature}.npy')
+        indices = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_indices_by_feature-{self.by_feature}.npy')
         return true, pred, indices
 
     def load_by_feature(self):
