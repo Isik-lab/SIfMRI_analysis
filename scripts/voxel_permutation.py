@@ -52,7 +52,7 @@ class VoxelPermutation():
 
     def run(self):
         if self.by_feature:
-            y_true, y_pred, test_inds = self.load_regress_by_feature()
+            y_true, y_pred, test_inds = self.load_by_feature()
         else:
             y_true, y_pred, test_inds = self.load()
         r_true, p, r_null = tools.permutation_test_2d(y_true, y_pred, test_inds=test_inds)
