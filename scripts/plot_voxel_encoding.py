@@ -28,8 +28,10 @@ def filter_r(rs, ps):
     ps, threshold = correct(ps, rs)
     ps = np.invert(ps)
     indices = np.where(ps)[0]
-    rs[indices] = 0
-    return rs, threshold
+    rs[indices] = 0.
+    rs_mask = np.copy(rs)
+    rs_mask[rs != 0.] = 1.
+    return rs, rs_mask, threshold
 
 
 def save(arr, out_name, mode='npy'):
@@ -165,8 +167,9 @@ class PlotEncoding():
         mask = np.load(f'{self.mask_dir}/sub-all_reliability-mask.npy')
         rs = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs.npy')
         ps = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_ps.npy')
-        rs, threshold = filter_r(rs, ps)
+        rs, rs_mask, threshold = filter_r(rs, ps)
         save(rs, f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs-filtered.npy')
+        save(rs_mask, f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs-mask.npy')
         rs = self.mkNifti(mask, rs, mask_im)
         save(rs, f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-{self.feature}_rs-filtered.nii.gz',
              mode='nii')

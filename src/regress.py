@@ -33,7 +33,9 @@ def scale_by_feature(X_train_, X_test_, n_features):
 def scale(X_train_, X_test_):
     scaler = StandardScaler()
     X_train_ = scaler.fit_transform(X_train_)
-    return X_train_, scaler.transform(X_test_)
+    if X_test_ is not None:
+        scaler.transform(X_test_)
+    return X_train_, X_test_
 
 
 def predict_by_feature(X_test_, y_train_, betas, n_features):
@@ -47,7 +49,10 @@ def predict_by_feature(X_test_, y_train_, betas, n_features):
 
 
 def predict(model, X_test_):
-    return model.predict(X_test_)
+    if X_test_ is not None:
+        return model.predict(X_test_)
+    else:
+        return None
 
 def pca(X_train_, X_test_):
     pca_ = PCA(svd_solver='full', whiten=True)
@@ -119,8 +124,7 @@ def cross_validated_ridge(X, X_control,
     return y_true, y_pred, test_indices
 
 
-def ridge(X_train, y_train,
-          X_test, y_test):
+def ridge(X_train, y_train, X_test=None):
     # Standardize X
     X_train, X_test = scale(X_train, X_test)
 
