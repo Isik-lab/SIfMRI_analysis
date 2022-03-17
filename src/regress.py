@@ -4,13 +4,17 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import RidgeCV, Ridge
+from sklearn.model_selection import KFold
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 
 
-def inner_ridge(X_train_, y_train_, n_splits=4):
+def inner_ridge(X_train_, y_train_, n_splits=4,
+                random_state=0):
     # Within each loop, find clf.alpha_ with RidgeCV
-    clf = RidgeCV(cv=n_splits, scoring="r2")
+    alphas = 10. ** np.arange(start=-1., stop=6.)
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    clf = RidgeCV(cv=kf, scoring="r2", alphas=alphas)
     clf.fit(X_train_, y_train_)
     return clf.alpha_
 
@@ -64,6 +68,7 @@ def cross_validated_ridge(X, X_control,
                           splitter,
                           by_feature=False,
                           include_control=False,
+                          pca_before_regression=False,
                           n_conditions=200):
     # Get counts
     y = y.T
@@ -100,7 +105,7 @@ def cross_validated_ridge(X, X_control,
             X_train, X_test = scale(X_train, X_test)
 
         # Orthogonalize
-        if not by_feature:
+        if pca_before_regression:
             X_train, X_test = pca(X_train, X_test)
 
         # Find alpha

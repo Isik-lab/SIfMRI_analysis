@@ -17,6 +17,7 @@ class VoxelEncoding:
         self.n_subjs = args.n_subjs
         self.include_control = args.include_control
         self.by_feature = args.by_feature
+        self.pca_before_regression = args.pca_before_regression
         if args.s_num == 'all':
             self.sid = args.s_num
         else:
@@ -60,15 +61,17 @@ class VoxelEncoding:
         y_true, y_pred, indices = regress.cross_validated_ridge(X, control_model, beta_map,
                                                                 n_features, kf,
                                                                 include_control=self.include_control,
-                                                                by_feature=self.by_feature)
+                                                                by_feature=self.by_feature,
+                                                                pca_before_regression=self.pca_before_regression)
         print(f'Finished regression in {(time.time() - start) / 60:.2f} minutes')
 
         # Save the outputs of the code
         print('Saving outputs')
         start = time.time()
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y_true_by_feature-{self.by_feature}.npy', y_true)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y_pred_by_feature-{self.by_feature}.npy', y_pred)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_indices_by_feature-{self.by_feature}.npy', indices)
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_by_feature-{self.by_feature}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
+        np.save(f'{base}_y_true.npy', y_true)
+        np.save(f'{base}_y_pred.npy', y_pred)
+        np.save(f'{base}_indices.npy', indices)
         print(f'Finished saving in {(time.time() - start) / 60:.2f} minutes')
 
 
@@ -77,6 +80,7 @@ def main():
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--by_feature', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_subjs', '-n', type=int, default=4)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

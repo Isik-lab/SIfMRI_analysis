@@ -16,6 +16,8 @@ class VoxelPermutation():
         else:
             self.sid = str(int(args.s_num)).zfill(2)
         self.by_feature = args.by_feature
+        self.include_control = args.include_control
+        self.pca_before_regression = args.pca_before_regression
         if self.by_feature:
             assert args.feature is not None, "You must define feature to use by_feature mode"
             self.feature_snake = args.feature.replace("_", " ")
@@ -33,9 +35,10 @@ class VoxelPermutation():
         return features.index(self.feature)
 
     def load(self):
-        pred = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_y_pred_by_feature-{self.by_feature}.npy')
-        true = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_y_true_by_feature-{self.by_feature}.npy')
-        indices = np.load(f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_indices_by_feature-{self.by_feature}.npy')
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_by_feature-{self.by_feature}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
+        pred = np.load(f'{base}_y_pred.npy')
+        true = np.load(f'{base}_y_true.npy')
+        indices = np.load(f'{base}_indices.npy')
         return true, pred, indices
 
     def load_by_feature(self):
@@ -64,6 +67,8 @@ def main():
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--n_subjs', '-n', type=int, default=4)
     parser.add_argument('--by_feature', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--feature', '-f', type=str, default=None)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
