@@ -16,6 +16,7 @@ from matplotlib import gridspec
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import itertools
+from statsmodels.stats.multitest import multipletests
 
 
 def save(arr, out_name, mode='npy'):
@@ -64,6 +65,22 @@ def mkNifti(arr, mask, im, nii=True):
     return out_im
 
 
+def correct(ps_, rs_, p_crit=1e-2):
+    sig_bool, ps_corrected, _, _ = multipletests(ps_, alpha=p_crit, method='fdr_by')
+    indices = np.where(sig_bool)[0]
+    return sig_bool, rs_[indices].min()
+
+
+def filter_r(rs, ps):
+    ps, threshold = correct(ps, rs)
+    ps = np.invert(ps)
+    indices = np.where(ps)[0]
+    rs[indices] = 0.
+    rs_mask = np.copy(rs)
+    rs_mask[rs != 0.] = 1.
+    return rs, rs_mask, threshold
+
+
 class PlotEncoding():
     def __init__(self, args):
         self.process = 'PlotEncoding'
@@ -79,12 +96,23 @@ class PlotEncoding():
             os.mkdir(self.figure_dir)
         self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
         self.features = []
-        if args.separate_features:
+        self.separate_features = args.separate_features
+        self.overall_prediction = args.overall_prediction
+        if not self.separate_features:
+            if self.overall_prediction:
+                self.cmap = sns.color_palette('magma', as_cmap=True)
+                self.out_name = f'{self.figure_dir}/sub-{self.sid}_overall.png'
+                self.threshold = None
+            else:
+                self.cmap = mk_cmap()
+                self.out_name = f'{self.figure_dir}/sub-{self.sid}_grouped.png'
+                self.threshold = 1.
+        else:
             self.cmap = sns.color_palette('Paired', as_cmap=True)
             self.out_name = f'{self.figure_dir}/sub-{self.sid}_separate.png'
-        else:
-            self.cmap = mk_cmap()
-            self.out_name = f'{self.figure_dir}/sub-{self.sid}_grouped.png'
+            self.threshold = 1.
+        print(self.out_name)
+
 
     def _colorbar_from_array(self, array, threshold, cmap):
         """Generate a custom colorbar for an array.
@@ -195,27 +223,38 @@ class PlotEncoding():
         mask_im = nib.load(f'{self.mask_dir}/sub-all_stat-rho_statmap.nii.gz')
         mask = np.load(f'{self.mask_dir}/sub-all_reliability-mask.npy')
 
-        rs = np.load(f'{self.stat_dir}/sub-all/sub-all_feature-all_rs-filtered.npy').astype('bool')
-        rs = mkNifti(rs, mask, mask_im, nii=False)
+        if not self.overall_prediction:
+            rs = np.load(f'{self.stat_dir}/sub-all/sub-all_feature-all_rs-filtered.npy').astype('bool')
+            rs = mkNifti(rs, mask, mask_im, nii=False)
 
-        base = f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-XXX_rs.npy'
-        pred = []
-        for feature in self.features:
-            arr = np.load(base.replace('XXX', feature))
-            arr = np.expand_dims(arr, axis=1)
-            if type(pred) is list:
-                pred = arr
-            else:
-                pred = np.hstack([pred, arr])
-        preference = np.argmax(pred, axis=1)
-        # Make the argmax indexed at 1
-        preference += 1
+            base = f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-XXX_rs-mask.npy'
+            pred = []
+            for feature in self.features:
+                arr = np.load(base.replace('XXX', feature))
+                arr = np.expand_dims(arr, axis=1)
+                if type(pred) is list:
+                    pred = arr
+                else:
+                    pred = np.hstack([pred, arr])
+            preference = np.argmax(pred, axis=1)
+            # Make the argmax indexed at 1
+            preference += 1
 
-        # Make the preference values into a volume mask
-        volume = mkNifti(preference, mask, mask_im, nii=False)
-        volume[~rs] = 0
-        volume = volume.astype('float')
-        volume = nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
+            # Make the preference values into a volume mask
+            volume = mkNifti(preference, mask, mask_im, nii=False)
+            volume[~rs] = 0
+            volume = volume.astype('float')
+            volume = nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
+        else:
+            rs = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_rs.npy')
+            ps = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_ps.npy')
+
+            #Filter the r-values, set threshold, and save output
+            rs, rs_mask, threshold = filter_r(rs, ps)
+            self.threshold = threshold
+            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_rs-filtered.npy', rs)
+            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_rs-mask.npy', rs_mask)
+            volume = mkNifti(rs, mask, mask_im)
 
         texture = {'left': self.vol_to_surf(volume, 'left'),
                    'right': self.vol_to_surf(volume, 'right')}
@@ -226,16 +265,16 @@ class PlotEncoding():
         self.load_features()
         volume, texture = self.load()
         self.plot_surface_stats(texture, cmap=self.cmap,
-                                output_file=self.out_name, threshold=1)
+                                output_file=self.out_name,
+                                threshold=self.threshold)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
-    parser.add_argument('--feature', '-f', type=str, default='all')
     parser.add_argument('--mesh', type=str, default='fsaverage5')
-    parser.add_argument('--seaborn_palette', '-palette', type=str, default='magma')
     parser.add_argument('--separate_features', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--overall_prediction', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--mask_dir', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/Reliability')
     parser.add_argument('--annotation_dir', type=str,
