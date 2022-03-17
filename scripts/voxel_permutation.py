@@ -20,7 +20,7 @@ class VoxelPermutation():
         self.pca_before_regression = args.pca_before_regression
         if self.by_feature:
             assert args.feature is not None, "You must define feature to use by_feature mode"
-            self.feature_snake = args.feature.replace("_", " ")
+            self.feature_snake = args.feature
             self.feature = self.feature_snake.replace("_", " ")
         else:
             self.feature_snake = 'all'
@@ -35,7 +35,7 @@ class VoxelPermutation():
         return features.index(self.feature)
 
     def load(self):
-        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_by_feature-{self.by_feature}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
+        base = f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_by_feature-{self.by_feature}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
         pred = np.load(f'{base}_y_pred.npy')
         true = np.load(f'{base}_y_true.npy')
         indices = np.load(f'{base}_indices.npy')
@@ -48,9 +48,10 @@ class VoxelPermutation():
 
     def save_perm_results(self, r_true, p, r_null):
         print('Saving output')
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_rs.npy', r_true)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_ps.npy', p)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_rs-nulldist.npy', r_null)
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
+        np.save(f'{base}_rs.npy', r_true)
+        np.save(f'{base}_ps.npy', p)
+        np.save(f'{base}_rs-nulldist.npy', r_null)
         print('Completed successfully!')
 
     def run(self):
