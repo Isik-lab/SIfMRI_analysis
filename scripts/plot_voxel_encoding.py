@@ -218,7 +218,8 @@ class PlotEncoding():
         df = df.merge(train)
         df.sort_values(by=['video_name'], inplace=True)
         df.drop(columns=['video_name'], inplace=True)
-        self.features = np.array(df.columns)
+        features = np.array(df.columns)
+        self.features = np.array([feature.replace(' ', '_') for feature in features])
 
     def load(self):
         mask_im = nib.load(f'{self.mask_dir}/sub-all_stat-rho_statmap.nii.gz')
@@ -273,7 +274,7 @@ class PlotEncoding():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
-    parser.add_argument('--mesh', type=str, default='fsaverage')
+    parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--separate_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overall_prediction', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--no_control_model', action=argparse.BooleanOptionalAction, default=True)
