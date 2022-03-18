@@ -18,4 +18,4 @@ for sid in $(seq 1 4); do
 done
 
 echo sbatch_permutation.sh "all" "not_by_feature"
-#sbatch sbatch_permutation.sh "all" "not_by_feature"
+sbatch sbatch_permutation.sh "all" "not_by_feature"
