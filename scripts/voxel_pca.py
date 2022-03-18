@@ -14,6 +14,7 @@ import nibabel as nib
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import seaborn as sns
 
 
 def pca(X, n_components):
@@ -55,6 +56,9 @@ class VoxelPCA():
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
         df = df.merge(train)
+        df['motion energy'] = np.load(f'{self.out_dir}/of_activations/of_adelsonbergen_avg.npy')
+        df['AlexNet conv2'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv2_avg.npy')
+        df['AlexNet conv5'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv5_avg.npy')
         df.sort_values(by=['video_name'], inplace=True)
         new = df.drop(columns=['video_name'])
         return np.array(new.columns), df
@@ -93,7 +97,7 @@ class VoxelPCA():
                    'right': self.vol_to_surf(volume, 'right')}
         cp.plot_surface_stats(self.fsaverage, texture,
                               cmap=self.cmap, threshold=1,
-                              output_file=f'{self.figure_dir}/PCs.pdf')
+                              output_file=f'{self.figure_dir}/brain_PCs.pdf')
 
     def plot_variance(self, vals):
         fig, ax = plt.subplots()
@@ -118,6 +122,17 @@ class VoxelPCA():
                 d['PC'] = [iPC]
                 df = pd.concat([df, pd.DataFrame(d)])
         df.to_csv(f'{self.out_dir}/{self.process}/PCs.csv', index=False)
+        return df
+
+    def plot_feature_correlation(self, df):
+        for i in np.unique(df.PC):
+            cur = df[df['PC'] == i].sort_values(by='Spearman rho')
+            _, ax = plt.subplots()
+            sns.barplot(y='Spearman rho', x='Feature',
+                        data=cur, ax=ax, color='black')
+            plt.xticks(rotation=90)
+            plt.tight_layout()
+            plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}.pdf')
 
     def run(self):
         mask, im = self.load_mask()
@@ -125,7 +140,8 @@ class VoxelPCA():
         neural, n_voxels = self.load_neural()
         vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
         self.plot_variance(explained_variance.cumsum())
-        self.PC_to_features(features, feature_names, vid_comp)
+        df = self.PC_to_features(features, feature_names, vid_comp)
+        self.plot_feature_correlation(df)
         vox = np.argmax(comp_vox.reshape((-1, 4, n_voxels)).mean(axis=-2), axis=0) + 1
         self.plot_brain(vox, mask, im)
 
