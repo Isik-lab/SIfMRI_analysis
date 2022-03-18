@@ -98,6 +98,8 @@ class PlotEncoding():
         self.features = []
         self.separate_features = args.separate_features
         self.overall_prediction = args.overall_prediction
+        self.no_control_model = args.no_control_model
+        self.pca_before_regression = args.pca_before_regression
         if not self.separate_features:
             if self.overall_prediction:
                 self.cmap = sns.color_palette('magma', as_cmap=True)
@@ -112,7 +114,6 @@ class PlotEncoding():
             self.out_name = f'{self.figure_dir}/sub-{self.sid}_separate.png'
             self.threshold = 1.
         print(self.out_name)
-
 
     def _colorbar_from_array(self, array, threshold, cmap):
         """Generate a custom colorbar for an array.
@@ -224,10 +225,10 @@ class PlotEncoding():
         mask = np.load(f'{self.mask_dir}/sub-all_reliability-mask.npy')
 
         if not self.overall_prediction:
-            rs = np.load(f'{self.stat_dir}/sub-all/sub-all_feature-all_rs-filtered.npy').astype('bool')
+            rs = np.load(f'{self.stat_dir}/sub-all/sub-all_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy').astype('bool')
             rs = mkNifti(rs, mask, mask_im, nii=False)
 
-            base = f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-XXX_rs-mask.npy'
+            base = f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-XXX_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs.npy'
             pred = []
             for feature in self.features:
                 arr = np.load(base.replace('XXX', feature))
@@ -246,14 +247,14 @@ class PlotEncoding():
             volume = volume.astype('float')
             volume = nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
         else:
-            rs = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_rs.npy')
-            ps = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_ps.npy')
+            rs = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs.npy')
+            ps = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_ps.npy')
 
             #Filter the r-values, set threshold, and save output
             rs, rs_mask, threshold = filter_r(rs, ps)
             self.threshold = threshold
-            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_rs-filtered.npy', rs)
-            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_rs-mask.npy', rs_mask)
+            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy', rs)
+            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy', rs_mask)
             volume = mkNifti(rs, mask, mask_im)
 
         texture = {'left': self.vol_to_surf(volume, 'left'),
@@ -275,6 +276,8 @@ def main():
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--separate_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overall_prediction', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--no_control_model', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--mask_dir', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/Reliability')
     parser.add_argument('--annotation_dir', type=str,
