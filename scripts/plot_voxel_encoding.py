@@ -273,7 +273,7 @@ class PlotEncoding():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
-    parser.add_argument('--mesh', type=str, default='fsaverage5')
+    parser.add_argument('--mesh', type=str, default='fsaverage')
     parser.add_argument('--separate_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overall_prediction', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--no_control_model', action=argparse.BooleanOptionalAction, default=True)

@@ -31,7 +31,9 @@ class generate_models():
     def control_model(self):
         # AlexNet
         layer = 2
-        alexnet = zscore(np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv{layer}_avgframe.npy'), axis=-1)
+        alexnet = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv{layer}_avgframe.npy')
+        np.save(f'{self.out_dir}/alexnet_activations/alexnet_conv{layer}_avg.npy', alexnet.mean(axis=0))
+        alexnet = zscore(alexnet, axis=-1)
 
         pca = PCA(svd_solver='full', n_components=20)
         alexnet = pca.fit_transform(alexnet.T)
@@ -41,7 +43,9 @@ class generate_models():
         plt.savefig(f'{self.figure_dir}/alexnet_pcs.pdf')
         
         # Optical flow
-        of = zscore(np.load(f'{self.out_dir}/of_activations/of_adelsonbergen.npy'), axis=0)
+        of = np.load(f'{self.out_dir}/of_activations/of_adelsonbergen.npy')
+        np.save(f'{self.out_dir}/of_activations/of_adelsonbergen_avg.npy', of.mean(axis=1))
+        of = zscore(of, axis=0)
         pca = PCA(svd_solver='full', n_components=20)
         of = pca.fit_transform(of)
 
@@ -81,9 +85,12 @@ class generate_models():
         
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/input_data')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/output_data')
-    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/figures')
+    parser.add_argument('--data_dir', '-data', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
+    parser.add_argument('--figure_dir', '-figures', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     times = generate_models(args).run()
 

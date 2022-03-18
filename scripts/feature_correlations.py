@@ -17,14 +17,12 @@ from statsmodels.stats.multitest import multipletests
 
 from itertools import combinations, chain
 
-class feature_correlations():
+class FeatureCorrelations():
     def __init__(self, args):
-        self.process = 'feature_correlations'
+        self.process = 'FeatureCorrelations'
         self.data_dir = args.data_dir
-        self.out_dir = f'{args.out_dir}/{self.process}'
+        self.out_dir = f'{args.out_dir}'
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        if not os.path.exists(self.out_dir):
-            os.mkdir(self.out_dir)
         if not os.path.exists(self.figure_dir):
             os.mkdir(self.figure_dir)
 
@@ -40,10 +38,15 @@ class feature_correlations():
         if context == 'talk':
             r_size = 12
         elif context == 'poster':
-            r_size=18
+            r_size = 18
 
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
+        train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
+        df = df.merge(train)
         df = df.drop(columns=['video_name'])
+        df['motion energy'] = np.load(f'{self.out_dir}/of_activations/of_adelsonbergen_avg.npy')
+        df['AlexNet conv2'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv2_avg.npy')
+        df['AlexNet conv5'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv5_avg.npy')
         nqs = len(df.columns)
         ratings = np.array(df)
         ticks = df.columns
@@ -76,7 +79,8 @@ class feature_correlations():
                 weight = 'bold' if ps[j,i] < 0.05 else 'normal'
                 label = label if np.round_(label,decimals=1) != 0 else int(0)
                 ax.text(i,j,'{:.1f}'.format(label), ha='center', va='center',
-                        color=color, fontsize=14, weight=weight)
+                        color=color, fontsize=r_size, weight=weight)
+        ax.grid(False)
         cbar = plt.colorbar()
         cbar.ax.tick_params(size=0)
 
@@ -92,11 +96,11 @@ class feature_correlations():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/input_data')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/output_data')
-    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/figures')
+    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
+    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    times = feature_correlations(args).run()
+    FeatureCorrelations(args).run()
 
 if __name__ == '__main__':
     main()
