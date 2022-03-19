@@ -17,6 +17,24 @@ import matplotlib as mpl
 import seaborn as sns
 
 
+def plot_feature_correlation(cur, ax):
+    cur = cur.sort_values(by='Spearman rho', ascending=False)
+    sns.barplot(y='Spearman rho', x='Feature',
+                data=cur, ax=ax, color='gray')
+    plt.title('')
+    ax.tick_params(labelrotation=90)
+
+
+def plot_video_loadings(loading, videos, ax):
+    indices = np.flip(np.argsort(loading))
+    df = pd.DataFrame({'Videos': videos[indices],
+                       'Loading': loading[indices]})
+    sns.barplot(y='Loading', x='Videos',
+                data=df, ax=ax, color='gray')
+    plt.title('')
+    ax.tick_params(labelrotation=90)
+
+
 def pca(X, n_components):
     model = PCA(whiten=True, n_components=n_components)
     out = model.fit_transform(X)
@@ -61,7 +79,9 @@ class VoxelPCA():
         df['AlexNet conv5'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv5_avg.npy')
         df.sort_values(by=['video_name'], inplace=True)
         new = df.drop(columns=['video_name'])
-        return np.array(new.columns), df
+
+        categories = pd.read_csv(f'{self.data_dir}/annotations/train_categories.csv')
+        return np.array(new.columns), df, categories.action_categories.to_numpy()
 
     def load_neural(self, n_subjects=4):
         X = []
@@ -124,24 +144,23 @@ class VoxelPCA():
         df.to_csv(f'{self.out_dir}/{self.process}/PCs.csv', index=False)
         return df
 
-    def plot_feature_correlation(self, df):
-        for i in np.unique(df.PC):
-            cur = df[df['PC'] == i].sort_values(by='Spearman rho')
-            _, ax = plt.subplots()
-            sns.barplot(y='Spearman rho', x='Feature',
-                        data=cur, ax=ax, color='black')
+    def plot_PC_results(self, df, videos, vid_comp):
+        for i, iname in enumerate(np.unique(df.PC)):
+            _, ax = plt.subplots(1, 2, figsize=(10, 5))
+            plot_feature_correlation(df[df['PC'] == iname], ax[0])
+            plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
             plt.tight_layout()
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}.pdf')
 
     def run(self):
         mask, im = self.load_mask()
-        feature_names, features = self.load_features()
+        feature_names, features, videos = self.load_features()
         neural, n_voxels = self.load_neural()
         vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
         self.plot_variance(explained_variance.cumsum())
         df = self.PC_to_features(features, feature_names, vid_comp)
-        self.plot_feature_correlation(df)
+        self.plot_PC_results(df, videos, vid_comp)
         vox = np.argmax(comp_vox.reshape((-1, 4, n_voxels)).mean(axis=-2), axis=0) + 1
         self.plot_brain(vox, mask, im)
 
