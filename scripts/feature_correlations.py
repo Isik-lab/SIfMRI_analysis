@@ -48,11 +48,11 @@ class FeatureCorrelations():
     def plotting_dists(self, r, p, r_dist, name):
         _, ax = plt.subplots()
         sns.histplot(r_dist, element="step")
-        ys = np.arange(0, self.n_perm/5)
-        xs = np.ones_like(ys)*r
+        ys = np.arange(0, self.n_perm / 5)
+        xs = np.ones_like(ys) * r
         ax.plot(xs, ys, '--r')
-        lim = np.abs(r)+.1
-        plt.xlim([lim*-1, lim])
+        lim = np.abs(r) + .1
+        plt.xlim([lim * -1, lim])
         plt.title(f'r = {r:.3f}, p = {p:.5f}')
         plt.savefig(f'{self.figure_dir}/dists_rsa-{self.rsa}/{name}.pdf')
         plt.close()
@@ -64,13 +64,18 @@ class FeatureCorrelations():
         rows, cols = np.where(np.tril(a, -1))
         count = 0
         for i, j in tqdm(zip(rows, cols), total=len(rows)):
-            r_true, p, r_dist = permutation_test(mat[:, i], mat[:, j],
-                                       n_perm=self.n_perm,
-                                       test_inds=np.arange(mat.shape[0]),
-                                       H0=self.H0)
+            if self.rsa:
+                test_inds = None
+            else:
+                test_inds = np.arange(mat[:, i].size)
+            r, p, r_dist = permutation_test(mat[:, i], mat[:, j],
+                                            n_perm=self.n_perm,
+                                            test_inds=test_inds,
+                                            H0=self.H0,
+                                            rsa=self.rsa)
             if self.plot_dists:
                 count += 1
-                self.plotting_dists(r_true, p, r_dist, str(count).zfill(2))
+                self.plotting_dists(r, p, r_dist, str(count).zfill(2))
             ps.append(p)
         ps = np.array(ps)
         if correct:
@@ -96,14 +101,12 @@ class FeatureCorrelations():
         sns.set(rc={'figure.figsize': (9, 7)}, context=context)
         fig, ax = plt.subplots()
 
-
-
         vmax = np.nanmax(np.abs(rs))
         if self.rsa:
             vmin = 0
             cmap = cm.get_cmap(sns.color_palette("light:b", as_cmap=True))
         else:
-            vmin = -1*vmax
+            vmin = -1 * vmax
             cmap = cm.get_cmap(sns.diverging_palette(210, 15, s=90, l=40, n=11, as_cmap=True))
         cmap.set_bad('white')
 
@@ -113,15 +116,15 @@ class FeatureCorrelations():
                 color = 'black' if ps[j, i] else 'white'
                 weight = 'bold' if ps[j, i] else 'normal'
                 label = label if np.round_(label, decimals=1) != 0 else int(0)
-                ax.text(i,j,'{:.1f}'.format(label), ha='center', va='center',
+                ax.text(i, j, '{:.1f}'.format(label), ha='center', va='center',
                         color=color, fontsize=r_size, weight=weight)
         ax.grid(False)
         cbar = plt.colorbar()
         cbar.ax.tick_params(size=0)
 
-        ax.set_yticks(np.arange(nqs-1))
+        ax.set_yticks(np.arange(nqs - 1))
         ax.set_yticklabels(ticks[1:])
-        ax.set_xticks(np.arange(nqs-1))
+        ax.set_xticks(np.arange(nqs - 1))
         ax.set_xticklabels(ticks[:-1], rotation=90, ha='center')
         ax.grid(False)
         plt.tight_layout()
@@ -159,15 +162,19 @@ class FeatureCorrelations():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_perm', '-n_perm', type=int, default=int(5e3))
+    parser.add_argument('--n_perm', type=int, default=int(5e3))
     parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
+    parser.add_argument('--data_dir', '-data', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
+    parser.add_argument('--figure_dir', '-figures', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     FeatureCorrelations(args).run()
+
 
 if __name__ == '__main__':
     main()

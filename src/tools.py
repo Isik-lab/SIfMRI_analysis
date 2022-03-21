@@ -3,7 +3,9 @@
 
 import numpy as np
 from tqdm import tqdm
-from scipy.stats import spearmanr
+from scipy.stats import spearmanr, pearsonr
+from scipy.spatial.distance import squareform
+import matplotlib.pyplot as plt
 
 
 def corr2d(x, y):
@@ -16,17 +18,27 @@ def corr2d(x, y):
     return numer / denom
 
 
+def mantel_permutation(a, i):
+    a = squareform(a)
+    inds = np.random.permutation(a.shape[0])
+    a_shuffle = a[inds][:, inds]
+    return squareform(a_shuffle)
+
+
 def permutation_test(a, b, test_inds=None,
-                     n_perm=int(5e3), H0='greater'):
+                     n_perm=int(5e3), H0='greater',
+                     rsa=False):
     r_true, _ = spearmanr(a, b)
     r_null = np.zeros(n_perm)
     for i in range(n_perm):
-        inds = np.random.default_rng(i).permutation(test_inds.shape[0])
-        if len(test_inds.shape) > 1:
-            inds = test_inds[inds, :].flatten()
-        a_shuffle = a[inds]
+        if not rsa:
+            inds = np.random.default_rng(i).permutation(test_inds.shape[0])
+            if len(test_inds.shape) > 1:
+                inds = test_inds[inds, :].flatten()
+            a_shuffle = a[inds]
+        else:
+            a_shuffle = mantel_permutation(a, i)
         r_null[i], _ = spearmanr(a_shuffle, b)
-
     #Get the p-value depending on the type of test
     if H0 == 'greater':
         p = 1 - (np.sum(r_true >= r_null) / n_perm)
