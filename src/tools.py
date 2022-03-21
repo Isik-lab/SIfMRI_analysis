@@ -3,6 +3,8 @@
 
 import numpy as np
 from tqdm import tqdm
+from scipy.stats import spearmanr
+
 
 def corr2d(x, y):
     x_m = x - x.mean(axis=0)
@@ -13,40 +15,25 @@ def corr2d(x, y):
     denom[denom == 0] = np.NaN
     return numer / denom
 
-def corr1d(x, y):
-    """
-        input:
-            x:
-            y:
-        output:
-    """
-    x_m = x - x.mean()
-    y_m = y - y.mean()
-
-    num = x_m @ y_m
-    denom = np.sqrt((x_m @ x_m) * (y_m @ y_m))
-    if denom != 0 :
-        return num / denom
-    else:
-        return np.NaN
 
 def permutation_test(a, b, test_inds=None,
                      n_perm=int(5e3), H0='greater'):
-    r_true = corr1d(a, b)
+    r_true, _ = spearmanr(a, b)
     r_null = np.zeros(n_perm)
     for i in range(n_perm):
         inds = np.random.default_rng(i).permutation(test_inds.shape[0])
-        inds = test_inds[inds, :].flatten()
+        if len(test_inds.shape) > 1:
+            inds = test_inds[inds, :].flatten()
         a_shuffle = a[inds]
-        r_null[i] = corr1d(a_shuffle, b)
+        r_null[i], _ = spearmanr(a_shuffle, b)
 
     #Get the p-value depending on the type of test
-    if H0 == 'two_tailed':
-        p = np.sum(np.abs(r_null) >= np.abs(r_true)) / n_perm
-    elif H0 == 'greater':
+    if H0 == 'greater':
         p = 1 - (np.sum(r_true >= r_null) / n_perm)
     elif H0 == 'less':
         p = 1 - (np.sum(r_true <= r_null) / n_perm)
+    else:
+        p = np.sum(np.abs(r_null) >= np.abs(r_true)) / n_perm
 
     return r_true, p, r_null
 
@@ -78,7 +65,7 @@ def bootstrap(a, b, test_inds, n_samples=int(5e3)):
         inds = np.random.default_rng(i).choice(np.arange(test_inds.shape[0]),
                                                size=test_inds.shape[0])
         inds = test_inds[inds, :].flatten()
-        r_var[i] = corr1d(a[inds], b)
+        r_var[i], _ = spearmanr(a[inds], b)
     return r_var
 
 def mask(stat_map, path=None):
