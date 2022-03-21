@@ -16,6 +16,12 @@ class VoxelEncoding:
         self.process = 'VoxelEncoding'
         self.n_subjs = args.n_subjs
         self.include_control = args.include_control
+        self.layer = args.layer
+        if self.include_control:
+            assert self.layer is not None, "AlexNet layer must be defined"
+            self.control_name = f'conv{self.layer}'
+        else:
+            self.control_name = 'none'
         self.by_feature = args.by_feature
         self.pca_before_regression = args.pca_before_regression
         if args.s_num == 'all':
@@ -28,7 +34,10 @@ class VoxelEncoding:
             os.mkdir(f'{self.out_dir}/{self.process}')
 
     def run(self, regression_splits=10, random_state=1):
-        control_model = np.load(f'{self.out_dir}/generate_models/control_model.npy')
+        if self.include_control:
+            control_model = np.load(f'{self.out_dir}/generate_models/control_model_conv{self.layer}.npy')
+        else:
+            control_model = None
         X = np.load(f'{self.out_dir}/generate_models/annotated_model.npy')
 
         # Get the feature names for the annotated model
@@ -68,7 +77,7 @@ class VoxelEncoding:
         # Save the outputs of the code
         print('Saving outputs')
         start = time.time()
-        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_by_feature-{self.by_feature}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_by_feature-{self.by_feature}_control-{self.control_name}_pca_before_regression-{self.pca_before_regression}'
         np.save(f'{base}_y_true.npy', y_true)
         np.save(f'{base}_y_pred.npy', y_pred)
         np.save(f'{base}_indices.npy', indices)
@@ -78,6 +87,7 @@ class VoxelEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--layer', '-l', type=str, default=None)
     parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--by_feature', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)

@@ -16,7 +16,7 @@ class VoxelPermutation():
         else:
             self.sid = str(int(args.s_num)).zfill(2)
         self.by_feature = args.by_feature
-        self.include_control = args.include_control
+        self.control = args.control
         self.pca_before_regression = args.pca_before_regression
         if self.by_feature:
             assert args.feature is not None, "You must define feature to use by_feature mode"
@@ -35,7 +35,7 @@ class VoxelPermutation():
         return features.index(self.feature)
 
     def load(self):
-        base = f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_by_feature-{self.by_feature}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
+        base = f'{self.out_dir}/VoxelEncoding/sub-{self.sid}_by_feature-{self.by_feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
         pred = np.load(f'{base}_y_pred.npy')
         true = np.load(f'{base}_y_true.npy')
         indices = np.load(f'{base}_indices.npy')
@@ -48,7 +48,7 @@ class VoxelPermutation():
 
     def save_perm_results(self, r_true, p, r_null):
         print('Saving output')
-        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_include_control-{self.include_control}_pca_before_regression-{self.pca_before_regression}'
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature_snake}_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
         np.save(f'{base}_rs.npy', r_true)
         np.save(f'{base}_ps.npy', p)
         np.save(f'{base}_rs-nulldist.npy', r_null)
@@ -68,7 +68,7 @@ def main():
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--n_subjs', '-n', type=int, default=4)
     parser.add_argument('--by_feature', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--control', type=str, default='conv2')
     parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--feature', '-f', type=str, default=None)
     parser.add_argument('--data_dir', '-data', type=str,
