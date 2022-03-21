@@ -3,10 +3,6 @@
 
 import argparse
 import os
-import glob
-from natsort import natsorted
-from tqdm import tqdm
-import itertools
 
 import pandas as pd
 import numpy as np
@@ -15,13 +11,13 @@ from sklearn.decomposition import PCA
 from scipy.stats import zscore
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 class generate_models():
     def __init__(self, args):
         self.process = 'generate_models'
         self.data_dir = args.data_dir
         self.out_dir = f'{args.out_dir}'
+        self.layer = args.layer
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
             os.mkdir(f'{self.out_dir}/{self.process}')
@@ -30,17 +26,16 @@ class generate_models():
 
     def control_model(self):
         # AlexNet
-        layer = 2
-        alexnet = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv{layer}_avgframe.npy')
-        np.save(f'{self.out_dir}/alexnet_activations/alexnet_conv{layer}_avg.npy', alexnet.mean(axis=0))
+        alexnet = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv{self.layer}_avgframe.npy')
+        np.save(f'{self.out_dir}/alexnet_activations/alexnet_conv{self.layer}_avg.npy', alexnet.mean(axis=0))
         alexnet = zscore(alexnet, axis=-1)
 
         pca = PCA(svd_solver='full', n_components=20)
         alexnet = pca.fit_transform(alexnet.T)
 
-        fig, ax = plt.subplots()
-        plt.plot(pca.explained_variance_ratio_.cumsum())
-        plt.savefig(f'{self.figure_dir}/alexnet_pcs.pdf')
+        _, ax = plt.subplots()
+        ax.plot(pca.explained_variance_ratio_.cumsum())
+        plt.savefig(f'{self.figure_dir}/alexnet_conv{self.layer}_pcs.pdf')
         
         # Optical flow
         of = np.load(f'{self.out_dir}/of_activations/of_adelsonbergen.npy')
@@ -49,23 +44,19 @@ class generate_models():
         pca = PCA(svd_solver='full', n_components=20)
         of = pca.fit_transform(of)
 
-        fig, ax = plt.subplots()
-        plt.plot(pca.explained_variance_ratio_.cumsum())
+        _, ax = plt.subplots()
+        ax.plot(pca.explained_variance_ratio_.cumsum())
         plt.savefig(f'{self.figure_dir}/of_pcs.pdf')
         
         # Combine
         control_model = np.concatenate((alexnet, of), axis=-1)
-        np.save(f'{self.out_dir}/{self.process}/control_model.npy', control_model)
+        np.save(f'{self.out_dir}/{self.process}/control_model_conv{self.layer}.npy', control_model)
     
     def annotated_model(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
         df = df.merge(train)
         df.sort_values(by=['video_name'], inplace=True)
-        
-        feature_categories = ['visual', 'visual', 'visual', 'visual', 'visual',
-                     'social detection', 'social detection', 
-                     'social evaluation', 'social evaluation', 'social evaluation', 'social evaluation', 'social evaluation']
         features = df.columns.to_list()
         features.remove('video_name')
         
@@ -85,6 +76,7 @@ class generate_models():
         
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--layer', '-l', type=str)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
