@@ -139,9 +139,6 @@ class FeatureCorrelations():
         train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
         df = df.merge(train)
         df = df.drop(columns=['video_name'])
-        df['motion enegery'] = np.load(f'{self.out_dir}/of_activations/of_adelsonbergen_avg.npy')
-        df['AlexNet conv2'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv2_avg.npy')
-        df['AlexNet conv5'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv5_avg.npy')
         return df
 
     def run(self, context='talk'):
