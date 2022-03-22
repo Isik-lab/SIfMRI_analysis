@@ -10,6 +10,7 @@ import nibabel as nib
 from nilearn import datasets
 from statsmodels.stats.multitest import multipletests
 from src import custom_plotting as cm
+from nilearn import surface
 
 
 def save(arr, out_name, mode='npy'):
@@ -81,22 +82,26 @@ class PlotEncoding():
         self.features = []
         self.separate_features = args.separate_features
         self.overall_prediction = args.overall_prediction
-        self.no_control_model = args.no_control_model
+        self.control = args.control
         self.pca_before_regression = args.pca_before_regression
         if not self.separate_features:
             if self.overall_prediction:
                 self.cmap = sns.color_palette('magma', as_cmap=True)
-                self.out_name = f'{self.figure_dir}/sub-{self.sid}_overall.png'
+                self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_overall.png'
                 self.threshold = None
             else:
                 self.cmap = mk_cmap()
-                self.out_name = f'{self.figure_dir}/sub-{self.sid}_grouped.png'
+                self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_grouped.png'
                 self.threshold = 1.
         else:
             self.cmap = sns.color_palette('Paired', as_cmap=True)
-            self.out_name = f'{self.figure_dir}/sub-{self.sid}_separate.png'
+            self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_separate.png'
             self.threshold = 1.
         print(self.out_name)
+
+    def vol_to_surf(self, volume, hemi, interpolation='nearest'):
+        return surface.vol_to_surf(volume, self.fsaverage[f'pial_{hemi}'],
+                                   interpolation=interpolation)
 
     def load_features(self):
         df = pd.read_csv(f'{self.annotation_dir}/annotations.csv')
@@ -112,10 +117,10 @@ class PlotEncoding():
         mask = np.load(f'{self.mask_dir}/sub-all_reliability-mask.npy')
 
         if not self.overall_prediction:
-            rs = np.load(f'{self.stat_dir}/sub-all/sub-all_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy').astype('bool')
+            rs = np.load(f'{self.stat_dir}/sub-all_feature-all_control-none_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy').astype('bool')
             rs = cm.mkNifti(rs, mask, mask_im, nii=False)
 
-            base = f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-XXX_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs.npy'
+            base = f'{self.stat_dir}/sub-{self.sid}_feature-XXX_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
             pred = []
             for feature in self.features:
                 arr = np.load(base.replace('XXX', feature))
@@ -134,16 +139,15 @@ class PlotEncoding():
             volume = volume.astype('float')
             volume = nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
         else:
-            rs = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs.npy')
-            ps = np.load(f'{self.stat_dir}/sub-{self.sid}/sub-{self.sid}_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_ps.npy')
+            rs = np.load(f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy')
+            ps = np.load(f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_ps.npy')
 
             #Filter the r-values, set threshold, and save output
             rs, rs_mask, threshold = filter_r(rs, ps)
             self.threshold = threshold
-            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy', rs)
-            np.save(f'{self.stat_dir}/sub-{self.sid}/sub-all_feature-all_include_control-{self.no_control_model}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy', rs_mask)
+            np.save(f'{self.stat_dir}/sub-all_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy', rs)
+            np.save(f'{self.stat_dir}/sub-all_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy', rs_mask)
             volume = cm.mkNifti(rs, mask, mask_im)
-
         texture = {'left': self.vol_to_surf(volume, 'left'),
                    'right': self.vol_to_surf(volume, 'right')}
         return volume, texture
@@ -162,9 +166,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--mesh', type=str, default='fsaverage5')
+    parser.add_argument('--control', type=str, default='conv2')
     parser.add_argument('--separate_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overall_prediction', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--no_control_model', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--mask_dir', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/Reliability')
