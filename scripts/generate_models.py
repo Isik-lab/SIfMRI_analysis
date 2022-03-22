@@ -12,12 +12,13 @@ from scipy.stats import zscore
 
 import matplotlib.pyplot as plt
 
-class generate_models():
+class GenerateModels():
     def __init__(self, args):
-        self.process = 'generate_models'
+        self.process = 'GenerateModels'
         self.data_dir = args.data_dir
         self.out_dir = f'{args.out_dir}'
         self.layer = args.layer
+        self.set = args.set
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
             os.mkdir(f'{self.out_dir}/{self.process}')
@@ -26,8 +27,8 @@ class generate_models():
 
     def control_model(self):
         # AlexNet
-        alexnet = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv{self.layer}_avgframe.npy')
-        np.save(f'{self.out_dir}/alexnet_activations/alexnet_conv{self.layer}_avg.npy', alexnet.mean(axis=0))
+        alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy')
+        np.save(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{self.set}_avg.npy', alexnet.mean(axis=0))
         alexnet = zscore(alexnet, axis=-1)
 
         pca = PCA(svd_solver='full', n_components=20)
@@ -35,26 +36,26 @@ class generate_models():
 
         _, ax = plt.subplots()
         ax.plot(pca.explained_variance_ratio_.cumsum())
-        plt.savefig(f'{self.figure_dir}/alexnet_conv{self.layer}_pcs.pdf')
+        plt.savefig(f'{self.figure_dir}/alexnet_conv{self.layer}_set-{self.set}_pcs.pdf')
         
         # Optical flow
-        of = np.load(f'{self.out_dir}/of_activations/of_adelsonbergen.npy')
-        np.save(f'{self.out_dir}/of_activations/of_adelsonbergen_avg.npy', of.mean(axis=1))
+        of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_activations_set-{self.set}.npy')
+        np.save(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy', of.mean(axis=1))
         of = zscore(of, axis=0)
         pca = PCA(svd_solver='full', n_components=20)
         of = pca.fit_transform(of)
 
         _, ax = plt.subplots()
         ax.plot(pca.explained_variance_ratio_.cumsum())
-        plt.savefig(f'{self.figure_dir}/of_pcs.pdf')
+        plt.savefig(f'{self.figure_dir}/motion_energy_set-{self.set}_pcs.pdf')
         
         # Combine
         control_model = np.concatenate((alexnet, of), axis=-1)
-        np.save(f'{self.out_dir}/{self.process}/control_model_conv{self.layer}.npy', control_model)
+        np.save(f'{self.out_dir}/{self.process}/control_model_conv{self.layer}_set-{self.set}.npy', control_model)
     
     def annotated_model(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
+        train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
         df.sort_values(by=['video_name'], inplace=True)
         features = df.columns.to_list()
@@ -68,7 +69,7 @@ class generate_models():
                 model = arr.copy()
             else:
                 model = np.append(model, arr, axis=0) 
-        np.save(f'{self.out_dir}/{self.process}/annotated_model.npy', model.T)
+        np.save(f'{self.out_dir}/{self.process}/annotated_model_set-{self.set}.npy', model.T)
         
     def run(self):
         self.control_model()
@@ -77,6 +78,7 @@ class generate_models():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--layer', '-l', type=str)
+    parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
@@ -84,7 +86,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    times = generate_models(args).run()
+    GenerateModels(args).run()
 
 if __name__ == '__main__':
     main()

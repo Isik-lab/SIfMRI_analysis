@@ -2,9 +2,9 @@
 # coding: utf-8
 
 import argparse
-import glob
 from tqdm import tqdm
 import copy
+import os
 
 import pandas as pd
 import numpy as np
@@ -88,9 +88,10 @@ class alexnet_extractor(nn.Module):
         )
         return classifier
 
-class alexnet_activations():
+class AlexNetActivations():
     def __init__(self, args):
-        self.process = 'alexnet_activations'
+        self.process = 'AlexNetActivations'
+        self.set = args.set
         self.layer = args.layer
         self.data_dir = args.data_dir
         self.out_dir = f'{args.out_dir}/{self.process}'
@@ -98,7 +99,7 @@ class alexnet_activations():
             os.mkdir(self.out_dir)
 
     def run(self):
-        df = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
+        df = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df.sort_values(by=['video_name'], inplace=True)
         vid_dir = f'{self.data_dir}/videos'
 
@@ -115,15 +116,18 @@ class alexnet_activations():
                 cur_act.append(feature_extractor.forward(input_img, layer=self.layer, combination=None))
             activation.append(np.array(cur_act).mean(axis=0))
         activation = np.array(activation).T
-        np.save(f'{self.output_dir}/alexnet_conv{selflayer}_avgframe.npy',activation)
+        np.save(f'{self.out_dir}/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy',activation)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--layer', '-l', type=int)
-    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/input_data')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/fmri/output_data')
+    parser.add_argument('--set', type=str, default='train')
+    parser.add_argument('--data_dir', '-data', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
     args = parser.parse_args()
-    times = alexnet_activations(args).run()
+    AlexNetActivations(args).run()
 
 if __name__ == '__main__':
     main()

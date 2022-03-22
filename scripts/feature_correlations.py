@@ -29,6 +29,7 @@ class FeatureCorrelations():
     def __init__(self, args):
         self.process = 'FeatureCorrelations'
         self.data_dir = args.data_dir
+        self.set = args.set
         self.n_perm = args.n_perm
         self.plot_dists = args.plot_dists
         self.precomputed = args.precomputed
@@ -128,22 +129,22 @@ class FeatureCorrelations():
         ax.set_xticklabels(ticks[:-1], rotation=90, ha='center')
         ax.grid(False)
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/correlation-matrix_rsa-{self.rsa}.pdf')
+        plt.savefig(f'{self.figure_dir}/correlation-matrix_rsa-{self.rsa}_set-{self.set}.pdf')
         plt.close()
 
     def save(self, arr, name):
-        np.save(f'{self.out_dir}/{self.process}/{name}_rsa-{self.rsa}.npy', arr)
+        np.save(f'{self.out_dir}/{self.process}/{name}_rsa-{self.rsa}_set-{self.set}.npy', arr)
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
+        train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
         df = df.drop(columns=['video_name'])
         return df
 
     def run(self, context='talk'):
         if self.rsa:
-            df = pd.read_csv(f'{self.out_dir}/FeatureRDMs/rdms.csv')
+            df = pd.read_csv(f'{self.out_dir}/FeatureRDMs/rdms_set-{self.set}.csv')
         else:
             df = self.load_annotations()
 
@@ -152,14 +153,15 @@ class FeatureCorrelations():
             self.save(rs, 'rs')
             self.save(ps, 'ps')
         else:
-            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}.npy')
-            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}.npy')
+            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}.npy')
+            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}.npy')
         self.plot(rs, ps, df.columns, context=context)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_perm', type=int, default=int(5e3))
+    parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
