@@ -1,5 +1,5 @@
 features=( "indoor" "expanse" "agent_distance" "facingness" "transitivity" "joint_action" "communication" "cooperation" "dominance" "intimacy" "valence" "arousal" )
-controls=( "none" )#( "conv2" "conv5" "none" )
+controls=( "none" ) #( "conv2" "conv5" "none" )
 for control in "${controls[@]}"; do
   for feature in "${features[@]}"; do
     for sid in $(seq 1 4); do
