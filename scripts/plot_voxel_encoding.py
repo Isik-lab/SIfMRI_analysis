@@ -11,6 +11,7 @@ from nilearn import datasets
 from statsmodels.stats.multitest import multipletests
 from src import custom_plotting as cm
 from nilearn import surface
+from src.custom_plotting import custom_nilearn_cmap
 
 
 def save(arr, out_name, mode='npy'):
@@ -18,35 +19,6 @@ def save(arr, out_name, mode='npy'):
         np.save(out_name, arr)
     elif mode == 'nii':
         nib.save(arr, out_name)
-
-
-def mk_cmap(n_features=12):
-    # colors = ['blue', 'purple', 'yellow']
-    # colors = ['#48D4E1', '#8C55FD', '#FADC00']
-    c1 = tuple(np.array([72., 212., 225.]) / 256)
-    c2 = tuple(np.array([140., 85., 253.]) / 256)
-    c3 = tuple(np.array([250., 220., 0.]) / 256)
-
-    cmap = sns.color_palette('Paired', n_features, as_cmap=True)
-    colors = []
-    for c in range(n_features):
-        # if c <= 1 or c == 4:
-        if c <= 4:
-            colors.append(c1)
-            cmap._lut[c] = list(c1) + [1.]
-        elif c > 4 and c <= 6:
-        # elif c == 2 or c == 3:
-            colors.append(c2)
-            cmap._lut[c] = list(c2) + [1.]
-        else:
-            colors.append(c3)
-            cmap._lut[c] = list(c3) + [1.]
-    cmap.colors = tuple(colors)
-
-    cmap._lut[cmap._i_over] = [0., 0., 0., 0.]
-    cmap._lut[cmap._i_under] = [0., 0., 0., 0.]
-    cmap._lut[cmap._i_bad] = [0., 0., 0., 0.]
-    return cmap
 
 
 def correct(ps_, rs_, p_crit=1e-2):
@@ -90,7 +62,7 @@ class PlotEncoding():
                 self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_overall.png'
                 self.threshold = None
             else:
-                self.cmap = mk_cmap()
+                self.cmap = custom_nilearn_cmap()
                 self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_grouped.png'
                 self.threshold = 1.
         else:

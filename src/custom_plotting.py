@@ -6,6 +6,85 @@ import itertools
 import matplotlib.pyplot as plt
 from nilearn.plotting import plot_surf_roi
 import nibabel as nib
+import seaborn as sns
+
+
+def custom_palette(rgb=True):
+    colors = dict()
+    if rgb:
+        colors['reddish'] = tuple(np.array([218., 83., 91.]) / 256)
+        colors['cyan'] = tuple(np.array([115., 210., 223.]) / 256)
+        colors['blue'] = tuple(np.array([105., 150., 237.]) / 256)
+        colors['mustard'] = tuple(np.array([245., 221., 64.]) / 256)
+        colors['purple'] = tuple(np.array([133., 88., 244.]) / 256)
+    else:
+        colors['reddish'] = '#DA535B'
+        colors['cyan'] = '#73D2DF'
+        colors['blue'] = '#6796ED'
+        colors['mustard'] = '#F5DD40'
+        colors['purple'] = '#8558F4'
+    return colors
+
+
+def feature_categories():
+    d = dict()
+    d['indoor'] = 'scene'
+    d['expanse'] = 'scene'
+    d['transitivity'] = 'object'
+    d['agent distance'] = 'social primitive'
+    d['facingness'] = 'social primitive'
+    d['joint action'] = 'social'
+    d['communication'] = 'social'
+    d['cooperation'] = 'social'
+    d['dominance'] = 'social'
+    d['intimacy'] = 'social'
+    d['valence'] = 'social'
+    d['arousal'] = 'social'
+    return d
+
+
+def feature_colors():
+    d = dict()
+    d['indoor'] = 'mustard'
+    d['expanse'] = 'mustard'
+    d['transitivity'] = 'reddish'
+    d['agent distance'] = 'purple'
+    d['facingness'] = 'purple'
+    d['joint action'] = 'blue'
+    d['communication'] = 'blue'
+    d['cooperation'] = 'blue'
+    d['dominance'] = 'blue'
+    d['intimacy'] = 'blue'
+    d['valence'] = 'blue'
+    d['arousal'] = 'blue'
+    return d
+
+
+def custom_seaborn_cmap():
+    colors = custom_palette(rgb=False).items()
+    return sns.color_palette(colors, as_cmap=True)
+
+
+def custom_nilearn_cmap():
+    feature_names = ['indoor', 'expanse', 'transitivity',
+       'agent distance', 'facingness', 'joint action', 'communication',
+       'cooperation', 'dominance', 'intimacy', 'valence', 'arousal']
+    cmap = sns.color_palette('Paired', len(feature_names), as_cmap=True)
+    palette = custom_palette()
+    colors = feature_colors()
+    out_colors = []
+    for i, feature in enumerate(feature_names):
+        color = colors[feature]
+        rgb = palette[color]
+        colors.append(rgb)
+        cmap._lut[i] = list(rgb) + [1.]
+    cmap.colors = tuple(out_colors)
+
+    cmap._lut[cmap._i_over] = [0., 0., 0., 0.]
+    cmap._lut[cmap._i_under] = [0., 0., 0., 0.]
+    cmap._lut[cmap._i_bad] = [0., 0., 0., 0.]
+    return cmap
+
 
 def mkNifti(arr, mask, im, nii=True):
     out_im = np.zeros(mask.size, dtype=arr.dtype)
