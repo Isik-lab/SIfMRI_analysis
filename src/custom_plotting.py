@@ -12,17 +12,17 @@ import seaborn as sns
 def custom_palette(rgb=True):
     colors = dict()
     if rgb:
+        colors['mustard'] = tuple(np.array([245., 221., 64.]) / 256)
         colors['reddish'] = tuple(np.array([218., 83., 91.]) / 256)
+        colors['purple'] = tuple(np.array([133., 88., 244.]) / 256)
         colors['cyan'] = tuple(np.array([115., 210., 223.]) / 256)
         colors['blue'] = tuple(np.array([105., 150., 237.]) / 256)
-        colors['mustard'] = tuple(np.array([245., 221., 64.]) / 256)
-        colors['purple'] = tuple(np.array([133., 88., 244.]) / 256)
     else:
+        colors['mustard'] = '#F5DD40'
         colors['reddish'] = '#DA535B'
+        colors['purple'] = '#8558F4'
         colors['cyan'] = '#73D2DF'
         colors['blue'] = '#6796ED'
-        colors['mustard'] = '#F5DD40'
-        colors['purple'] = '#8558F4'
     return colors
 
 
@@ -50,33 +50,32 @@ def feature_colors():
     d['transitivity'] = 'reddish'
     d['agent distance'] = 'purple'
     d['facingness'] = 'purple'
-    d['joint action'] = 'blue'
-    d['communication'] = 'blue'
-    d['cooperation'] = 'blue'
-    d['dominance'] = 'blue'
-    d['intimacy'] = 'blue'
-    d['valence'] = 'blue'
-    d['arousal'] = 'blue'
+    d['joint action'] = 'cyan'
+    d['communication'] = 'cyan'
+    d['cooperation'] = 'cyan'
+    d['dominance'] = 'cyan'
+    d['intimacy'] = 'cyan'
+    d['valence'] = 'cyan'
+    d['arousal'] = 'cyan'
     return d
 
 
 def custom_seaborn_cmap():
-    colors = custom_palette(rgb=False).items()
-    return sns.color_palette(colors, as_cmap=True)
+    colors = custom_palette(rgb=False)
+    colors = list(colors.values())
+    palette = sns.color_palette(colors, as_cmap=True)
+    return palette
 
 
 def custom_nilearn_cmap():
-    feature_names = ['indoor', 'expanse', 'transitivity',
-       'agent distance', 'facingness', 'joint action', 'communication',
-       'cooperation', 'dominance', 'intimacy', 'valence', 'arousal']
-    cmap = sns.color_palette('Paired', len(feature_names), as_cmap=True)
     palette = custom_palette()
     colors = feature_colors()
+    cmap = sns.color_palette('Paired', len(colors), as_cmap=True)
     out_colors = []
-    for i, feature in enumerate(feature_names):
+    for i, feature in enumerate(colors.keys()):
         color = colors[feature]
         rgb = palette[color]
-        colors.append(rgb)
+        out_colors.append(rgb)
         cmap._lut[i] = list(rgb) + [1.]
     cmap.colors = tuple(out_colors)
 

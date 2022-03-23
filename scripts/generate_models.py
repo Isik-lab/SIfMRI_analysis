@@ -39,7 +39,7 @@ class GenerateModels():
         plt.savefig(f'{self.figure_dir}/alexnet_conv{self.layer}_set-{self.set}_pcs.pdf')
         
         # Optical flow
-        of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_activations_set-{self.set}.npy')
+        of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
         np.save(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy', of.mean(axis=1))
         of = zscore(of, axis=0)
         pca = PCA(svd_solver='full', n_components=20)

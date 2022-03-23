@@ -41,8 +41,8 @@ class FeatureRDMs():
         df = df.drop(columns=['video_name'])
         return df
 
-    def load_models(self, model='of', layer=None):
-        if model == 'of':
+    def load_models(self, model='motion', layer=None):
+        if 'motion' in model:
             activation = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
         else:
             activation = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv{layer}_set-{self.set}_avgframe.npy').T
@@ -51,7 +51,7 @@ class FeatureRDMs():
     def plot(self, matrix, feature):
         _, ax = plt.subplots()
         ax.imshow(matrix)
-        plt.savefig(f'{self.figure_dir}/{feature}.pdf')
+        plt.savefig(f'{self.figure_dir}/{feature}_set-{self.set}.pdf')
 
     def run(self):
         df = pd.DataFrame()
@@ -63,9 +63,8 @@ class FeatureRDMs():
             np.save(f'{self.out_dir}/{self.process}/{feature}_set-{self.set}.npy', vector)
             df[feature] = vector
 
-        for name, (model, layer) in zip(['motion energy', 'AlexNet conv2', 'AlexNet conv5'],
-                                        zip(['of', 'alexnet', 'alexnet'], [None, 2, 5])):
-            arr = self.load_models(model=model, layer=layer)
+        for name, layer in zip(['motion energy', 'AlexNet conv2', 'AlexNet conv5'], [None, 2, 5]):
+            arr = self.load_models(model=name, layer=layer)
             vector, matrix = correlation_distance(arr)
             self.plot(matrix, name)
             np.save(f'{self.out_dir}/{self.process}/{name}_set-{self.set}.npy', vector)

@@ -42,7 +42,9 @@ class FeatureCorrelations():
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         if not os.path.exists(self.figure_dir):
             os.mkdir(self.figure_dir)
-            os.mkdir(f'{self.figure_dir}/dists_rsa-{self.rsa}')
+        if os.path.exists(self.figure_dir) and self.rsa \
+                and not os.path.exists(f'{self.figure_dir}/dists_rsa-{self.rsa}_set-{self.set}'):
+            os.mkdir(f'{self.figure_dir}/dists_rsa-{self.rsa}_set-{self.set}')
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
             os.mkdir(f'{self.out_dir}/{self.process}')
 
@@ -55,7 +57,7 @@ class FeatureCorrelations():
         lim = np.abs(r) + .1
         plt.xlim([lim * -1, lim])
         plt.title(f'r = {r:.3f}, p = {p:.5f}')
-        plt.savefig(f'{self.figure_dir}/dists_rsa-{self.rsa}/{name}.pdf')
+        plt.savefig(f'{self.figure_dir}/dists_rsa-{self.rsa}_set-{self.set}/{name}.pdf')
         plt.close()
 
     def pairwise_coor(self, mat, correct=True):

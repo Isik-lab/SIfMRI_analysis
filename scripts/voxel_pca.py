@@ -13,16 +13,27 @@ from nilearn import datasets, surface
 import nibabel as nib
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import seaborn as sns
+from src.custom_plotting import custom_nilearn_cmap, custom_seaborn_cmap, feature_categories
 
 
 def plot_feature_correlation(cur, ax):
+    cmap = custom_seaborn_cmap()
+    order = cur.columns.to_list()
     cur = cur.sort_values(by='Spearman rho', ascending=False)
     sns.barplot(y='Spearman rho', x='Feature',
-                data=cur, ax=ax, color='gray')
+                hue='category',
+                # order=order,
+                data=cur, ax=ax,
+                palette=cmap,
+                dodge=False)
     plt.title('')
-    ax.tick_params(labelrotation=90)
+    ax.tick_params(axis='x', labelrotation=90)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_xlabel('')
+    legend = ax.legend()
+    legend.remove()
 
 
 def plot_video_loadings(loading, videos, ax):
@@ -30,9 +41,15 @@ def plot_video_loadings(loading, videos, ax):
     df = pd.DataFrame({'Videos': videos[indices],
                        'Loading': loading[indices]})
     sns.barplot(y='Loading', x='Videos',
-                data=df, ax=ax, color='gray')
+                data=df, ax=ax, color='gray',
+                dodge=False)
     plt.title('')
-    ax.tick_params(labelrotation=90)
+    ax.tick_params(axis='x', labelrotation=90, labelsize=12)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_xlabel('')
+    legend = ax.legend()
+    legend.remove()
 
 
 def pca(X, n_components):
@@ -41,22 +58,10 @@ def pca(X, n_components):
     return out, model.components_, model.explained_variance_ratio_
 
 
-def mkcmap():
-    cmap = plt.cm.jet  # define the colormap
-    # extract all colors from the .jet map
-    cmaplist = [cmap(i) for i in range(cmap.N)]
-    # force the first color entry to be grey
-    cmaplist[0] = (.5, .5, .5, 1.0)
-
-    # create the new map
-    cmap = mpl.colors.LinearSegmentedColormap.from_list(
-        'Custom cmap', cmaplist, cmap.N)
-    return cmap
-
-
 class VoxelPCA():
     def __init__(self, args):
         self.process = 'VoxelPCA'
+        self.set = args.set
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -68,19 +73,18 @@ class VoxelPCA():
         if self.n_components > 1:
             self.n_components = int(self.n_components)
         self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
-        self.cmap = mkcmap()
 
     def load_features(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
+        train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
-        df['motion energy'] = np.load(f'{self.out_dir}/of_activations/of_adelsonbergen_avg.npy')
-        df['AlexNet conv2'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv2_avg.npy')
-        df['AlexNet conv5'] = np.load(f'{self.out_dir}/alexnet_activations/alexnet_conv5_avg.npy')
+        # df['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
+        # df['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
+        # df['AlexNet conv5'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv5_set-{self.set}_avg')
         df.sort_values(by=['video_name'], inplace=True)
         new = df.drop(columns=['video_name'])
 
-        categories = pd.read_csv(f'{self.data_dir}/annotations/train_categories.csv')
+        categories = pd.read_csv(f'{self.data_dir}/annotations/{self.set}_categories.csv')
         return np.array(new.columns), df, categories.action_categories.to_numpy()
 
     def load_neural(self, n_subjects=4):
@@ -88,7 +92,7 @@ class VoxelPCA():
         mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy').astype('bool')
         for sid_ in range(n_subjects):
             sid = str(sid_ + 1).zfill(2)
-            betas = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_train-data.npy')
+            betas = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_{self.set}-data.npy')
 
             # Filter the beta values to the reliable voxels
             betas = betas[mask, :]
@@ -112,12 +116,13 @@ class VoxelPCA():
         return surface.vol_to_surf(im, surf_mesh=self.fsaverage[f'pial_{hemi}'], radius=2.)
 
     def plot_brain(self, stat, mask, im):
+        cmap = sns.color_palette('Paired', as_cmap=True)
         volume = cp.mkNifti(stat, mask, im)
         texture = {'left': self.vol_to_surf(volume, 'left'),
                    'right': self.vol_to_surf(volume, 'right')}
         cp.plot_surface_stats(self.fsaverage, texture,
-                              cmap=self.cmap, threshold=1,
-                              output_file=f'{self.figure_dir}/brain_PCs.pdf')
+                              cmap=cmap, threshold=1,
+                              output_file=f'{self.figure_dir}/brain_PCs_set-{self.set}.pdf')
 
     def plot_variance(self, vals):
         fig, ax = plt.subplots()
@@ -129,9 +134,10 @@ class VoxelPCA():
         plt.ylim([0, 1.05])
         plt.xlabel('PCs')
         plt.ylabel('Explained variance')
-        plt.savefig(f'{self.figure_dir}/explained_variance.pdf')
+        plt.savefig(f'{self.figure_dir}/explained_variance_set-{self.set}.pdf')
 
     def PC_to_features(self, features, feature_names, vid_comp):
+        categories = feature_categories()
         df = pd.DataFrame()
         for iPC in range(vid_comp.shape[-1]):
             d = dict()
@@ -140,18 +146,24 @@ class VoxelPCA():
                 d['Feature'] = feature
                 d['Spearman rho'] = rho
                 d['PC'] = [iPC]
+                d['category'] = categories[feature]
                 df = pd.concat([df, pd.DataFrame(d)])
-        df.to_csv(f'{self.out_dir}/{self.process}/PCs.csv', index=False)
+        df.category = pd.Categorical(df.category,
+                              categories=['scene', 'object', 'social primitive', 'social'],
+                              ordered=True)
+        df.to_csv(f'{self.out_dir}/{self.process}/PCs_set-{self.set}.csv', index=False)
         return df
 
     def plot_PC_results(self, df, videos, vid_comp):
+        sns.set(style='whitegrid', context='talk')
         for i, iname in enumerate(np.unique(df.PC)):
-            _, ax = plt.subplots(1, 2, figsize=(10, 5))
+            _, ax = plt.subplots(1, 2, figsize=(18, 9), gridspec_kw={'width_ratios': [1, 1.5]})
             plot_feature_correlation(df[df['PC'] == iname], ax[0])
             plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
             plt.tight_layout()
-            plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}.pdf')
+            plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
+            plt.close()
 
     def run(self):
         mask, im = self.load_mask()
@@ -168,10 +180,14 @@ class VoxelPCA():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mesh', type=str, default='fsaverage5')
-    parser.add_argument('--n_components', type=float, default=100)
-    parser.add_argument('--data_dir', '-data', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
-    parser.add_argument('--out_dir', '-output', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str, default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
+    parser.add_argument('--n_components', type=float, default=10)
+    parser.add_argument('--set', type=str, default='train')
+    parser.add_argument('--data_dir', '-data', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
+    parser.add_argument('--figure_dir', '-figures', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     VoxelPCA(args).run()
 

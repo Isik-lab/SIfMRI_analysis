@@ -3,12 +3,8 @@
 
 import argparse
 import os
-import glob
-import numpy as np
 import pandas as pd
-
 import matplotlib.pyplot as plt
-from matplotlib import cm
 import seaborn as sns
 from src.custom_plotting import feature_colors, custom_palette
 

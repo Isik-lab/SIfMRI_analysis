@@ -16,3 +16,4 @@ src~=0.1.0
 pillow~=8.4.0
 statsmodels~=0.13.2
 setuptools~=60.9.3
+pymoten
