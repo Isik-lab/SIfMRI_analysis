@@ -62,6 +62,12 @@ class VoxelPCA():
     def __init__(self, args):
         self.process = 'VoxelPCA'
         self.set = args.set
+        self.STS = args.STS
+        if self.STS:
+            self.out_name = 'STS'
+        else:
+            self.out_name = 'reliable_voxels'
+        self.n_subjects = 4
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -83,14 +89,12 @@ class VoxelPCA():
         # df['AlexNet conv5'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv5_set-{self.set}_avg')
         df.sort_values(by=['video_name'], inplace=True)
         new = df.drop(columns=['video_name'])
-
         categories = pd.read_csv(f'{self.data_dir}/annotations/{self.set}_categories.csv')
         return np.array(new.columns), df, categories.action_categories.to_numpy()
 
-    def load_neural(self, n_subjects=4):
+    def load_neural(self, mask):
         X = []
-        mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy').astype('bool')
-        for sid_ in range(n_subjects):
+        for sid_ in range(self.n_subjects):
             sid = str(sid_ + 1).zfill(2)
             betas = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_{self.set}-data.npy')
 
@@ -107,9 +111,21 @@ class VoxelPCA():
                 X = np.hstack([X, betas.T])
         return StandardScaler().fit_transform(X), np.sum(mask)
 
+    def load_roi_mask(self, n_voxels):
+        mask = np.zeros(n_voxels, dtype='bool')
+        for sid_ in range(1, self.n_subjects + 1):
+            sid_ = str(sid_).zfill(2)
+            cur = nib.load(f'{self.data_dir}/ROI_masks/sub-{sid_}/sub-{sid_}_task-SIpSTS_region-SIpSTS_mask.nii.gz')
+            cur = np.array(cur.dataobj, dtype='bool').flatten()
+            mask += cur
+        return mask
+
     def load_mask(self):
         im = nib.load(f'{self.out_dir}/Reliability/sub-all_stat-rho_statmap.nii.gz')
-        mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy')
+        if self.STS:
+            mask = self.load_roi_mask(np.prod(im.shape))
+        else:
+            mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy')
         return mask, im
 
     def vol_to_surf(self, im, hemi):
@@ -122,7 +138,7 @@ class VoxelPCA():
                    'right': self.vol_to_surf(volume, 'right')}
         cp.plot_surface_stats(self.fsaverage, texture,
                               cmap=cmap, threshold=1,
-                              output_file=f'{self.figure_dir}/brain_PCs_set-{self.set}.pdf')
+                              output_file=f'{self.figure_dir}/brain_PCs_set-{self.set}_{self.out_name}.pdf')
 
     def plot_variance(self, vals):
         fig, ax = plt.subplots()
@@ -134,7 +150,7 @@ class VoxelPCA():
         plt.ylim([0, 1.05])
         plt.xlabel('PCs')
         plt.ylabel('Explained variance')
-        plt.savefig(f'{self.figure_dir}/explained_variance_set-{self.set}.pdf')
+        plt.savefig(f'{self.figure_dir}/explained_variance_set-{self.set}_{self.out_name}.pdf')
 
     def PC_to_features(self, features, feature_names, vid_comp):
         categories = feature_categories()
@@ -151,7 +167,7 @@ class VoxelPCA():
         df.category = pd.Categorical(df.category,
                               categories=['scene', 'object', 'social primitive', 'social'],
                               ordered=True)
-        df.to_csv(f'{self.out_dir}/{self.process}/PCs_set-{self.set}.csv', index=False)
+        df.to_csv(f'{self.out_dir}/{self.process}/PCs_set-{self.set}_{self.out_name}.csv', index=False)
         return df
 
     def plot_PC_results(self, df, videos, vid_comp):
@@ -162,25 +178,32 @@ class VoxelPCA():
             plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
             plt.tight_layout()
-            plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
+            plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}_{self.out_name}.pdf')
             plt.close()
 
     def run(self):
+        # Load neural data and do PCA
         mask, im = self.load_mask()
-        feature_names, features, videos = self.load_features()
-        neural, n_voxels = self.load_neural()
+        neural, n_voxels = self.load_neural(mask)
         vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
+
+        # Plot on the brain
+        vox = np.argmax(comp_vox.reshape((-1, 4, n_voxels)).mean(axis=-2), axis=0) + 1
+        self.plot_brain(vox, mask, im)
+
+        # Interpret the PCs
+        feature_names, features, videos = self.load_features()
         self.plot_variance(explained_variance.cumsum())
         df = self.PC_to_features(features, feature_names, vid_comp)
         self.plot_PC_results(df, videos, vid_comp)
-        vox = np.argmax(comp_vox.reshape((-1, 4, n_voxels)).mean(axis=-2), axis=0) + 1
-        self.plot_brain(vox, mask, im)
+
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--n_components', type=float, default=10)
+    parser.add_argument('--STS', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
