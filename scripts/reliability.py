@@ -6,17 +6,21 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from nilearn import plotting, image, datasets
+from nilearn import plotting, image, datasets, surface
 import nibabel as nib
 from src import tools
+import seaborn as sns
+import src.custom_plotting as cm
+
 
 class Reliability():
     def __init__(self, args):
+        self.process = 'Reliability'
         if args.s_num == 'all':
             self.sid = args.s_num
         else:
             self.sid = str(int(args.s_num)).zfill(2)
-        self.process = 'Reliability'
+        self.set = args.set
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -24,6 +28,7 @@ class Reliability():
             os.mkdir(f'{args.out_dir}/{self.process}')
         if not os.path.exists(self.figure_dir):
             os.mkdir(self.figure_dir)
+        self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
 
     def rm_EVC(self, mask):
         if self.sid == 'all':
@@ -48,9 +53,9 @@ class Reliability():
         inverted_mask = np.invert(mask)
         return np.where(inverted_mask)[0]
 
-    def run(self, threshold=0.279, group='test', n_subjs=4):
-        test_videos = pd.read_csv(f'{self.data_dir}/annotations/{group}.csv')
-        nconds = len(test_videos)
+    def run(self, threshold=0.279, n_subjs=4):
+        videos = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
+        nconds = len(videos)
         
         # Load an ROI file to get meta data about the images
         im = nib.load(f'{self.data_dir}/ROI_masks/sub-01/sub-01_region-EVC_mask.nii.gz')
@@ -66,7 +71,7 @@ class Reliability():
                 i = str(i).zfill(2)
 
                 # Load the data
-                arr = np.load(f'{self.out_dir}/grouped_runs/sub-{i}/sub-{i}_test-data.npy')
+                arr = np.load(f'{self.out_dir}/grouped_runs/sub-{i}/sub-{i}_{self.set}-data.npy')
                 even += arr[..., 1::2].mean(axis=-1)
                 odd += arr[..., ::2].mean(axis=-1)
 
@@ -74,7 +79,7 @@ class Reliability():
             even /= n_subjs
             odd /= n_subjs
         else:
-            arr = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_test-data.npy')
+            arr = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_{self.set}-data.npy')
             even += arr[..., 1::2].mean(axis=-1)
             odd += arr[..., ::2].mean(axis=-1)
 
@@ -89,6 +94,7 @@ class Reliability():
 
         # Make the array into a nifti image and save
         print('saving reliability nifti')
+        r_map = np.nan_to_num(r_map)
         r_im = nib.Nifti1Image(np.array(r_map).reshape(vol), affine)
         r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_stat-rho_statmap.nii.gz'
         nib.save(r_im, r_name)
@@ -111,20 +117,31 @@ class Reliability():
 
         # Plot in the volume
         print('saving figures')
+        cmap = sns.color_palette('magma', as_cmap=True)
         plotting.plot_stat_map(r_im, display_mode='ortho',
                                threshold=threshold,
-                               output_file=f'{self.figure_dir}/sub-{self.sid}_view-volume_stat-rho_statmap.pdf')
+                               symmetric_cbar=False,
+                               output_file=f'{self.figure_dir}/sub-{self.sid}_view-volume_stat-rho_statmap.pdf',
+                               cmap=cmap)
 
         # Plot on the surface
         name = f'{self.figure_dir}/sub-{self.sid}_view-surface_stat-rho_statmap.pdf'
-        plotting.plot_img_on_surf(r_im, inflate=True,
-                                  threshold=threshold,
-                                  output_file=name,
-                                  views=['lateral', 'medial', 'ventral'])
+        texture = {'left': surface.vol_to_surf(r_im, self.fsaverage['pial_left'],
+                                               interpolation='linear'),
+                   'right': surface.vol_to_surf(r_im, self.fsaverage['pial_right'],
+                                                interpolation='linear')}
+        vmax = cm.get_vmax(texture)
+        cm.plot_surface_stats(self.fsaverage, texture,
+                              threshold=threshold,
+                              cmap=cmap,
+                              output_file=name,
+                              vmax=vmax)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--set', type=str, default='test')
+    parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

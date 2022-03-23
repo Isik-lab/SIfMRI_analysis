@@ -71,10 +71,6 @@ class PlotEncoding():
         path = Path(self.figure_dir)
         path.mkdir(parents=True, exist_ok=True)
 
-    def vol_to_surf(self, volume, hemi, interpolation='nearest'):
-        return surface.vol_to_surf(volume, self.fsaverage[f'pial_{hemi}'],
-                                   interpolation=interpolation)
-
     def load_features(self):
         df = pd.read_csv(f'{self.annotation_dir}/annotations.csv')
         train = pd.read_csv(f'{self.annotation_dir}/train.csv')
@@ -120,21 +116,18 @@ class PlotEncoding():
             np.save(f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy', rs)
             np.save(f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy', rs_mask)
             volume = cm.mkNifti(rs, mask, mask_im)
-        texture = {'left': self.vol_to_surf(volume, 'left'),
-                   'right': self.vol_to_surf(volume, 'right')}
+        texture = {'left': surface.vol_to_surf(volume, self.fsaverage['pial_left'],
+                                               interpolation='nearest'),
+                   'right': surface.vol_to_surf(volume, self.fsaverage['pial_right'],
+                                                interpolation='nearest')}
         return volume, texture
-
-    def get_vmax(self, texture):
-        array = np.hstack((texture['left'], texture['right']))
-        i = np.where(~np.isclose(array, 0))
-        return array[i].mean() + (3 * array[i].std())
 
     def run(self):
         # load reliability files
         self.load_features()
         volume, texture = self.load()
         if self.overall_prediction:
-            vmax = self.get_vmax(texture)
+            vmax = cm.get_vmax(texture)
         else:
             vmax = None
         cm.plot_surface_stats(self.fsaverage, texture,

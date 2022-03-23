@@ -94,6 +94,13 @@ def mkNifti(arr, mask, im, nii=True):
         out_im = nib.Nifti1Image(out_im, affine=im.affine)
     return out_im
 
+
+def get_vmax(texture):
+    array = np.hstack((texture['left'], texture['right']))
+    i = np.where(~np.isclose(array, 0))
+    return array[i].mean() + (3 * array[i].std())
+
+
 def _colorbar_from_array(array, threshold, cmap, vmax=None):
     """Generate a custom colorbar for an array.
     Internal function used by plot_img_on_surf
@@ -111,24 +118,25 @@ def _colorbar_from_array(array, threshold, cmap, vmax=None):
         The name of a matplotlib or nilearn colormap.
         Default='cold_hot'.
     """
-    vmin = array.min()
-    if vmax is None:
-        vmax = array.max()
-    norm = Normalize(vmin=vmin, vmax=vmax)
-    cmaplist = [cmap(i) for i in range(cmap.N)]
-
     if threshold is None:
         threshold = 0.
 
+    if vmax is None:
+        vmax = np.nanmax(array)
+    norm = Normalize(vmin=threshold, vmax=vmax)
+    cmaplist = [cmap(i) for i in range(cmap.N)]
+
+
+
     # set colors to grey for absolute values < threshold
-    istart = int(vmin)
+    istart = int(threshold)
     istop = int(norm(threshold, clip=True) * (cmap.N - 1))
     for i in range(istart, istop):
         cmaplist[i] = (0.5, 0.5, 0.5, 1.)
     our_cmap = LinearSegmentedColormap.from_list('Custom cmap',
                                                  cmaplist, cmap.N)
     sm = plt.cm.ScalarMappable(cmap=our_cmap,
-                               norm=plt.Normalize(vmin=vmin, vmax=vmax))
+                               norm=plt.Normalize(vmin=threshold, vmax=vmax))
     # fake up the array of the scalar mappable.
     sm._A = []
 

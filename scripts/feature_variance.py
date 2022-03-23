@@ -21,19 +21,14 @@ class FeatureVariance():
         if not os.path.exists(self.figure_dir):
             os.mkdir(self.figure_dir)
 
-    def plot(self, df, title, color):
-        sns.set(style='white', context='talk', rc={'figure.figsize': (5, 5)})
-        fig, ax = plt.subplots()
-        sns.histplot(x=title, data=df, color=color)
+    def plot(self, df, title, color, ax):
+        sns.histplot(x=title, data=df, color=color, ax=ax)
         ax.set_xlim([0, 1])
         ax.set_ylim([0, int(len(df)*.8)])
         ax.set_xlabel('')
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        plt.title(title.capitalize())
-        plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{title}_set-{self.set}.pdf')
-        plt.close(fig)
+        ax.set_title(title.capitalize())
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
@@ -46,11 +41,16 @@ class FeatureVariance():
         palette = custom_palette(rgb=False)
         colors = feature_colors()
         df = self.load_annotations()
-        for feature in df.columns:
+        sns.set(style='white', context='talk', rc={'figure.figsize': (15, 20)})
+        fig, ax = plt.subplots(nrows=4, ncols=3, sharex=True, sharey=True)
+        ax = ax.flatten()
+        for i, feature in enumerate(df.columns):
             print(feature)
             color = colors[feature]
             rgb = palette[color]
-            self.plot(df, feature, rgb)
+            self.plot(df, feature, rgb, ax[i])
+        plt.tight_layout()
+        plt.savefig(f'{self.figure_dir}/set-{self.set}.pdf')
 
 
 def main():
