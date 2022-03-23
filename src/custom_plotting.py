@@ -94,7 +94,7 @@ def mkNifti(arr, mask, im, nii=True):
         out_im = nib.Nifti1Image(out_im, affine=im.affine)
     return out_im
 
-def _colorbar_from_array(array, threshold, cmap):
+def _colorbar_from_array(array, threshold, cmap, vmax=None):
     """Generate a custom colorbar for an array.
     Internal function used by plot_img_on_surf
     array : np.ndarray
@@ -112,7 +112,8 @@ def _colorbar_from_array(array, threshold, cmap):
         Default='cold_hot'.
     """
     vmin = array.min()
-    vmax = array.max()
+    if vmax is None:
+        vmax = array.max()
     norm = Normalize(vmin=vmin, vmax=vmax)
     cmaplist = [cmap(i) for i in range(cmap.N)]
 
@@ -159,7 +160,7 @@ def plot_surface_stats(fsaverage, texture,
                       roi_map=texture[hemi],
                       view=mode, hemi=hemi,
                       bg_map=bg_map,
-                      alpha=0.5,
+                      alpha=1,
                       axes=ax,
                       colorbar=False,  # Colorbar created externally.
                       vmax=vmax,
@@ -172,7 +173,7 @@ def plot_surface_stats(fsaverage, texture,
 
     if colorbar:
         array = np.hstack((texture['left'], texture['right']))
-        sm = _colorbar_from_array(array, threshold, get_cmap(cmap))
+        sm = _colorbar_from_array(array, threshold, get_cmap(cmap), vmax)
 
         cbar_grid = gridspec.GridSpecFromSubplotSpec(3, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])

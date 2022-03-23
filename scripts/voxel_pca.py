@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import argparse
+import glob
 import os
 import numpy as np
 import pandas as pd
@@ -62,15 +63,15 @@ class VoxelPCA():
     def __init__(self, args):
         self.process = 'VoxelPCA'
         self.set = args.set
-        self.STS = args.STS
-        if self.STS:
-            self.out_name = 'STS'
+        self.roi = args.roi
+        if self.roi is not None:
+            self.out_name = self.roi
         else:
             self.out_name = 'reliable_voxels'
         self.n_subjects = 4
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
+        self.figure_dir = f'{args.figure_dir}/{self.process}/{self.out_name}'
         if not os.path.exists(f'{self.out_dir}/{self.process}'):
             os.mkdir(f'{self.out_dir}/{self.process}')
         if not os.path.exists(self.figure_dir):
@@ -115,17 +116,18 @@ class VoxelPCA():
         mask = np.zeros(n_voxels, dtype='bool')
         for sid_ in range(1, self.n_subjects + 1):
             sid_ = str(sid_).zfill(2)
-            cur = nib.load(f'{self.data_dir}/ROI_masks/sub-{sid_}/sub-{sid_}_task-SIpSTS_region-SIpSTS_mask.nii.gz')
+            file = glob.glob(f'{self.data_dir}/ROI_masks/sub-{sid_}/sub-{sid_}_*{self.roi}*nooverlap.nii.gz')
+            cur = nib.load(file[0])
             cur = np.array(cur.dataobj, dtype='bool').flatten()
             mask += cur
         return mask
 
     def load_mask(self):
         im = nib.load(f'{self.out_dir}/Reliability/sub-all_stat-rho_statmap.nii.gz')
-        if self.STS:
+        if self.roi is not None:
             mask = self.load_roi_mask(np.prod(im.shape))
         else:
-            mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy')
+            mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy').astype('bool')
         return mask, im
 
     def vol_to_surf(self, im, hemi):
@@ -138,7 +140,7 @@ class VoxelPCA():
                    'right': self.vol_to_surf(volume, 'right')}
         cp.plot_surface_stats(self.fsaverage, texture,
                               cmap=cmap, threshold=1,
-                              output_file=f'{self.figure_dir}/brain_PCs_set-{self.set}_{self.out_name}.pdf')
+                              output_file=f'{self.figure_dir}/brain_PCs_set-{self.set}.pdf')
 
     def plot_variance(self, vals):
         fig, ax = plt.subplots()
@@ -150,7 +152,7 @@ class VoxelPCA():
         plt.ylim([0, 1.05])
         plt.xlabel('PCs')
         plt.ylabel('Explained variance')
-        plt.savefig(f'{self.figure_dir}/explained_variance_set-{self.set}_{self.out_name}.pdf')
+        plt.savefig(f'{self.figure_dir}/explained_variance_set-{self.set}.pdf')
 
     def PC_to_features(self, features, feature_names, vid_comp):
         categories = feature_categories()
@@ -167,7 +169,7 @@ class VoxelPCA():
         df.category = pd.Categorical(df.category,
                               categories=['scene', 'object', 'social primitive', 'social'],
                               ordered=True)
-        df.to_csv(f'{self.out_dir}/{self.process}/PCs_set-{self.set}_{self.out_name}.csv', index=False)
+        df.to_csv(f'{self.out_dir}/{self.process}/PCs_set-{self.set}.csv', index=False)
         return df
 
     def plot_PC_results(self, df, videos, vid_comp):
@@ -178,7 +180,7 @@ class VoxelPCA():
             plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
             plt.tight_layout()
-            plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}_{self.out_name}.pdf')
+            plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()
 
     def run(self):
@@ -201,10 +203,10 @@ class VoxelPCA():
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--roi', type=str, default=None)
+    parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--n_components', type=float, default=10)
-    parser.add_argument('--STS', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

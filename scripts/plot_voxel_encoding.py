@@ -11,7 +11,7 @@ from nilearn import datasets
 from statsmodels.stats.multitest import multipletests
 from src import custom_plotting as cm
 from nilearn import surface
-from src.custom_plotting import custom_nilearn_cmap
+from pathlib import Path
 
 
 def save(arr, out_name, mode='npy'):
@@ -47,9 +47,6 @@ class PlotEncoding():
         self.stat_dir = args.stat_dir
         self.mask_dir = args.mask_dir
         self.annotation_dir = args.annotation_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
-        if not os.path.exists(self.figure_dir):
-            os.mkdir(self.figure_dir)
         self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
         self.features = []
         self.separate_features = args.separate_features
@@ -59,17 +56,20 @@ class PlotEncoding():
         if not self.separate_features:
             if self.overall_prediction:
                 self.cmap = sns.color_palette('magma', as_cmap=True)
-                self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_overall.png'
+                self.out_name = 'overall'
                 self.threshold = None
             else:
-                self.cmap = custom_nilearn_cmap()
-                self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_grouped.png'
+                self.cmap = cm.custom_nilearn_cmap()
+                self.out_name = 'grouped'
                 self.threshold = 1.
         else:
             self.cmap = sns.color_palette('Paired', as_cmap=True)
-            self.out_name = f'{self.figure_dir}/sub-{self.sid}_control-{self.control}_separate.png'
+            self.out_name = 'separate'
             self.threshold = 1.
         print(self.out_name)
+        self.figure_dir = f'{args.figure_dir}/{self.process}/{self.control}/{self.out_name}'
+        path = Path(self.figure_dir)
+        path.mkdir(parents=True, exist_ok=True)
 
     def vol_to_surf(self, volume, hemi, interpolation='nearest'):
         return surface.vol_to_surf(volume, self.fsaverage[f'pial_{hemi}'],
@@ -89,7 +89,7 @@ class PlotEncoding():
         mask = np.load(f'{self.mask_dir}/sub-all_reliability-mask.npy')
 
         if not self.overall_prediction:
-            rs = np.load(f'{self.stat_dir}/sub-all_feature-all_control-none_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy').astype('bool')
+            rs = np.load(f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy').astype('bool')
             rs = cm.mkNifti(rs, mask, mask_im, nii=False)
 
             base = f'{self.stat_dir}/sub-{self.sid}_feature-XXX_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
@@ -117,21 +117,31 @@ class PlotEncoding():
             #Filter the r-values, set threshold, and save output
             rs, rs_mask, threshold = filter_r(rs, ps)
             self.threshold = threshold
-            np.save(f'{self.stat_dir}/sub-all_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy', rs)
-            np.save(f'{self.stat_dir}/sub-all_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy', rs_mask)
+            np.save(f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy', rs)
+            np.save(f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy', rs_mask)
             volume = cm.mkNifti(rs, mask, mask_im)
         texture = {'left': self.vol_to_surf(volume, 'left'),
                    'right': self.vol_to_surf(volume, 'right')}
         return volume, texture
 
+    def get_vmax(self, texture):
+        array = np.hstack((texture['left'], texture['right']))
+        i = np.where(~np.isclose(array, 0))
+        return array[i].mean() + (3 * array[i].std())
+
     def run(self):
         # load reliability files
         self.load_features()
         volume, texture = self.load()
+        if self.overall_prediction:
+            vmax = self.get_vmax(texture)
+        else:
+            vmax = None
         cm.plot_surface_stats(self.fsaverage, texture,
                               cmap=self.cmap,
-                              output_file=self.out_name,
-                              threshold=self.threshold)
+                              output_file=f'{self.figure_dir}/sub-{self.sid}.png',
+                              threshold=self.threshold,
+                              vmax=vmax)
 
 
 def main():
