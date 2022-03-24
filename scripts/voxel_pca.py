@@ -200,7 +200,6 @@ class VoxelPCA():
         self.plot_PC_results(df, videos, vid_comp)
 
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--roi', type=str, default=None)
