@@ -126,8 +126,6 @@ def _colorbar_from_array(array, threshold, cmap, vmax=None):
     norm = Normalize(vmin=threshold, vmax=vmax)
     cmaplist = [cmap(i) for i in range(cmap.N)]
 
-
-
     # set colors to grey for absolute values < threshold
     istart = int(threshold)
     istop = int(norm(threshold, clip=True) * (cmap.N - 1))
@@ -141,6 +139,7 @@ def _colorbar_from_array(array, threshold, cmap, vmax=None):
     sm._A = []
 
     return sm
+
 
 def plot_surface_stats(fsaverage, texture,
                        title=None,
@@ -194,3 +193,51 @@ def plot_surface_stats(fsaverage, texture,
     if output_file is not None:
         fig.savefig(output_file, bbox_inches="tight")
         plt.close(fig)
+
+
+def plot_ROI_results(df, out_name, variable):
+    features = df.Features.unique()
+    n_features = len(features)
+
+    # Set up figures
+    sns.set(style='whitegrid', context='talk', rc={'figure.figsize': (6, 5)})
+    fig, ax = plt.subplots()
+    sns.barplot(x='Features', y=variable,
+                data=df, ax=ax,
+                hue='Feature category',
+                palette=custom_seaborn_cmap(),
+                dodge=False, ci=None)
+
+    # Plot noise ceiling
+    x = np.linspace(0, n_features, num=3)
+    y1 = np.ones_like(x) * noise_ceiling.loc[noise_ceiling.ROIs == roi, variable].tolist()[0]
+    ax.plot(x, y1, color='gray', alpha=0.5, linewidth=3)
+
+    for ifeature, feature in enumerate(df.Features.unique()):
+        x = ifeature
+        sig = df.loc[df.Features == feature, 'group sig'].reset_index(drop=True)[0]
+        p = df.loc[df.Features == feature, 'group_pcorrected'].reset_index(drop=True)[0]
+        if sig:
+            if p > 0.01:
+                text = '*'
+            elif p < 0.01 and p > 0.001:
+                text = '**'
+            elif p < 0.001:
+                text = '***'
+            ax.annotate(text, (x, 0.5), fontsize=20,
+                        weight='bold', ha='center', color='gray')
+
+        y1 = df[(df.Features == feature)].mean()['low sem']
+        y2 = df[(df.Features == feature)].mean()['high sem']
+        plt.plot([x, x], [y1, y2], 'black', linewidth=2)
+
+    # #Aesthetics
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=90, ha='center')
+    ax.set_xlabel('')
+    ax.set_ylabel('Prediction accuracy ($\it{r}$)')
+    # ax.set_ylim([-0.38, 0.58])
+    sns.despine(left=True)
+    plt.legend([], [], frameon=False)
+    plt.tight_layout()
+    plt.savefig(out_name)
+    plt.close()
