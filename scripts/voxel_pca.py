@@ -99,8 +99,11 @@ class VoxelPCA():
             sid = str(sid_ + 1).zfill(2)
             betas = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_{self.set}-data.npy')
 
-            # Filter the beta values to the reliable voxels
-            betas = betas[mask, :]
+            # Filter the beta values to the reliable voxels or to the roi within subject
+            if self.roi is not None:
+                betas = betas[mask[f'sub-{sid}'], :]
+            else:
+                betas = betas[mask, :]
 
             # Mean center the activation within subject
             offset_subject = betas.mean()
@@ -110,25 +113,27 @@ class VoxelPCA():
                 X = betas.T
             else:
                 X = np.hstack([X, betas.T])
-        return StandardScaler().fit_transform(X), np.sum(mask)
+        return StandardScaler().fit_transform(X)
 
-    def load_roi_mask(self, n_voxels):
-        mask = np.zeros(n_voxels, dtype='bool')
+    def load_roi_mask(self):
+        roi_mask = dict()
+        n_voxels = dict()
         for sid_ in range(1, self.n_subjects + 1):
-            sid_ = str(sid_).zfill(2)
-            file = glob.glob(f'{self.data_dir}/ROI_masks/sub-{sid_}/sub-{sid_}_*{self.roi}*nooverlap.nii.gz')
-            cur = nib.load(file[0])
-            cur = np.array(cur.dataobj, dtype='bool').flatten()
-            mask += cur
-        return mask
+            sid = str(sid_).zfill(2)
+            file = glob.glob(f'{self.data_dir}/ROI_masks/sub-{sid}/sub-{sid}_*{self.roi}*nooverlap.nii.gz')
+            cur = np.array(nib.load(file[0]).dataobj, dtype='bool').flatten()
+            roi_mask[f'sub-{sid}'] = cur
+            n_voxels[f'sub-{sid}'] = np.sum(cur)
+        return roi_mask, n_voxels
 
     def load_mask(self):
         im = nib.load(f'{self.out_dir}/Reliability/sub-all_stat-rho_statmap.nii.gz')
         if self.roi is not None:
-            mask = self.load_roi_mask(np.prod(im.shape))
+            mask, n_voxels = self.load_roi_mask()
         else:
             mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy').astype('bool')
-        return mask, im
+            n_voxels = None
+        return mask, n_voxels, im
 
     def vol_to_surf(self, im, hemi):
         return surface.vol_to_surf(im, surf_mesh=self.fsaverage[f'pial_{hemi}'], radius=2.)
@@ -185,13 +190,14 @@ class VoxelPCA():
 
     def run(self):
         # Load neural data and do PCA
-        mask, im = self.load_mask()
-        neural, n_voxels = self.load_neural(mask)
+        mask, n_voxels, im = self.load_mask()
+        neural = self.load_neural(mask)
         vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
 
         # Plot on the brain
-        vox = np.argmax(comp_vox.reshape((-1, 4, n_voxels)).mean(axis=-2), axis=0) + 1
-        self.plot_brain(vox, mask, im)
+        if self.roi is None:
+            vox = np.argmax(comp_vox.reshape((-1, 4, np.sum(mask))).mean(axis=-2), axis=0) + 1
+            self.plot_brain(vox, mask, im)
 
         # Interpret the PCs
         feature_names, features, videos = self.load_features()
