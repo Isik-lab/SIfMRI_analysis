@@ -5,7 +5,6 @@ import numpy as np
 from tqdm import tqdm
 from scipy.stats import spearmanr, pearsonr
 from scipy.spatial.distance import squareform
-import matplotlib.pyplot as plt
 
 
 def corr2d(x, y):

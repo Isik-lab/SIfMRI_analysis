@@ -195,7 +195,7 @@ def plot_surface_stats(fsaverage, texture,
         plt.close(fig)
 
 
-def plot_ROI_results(df, out_name, variable):
+def plot_ROI_results(df, out_name, variable, noise_ceiling=None):
     features = df.Features.unique()
     n_features = len(features)
 
@@ -209,11 +209,12 @@ def plot_ROI_results(df, out_name, variable):
                 dodge=False, ci=None)
 
     # Plot noise ceiling
-    x = np.linspace(0, n_features, num=3)
-    y1 = np.ones_like(x) * noise_ceiling.loc[noise_ceiling.ROIs == roi, variable].tolist()[0]
-    ax.plot(x, y1, color='gray', alpha=0.5, linewidth=3)
+    if noise_ceiling is not None:
+        x = np.linspace(-0.5, n_features-0.5, num=3)
+        y1 = np.ones_like(x) * noise_ceiling
+        ax.plot(x, y1, color='gray', alpha=0.5, linewidth=3)
 
-    for ifeature, feature in enumerate(df.Features.unique()):
+    for ifeature, feature in enumerate(features):
         x = ifeature
         sig = df.loc[df.Features == feature, 'group sig'].reset_index(drop=True)[0]
         p = df.loc[df.Features == feature, 'group_pcorrected'].reset_index(drop=True)[0]
@@ -227,15 +228,15 @@ def plot_ROI_results(df, out_name, variable):
             ax.annotate(text, (x, 0.5), fontsize=20,
                         weight='bold', ha='center', color='gray')
 
-        y1 = df[(df.Features == feature)].mean()['low sem']
-        y2 = df[(df.Features == feature)].mean()['high sem']
+        y1 = df.loc[df.Features == feature, 'low sem'].mean()
+        y2 = df.loc[df.Features == feature, 'high sem'].mean()
         plt.plot([x, x], [y1, y2], 'black', linewidth=2)
 
     # #Aesthetics
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90, ha='center')
     ax.set_xlabel('')
     ax.set_ylabel('Prediction accuracy ($\it{r}$)')
-    # ax.set_ylim([-0.38, 0.58])
+    ax.set_ylim([-0.1, 0.78])
     sns.despine(left=True)
     plt.legend([], [], frameon=False)
     plt.tight_layout()
