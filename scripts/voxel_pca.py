@@ -33,6 +33,8 @@ def plot_feature_correlation(cur, ax):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_xlabel('')
+    ax.set_ylabel(r'Correlation ($\rho$)')
+    ax.set_ylim([-.5, 0.5])
     legend = ax.legend()
     legend.remove()
 
@@ -159,7 +161,7 @@ class VoxelPCA():
         plt.ylabel('Explained variance')
         plt.savefig(f'{self.figure_dir}/explained_variance_set-{self.set}.pdf')
 
-    def PC_to_features(self, features, feature_names, vid_comp):
+    def PC_to_features(self, features, feature_names, vid_comp, explained_variance):
         categories = feature_categories()
         df = pd.DataFrame()
         for iPC in range(vid_comp.shape[-1]):
@@ -170,6 +172,7 @@ class VoxelPCA():
                 d['Spearman rho'] = rho
                 d['PC'] = [iPC]
                 d['category'] = categories[feature]
+                d['Explained variance'] = explained_variance[iPC]
                 df = pd.concat([df, pd.DataFrame(d)])
         df.category = pd.Categorical(df.category,
                               categories=['scene', 'object', 'social primitive', 'social'],
@@ -178,12 +181,15 @@ class VoxelPCA():
         return df
 
     def plot_PC_results(self, df, videos, vid_comp):
-        sns.set(style='whitegrid', context='talk')
+        sns.set(style='white', context='poster')
         for i, iname in enumerate(np.unique(df.PC)):
-            _, ax = plt.subplots(1, 2, figsize=(18, 9), gridspec_kw={'width_ratios': [1, 1.5]})
-            plot_feature_correlation(df[df['PC'] == iname], ax[0])
-            plot_video_loadings(vid_comp[:, i], videos, ax[1])
+            # _, ax = plt.subplots(1, 2, figsize=(18, 9), gridspec_kw={'width_ratios': [1, 1.5]})
+            _, ax = plt.subplots(1, 1, figsize=(7, 7))
+            plot_feature_correlation(df[df['PC'] == iname], ax)
+            # plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
+            ev = df.loc[df['PC'] == iname, "Explained variance"].unique()[0]
+            plt.suptitle(f'PC {i+1}, \n Explained variance = {ev:.2f}', fontsize=20)
             plt.tight_layout()
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()
@@ -202,7 +208,7 @@ class VoxelPCA():
         # Interpret the PCs
         feature_names, features, videos = self.load_features()
         self.plot_variance(explained_variance.cumsum())
-        df = self.PC_to_features(features, feature_names, vid_comp)
+        df = self.PC_to_features(features, feature_names, vid_comp, explained_variance)
         self.plot_PC_results(df, videos, vid_comp)
 
 
