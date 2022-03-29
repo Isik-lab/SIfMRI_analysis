@@ -71,7 +71,7 @@ class PlotEncoding():
         elif self.individual_features:
             assert self.feature is not None, "Must define an input feature"
             self.cmap = sns.color_palette('magma', as_cmap=True)
-            self.out_name = self.feature
+            self.out_name = f'individual_features/{self.feature}'
             self.threshold = None
         else:
             raise RuntimeError ("One of overall, group_features, separate_features, or individual_features must be True")
@@ -169,6 +169,8 @@ class PlotEncoding():
         volume, texture = self.load()
         if self.overall or self.individual_features:
             vmax = cm.get_vmax(texture)
+            if self.threshold >= vmax:
+                vmax = self.threshold + 0.1
         else:
             vmax = None
         cm.plot_surface_stats(self.fsaverage, texture,
