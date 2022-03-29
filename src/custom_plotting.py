@@ -17,12 +17,14 @@ def custom_palette(rgb=True):
         colors['purple'] = tuple(np.array([133., 88., 244.]) / 256)
         colors['cyan'] = tuple(np.array([115., 210., 223.]) / 256)
         colors['blue'] = tuple(np.array([105., 150., 237.]) / 256)
+        colors['gray'] = tuple(np.array([128., 128., 128.]) / 256)
     else:
         colors['mustard'] = '#F5DD40'
         colors['reddish'] = '#DA535B'
         colors['purple'] = '#8558F4'
         colors['cyan'] = '#73D2DF'
         colors['blue'] = '#6796ED'
+        colors['gray'] = '#808080'
     return colors
 
 
@@ -57,6 +59,9 @@ def feature_colors():
     d['intimacy'] = 'cyan'
     d['valence'] = 'cyan'
     d['arousal'] = 'cyan'
+    d['motion energy'] = 'gray'
+    d['AlexNet conv2'] = 'gray'
+    d['AlexNet conv5'] = 'gray'
     return d
 
 

@@ -14,6 +14,7 @@ import seaborn as sns
 from scipy.stats import spearmanr
 from statsmodels.stats.multitest import multipletests
 from src.tools import permutation_test
+from src.custom_plotting import feature_colors, custom_palette
 
 
 def diag(arr, cut=True):
@@ -125,10 +126,21 @@ class FeatureCorrelations():
         cbar = plt.colorbar()
         cbar.ax.tick_params(size=0)
 
+        colors = feature_colors()
+        palette = custom_palette(rgb=False)
+
+        # y axis
         ax.set_yticks(np.arange(nqs - 1))
         ax.set_yticklabels(ticks[1:])
+        for ticklabel, pointer in zip(ticks[1:], ax.get_yticklabels()):
+            pointer.set_color(palette[colors[ticklabel]])
+
+        # x axis
         ax.set_xticks(np.arange(nqs - 1))
         ax.set_xticklabels(ticks[:-1], rotation=90, ha='center')
+        for ticklabel, pointer in zip(ticks[:-1], ax.get_xticklabels()):
+            pointer.set_color(palette[colors[ticklabel]])
+
         ax.grid(False)
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/correlation-matrix_rsa-{self.rsa}_set-{self.set}.pdf')
