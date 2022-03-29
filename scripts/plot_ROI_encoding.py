@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-class PlotROIEncoding():
+class PlotVoxelROIEncoding():
     def __init__(self, args):
-        self.process = 'PlotROIEncoding'
+        self.process = 'PlotVoxelROIEncoding'
         self.control = args.control
         self.roi = args.roi
         assert self.roi is not None, "must define roi"
@@ -60,19 +60,29 @@ class PlotROIEncoding():
             roi_mask[f'sub-{sid}'] = self.mask_array(cur, self.reliability_mask)
         return roi_mask
 
-    def load_encoding_results(self, sid):
-        base = f'{self.out_dir}/VoxelEncoding/sub-{sid}_by_feature-True_control-{self.control}_pca_before_regression-{self.pca_before_regression}_XXX.npy'
-        test_inds = np.load(base.replace('XXX', 'indices'))
-        y_pred = self.mask_array(base.replace('XXX', 'y_pred'), self.roi_mask[f'sub-{sid}'], dim=-1)
-        y_true = self.mask_array(base.replace('XXX', 'y_true'), self.roi_mask[f'sub-{sid}'], dim=-1)
-        return y_pred.mean(axis=-1), y_true.mean(axis=-1), test_inds
+    def load_encoding_results(self):
+        files = glob.glob(f'{self.data_dir}/ROIencoding/*{self.roi}*.csv')
+        df = pd.DataFrame()
+        for file in files:
+            df = pd.concat([df, pd.read_csv(file)])
+        return df
 
-    def load_permutation_results(self, sid, feature):
-        base = f'{self.out_dir}/VoxelPermutation/sub-{sid}_feature-{feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}_XXX.npy'
-        rs = self.mask_array(base.replace('XXX', 'rs'), self.roi_mask[f'sub-{sid}'])
-        ps = self.mask_array(base.replace('XXX', 'ps'), self.roi_mask[f'sub-{sid}'])
-        rs_null = self.mask_array(base.replace('XXX', 'rs-nulldist'), self.roi_mask[f'sub-{sid}'], dim=-1)
-        return rs.mean(), ps.mean(), rs_null.mean(axis=-1)
+    def load_permutation_results(self):
+        rs_null = []
+        for sid_ in range(1, self.n_subjects+1):
+            sid = str(sid_).zfill(2)
+            if type(rs_null) is list:
+                rs_null = np.load(f'{self.out_dir}/ROIencoding/sub-{sid}_roi-{self.roi}_rs_null.npy')
+                rs_var = np.load(f'{self.out_dir}/ROIencoding/sub-{sid}_roi-{self.roi}_rs_var.npy')
+                rs = np.load(f'{self.out_dir}/ROIencoding/sub-{sid}_roi-{self.roi}_rs.npy')
+            else:
+                rs_null += np.load(f'{self.out_dir}/ROIencoding/sub-{sid}_roi-{self.roi}_rs_null.npy')
+                rs_var += np.load(f'{self.out_dir}/ROIencoding/sub-{sid}_roi-{self.roi}_rs_var.npy')
+                rs += np.load(f'{self.out_dir}/ROIencoding/sub-{sid}_roi-{self.roi}_rs.npy')
+        rs /= self.n_subjects
+        rs_null /= self.n_subjects
+        rs_var /= self.n_subjects
+        return rs, rs_null, rs_var
 
     def load_features(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
@@ -92,37 +102,6 @@ class PlotROIEncoding():
         plt.title(f'r = {r:.3f}, p = {p:.5f}')
         plt.savefig(f'{self.figure_dir}/dists/{name}.pdf')
         plt.close()
-
-    def reorganize_data(self, features):
-        categories = cm.feature_categories()
-        df = pd.DataFrame()
-        rs = np.ones((self.n_subjects, len(features)))
-        rs_null = np.ones((self.n_subjects, len(features), self.n_samples))
-        rs_var = np.ones_like(rs_null)
-        for sid_ in range(self.n_subjects):
-            sid = str(sid_ + 1).zfill(2)
-            y_pred, y_true, test_inds = self.load_encoding_results(sid)
-            for ifeature, feature in enumerate(features):
-                r, p, r_null = self.load_permutation_results(sid, feature.replace(' ', '_'))
-                r_var = bootstrap(y_pred[ifeature, :], y_true, test_inds,
-                                  n_samples=self.n_samples)
-                f = pd.DataFrame({'Subjects': [f'sub-{sid}'],
-                                  'Features': [feature],
-                                  'Feature category': [categories[feature]],
-                                  'Pearson r': [r],
-                                  'p value': [p],
-                                  'low sem': [r - r_var.std()],
-                                  'high sem': [r + r_var.std()],
-                                  'Explained variance': [r ** 2]})
-                # self.plotting_dists(r, p, r_null, f'sub-{sid}_roi-{self.roi}_feature-{feature}')
-                df = pd.concat([df, f])
-                rs[sid_, ifeature] = r
-                rs_null[sid_, ifeature, :] = r_null
-                rs_var[sid_, ifeature, :] = r_var
-        df['Feature category'] = pd.Categorical(df['Feature category'],
-                                                categories=['scene', 'object', 'social primitive', 'social'],
-                                                ordered=True)
-        return df, rs, rs_null.mean(axis=0), rs_var.mean(axis=0)
 
     def group_p(self, df, rs, rs_null, features):
         ps = []
@@ -151,11 +130,12 @@ class PlotROIEncoding():
     def run(self):
         if not self.precomputed:
             features = self.load_features()
-            df, rs, rs_null, rs_var = self.reorganize_data(features)
+            df = self.load_encoding_results(features)
+            rs, rs_null, rs_var = self.load_permutation_results()
             df = self.group_p(df, rs.mean(axis=0), rs_null, features)
-            df.to_csv(f'{self.out_dir}/{self.process}/{self.roi}.csv', index=False)
+            df.to_csv(f'{self.out_dir}/{self.process}/{self.roi}_control-{self.control}.csv', index=False)
         else:
-            df = pd.read_csv(f'{self.out_dir}/{self.process}/{self.roi}.csv')
+            df = pd.read_csv(f'{self.out_dir}/{self.process}/{self.roi}_control-{self.control}.csv')
         noise_ceiling = self.ROI_noise_ceiling()
         print(noise_ceiling)
         cm.plot_ROI_results(df, f'{self.figure_dir}/{self.roi}.pdf', 'Pearson r', noise_ceiling)
@@ -176,7 +156,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    PlotROIEncoding(args).run()
+    PlotVoxelROIEncoding(args).run()
 
 
 if __name__ == '__main__':
