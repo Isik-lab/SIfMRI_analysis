@@ -200,7 +200,10 @@ def plot_surface_stats(fsaverage, texture,
         plt.close(fig)
 
 
-def plot_ROI_results(df, out_name, variable, noise_ceiling=None):
+def plot_ROI_results(df, out_name, variable, noise_ceiling=None,
+                     ylabel=None):
+    if ylabel is None:
+        ylabel = variable
     features = df.Features.unique()
     n_features = len(features)
 
@@ -230,7 +233,7 @@ def plot_ROI_results(df, out_name, variable, noise_ceiling=None):
                 text = '**'
             elif p < 0.001:
                 text = '***'
-            ax.annotate(text, (x, 0.5), fontsize=20,
+            ax.annotate(text, (x, 0.45), fontsize=20,
                         weight='bold', ha='center', color='gray')
 
         y1 = df.loc[df.Features == feature, 'low sem'].mean()
@@ -240,8 +243,8 @@ def plot_ROI_results(df, out_name, variable, noise_ceiling=None):
     # #Aesthetics
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90, ha='center')
     ax.set_xlabel('')
-    ax.set_ylabel('Prediction accuracy ($\it{r}$)')
-    ax.set_ylim([-0.1, 0.78])
+    ax.set_ylabel(ylabel)
+    ax.set_ylim([-0.2, 0.78])
     sns.despine(left=True)
     plt.legend([], [], frameon=False)
     plt.tight_layout()

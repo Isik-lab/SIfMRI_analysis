@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-class PlotVoxelROIEncoding():
+class PlotROIEncoding():
     def __init__(self, args):
-        self.process = 'PlotVoxelROIEncoding'
+        self.process = 'PlotROIEncoding'
         self.control = args.control
         self.roi = args.roi
         assert self.roi is not None, "must define roi"
@@ -61,7 +61,7 @@ class PlotVoxelROIEncoding():
         return roi_mask
 
     def load_encoding_results(self):
-        files = glob.glob(f'{self.data_dir}/ROIencoding/*{self.roi}*.csv')
+        files = glob.glob(f'{self.out_dir}/ROIencoding/*{self.roi}*.csv')
         df = pd.DataFrame()
         for file in files:
             df = pd.concat([df, pd.read_csv(file)])
@@ -130,15 +130,17 @@ class PlotVoxelROIEncoding():
     def run(self):
         if not self.precomputed:
             features = self.load_features()
-            df = self.load_encoding_results(features)
+            df = self.load_encoding_results()
+            print(df.head())
             rs, rs_null, rs_var = self.load_permutation_results()
-            df = self.group_p(df, rs.mean(axis=0), rs_null, features)
+            df = self.group_p(df, rs, rs_null, features)
             df.to_csv(f'{self.out_dir}/{self.process}/{self.roi}_control-{self.control}.csv', index=False)
         else:
             df = pd.read_csv(f'{self.out_dir}/{self.process}/{self.roi}_control-{self.control}.csv')
         noise_ceiling = self.ROI_noise_ceiling()
         print(noise_ceiling)
-        cm.plot_ROI_results(df, f'{self.figure_dir}/{self.roi}.pdf', 'Pearson r', noise_ceiling)
+        cm.plot_ROI_results(df, f'{self.figure_dir}/{self.roi}.pdf', 'Pearson r', noise_ceiling,
+                            ylabel=r'Prediction accuracy ($\it{\rho}$)')
 
 
 def main():
@@ -156,7 +158,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    PlotVoxelROIEncoding(args).run()
+    PlotROIEncoding(args).run()
 
 
 if __name__ == '__main__':
