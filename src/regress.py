@@ -43,12 +43,17 @@ def scale(X_train_, X_test_):
 
 
 def predict_by_feature(X_test_, y_train_, betas, n_features):
-    # Make the prediction for each voxel
-    y_pred = np.zeros((n_features, X_test_.shape[0], y_train_.shape[-1]))
-    for i_feature in range(n_features):
-        for i in range(X_test_.shape[0]):
-            y_pred[i_feature, i, :] = np.multiply(X_test_[i, i_feature],
-                                                  betas[:, i_feature])
+    if len(betas.shape) > 1:
+        # Make the prediction for each voxel
+        y_pred = np.zeros((n_features, X_test_.shape[0], y_train_.shape[-1]))
+        for i_feature in range(n_features):
+            for i in range(X_test_.shape[0]):
+                y_pred[i_feature, i, :] = np.multiply(X_test_[i, i_feature],
+                                                      betas[:, i_feature])
+    else:
+        y_pred = np.zeros((n_features, X_test_.shape[0]))
+        for i_feature in range(n_features):
+            y_pred[i_feature, :] = np.multiply(X_test_[:, i_feature], betas[i_feature])
     return y_pred
 
 
@@ -71,17 +76,20 @@ def cross_validated_ridge(X, X_control,
                           pca_before_regression=False,
                           n_conditions=200):
     # Get counts
-    y = y.T
-    n_voxels = y.shape[-1]
+    if len(y.shape) > 1:
+        y = y.T
+        n_voxels = y.shape[-1]
+    else:
+        n_voxels = 1
     n_splits = splitter.n_splits
     n_conds_per_split = int(n_conditions / n_splits)
 
     # Iterate through the different splits
     if by_feature:
-        y_pred = np.zeros((n_splits, n_features, n_conds_per_split, n_voxels))
+        y_pred = np.zeros((n_splits, n_features, n_conds_per_split, n_voxels)).squeeze()
     else:
-        y_pred = np.zeros((n_splits, n_conds_per_split, n_voxels))
-    y_true = np.zeros((n_splits, n_conds_per_split, n_voxels))
+        y_pred = np.zeros((n_splits, n_conds_per_split, n_voxels)).squeeze()
+    y_true = np.zeros((n_splits, n_conds_per_split, n_voxels)).squeeze()
     test_indices = np.zeros((n_splits, n_conds_per_split), dtype='int')
     for i, (train_index, test_index) in tqdm(enumerate(splitter.split(X)), total=n_splits):
         # Split the training and test data
@@ -121,11 +129,11 @@ def cross_validated_ridge(X, X_control,
             y_pred[i, ...] = predict(model, X_test)
 
     if by_feature:
-        y_pred = np.swapaxes(y_pred, 0, 1).reshape((n_features, n_conditions, n_voxels))
+        y_pred = np.swapaxes(y_pred, 0, 1).reshape((n_features, n_conditions, n_voxels)).squeeze()
     else:
-        y_pred = y_pred.reshape((n_conditions, n_voxels))
+        y_pred = y_pred.reshape((n_conditions, n_voxels)).squeeze()
 
-    y_true = y_true.reshape((n_conditions, n_voxels))
+    y_true = y_true.reshape((n_conditions, n_voxels)).squeeze()
     return y_true, y_pred, test_indices
 
 

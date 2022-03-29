@@ -122,8 +122,14 @@ class VoxelPCA():
         n_voxels = dict()
         for sid_ in range(1, self.n_subjects + 1):
             sid = str(sid_).zfill(2)
-            file = glob.glob(f'{self.data_dir}/ROI_masks/sub-{sid}/sub-{sid}_*{self.roi}*nooverlap.nii.gz')
-            cur = np.array(nib.load(file[0]).dataobj, dtype='bool').flatten()
+            files = glob.glob(f'{self.data_dir}/ROI_masks/sub-{sid}/sub-{sid}_*{self.roi}*nii.gz')
+            if len(files) > 1:
+                for f in files:
+                    if 'nooverlap' in f:
+                        file = f
+            else:
+                file = files[0]
+            cur = np.array(nib.load(file).dataobj, dtype='bool').flatten()
             roi_mask[f'sub-{sid}'] = cur
             n_voxels[f'sub-{sid}'] = np.sum(cur)
         return roi_mask, n_voxels

@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-class PlotVoxelROIEncoding():
+class PlotROIEncoding():
     def __init__(self, args):
-        self.process = 'PlotVoxelROIEncoding'
+        self.process = 'PlotROIEncoding'
         self.control = args.control
         self.roi = args.roi
         assert self.roi is not None, "must define roi"
@@ -153,9 +153,9 @@ class PlotVoxelROIEncoding():
             features = self.load_features()
             df, rs, rs_null, rs_var = self.reorganize_data(features)
             df = self.group_p(df, rs.mean(axis=0), rs_null, features)
-            df.to_csv(f'{self.out_dir}/{self.process}/{self.roi}_control-{self.control}.csv', index=False)
+            df.to_csv(f'{self.out_dir}/{self.process}/{self.roi}.csv', index=False)
         else:
-            df = pd.read_csv(f'{self.out_dir}/{self.process}/{self.roi}_control-{self.control}.csv')
+            df = pd.read_csv(f'{self.out_dir}/{self.process}/{self.roi}.csv')
         noise_ceiling = self.ROI_noise_ceiling()
         print(noise_ceiling)
         cm.plot_ROI_results(df, f'{self.figure_dir}/{self.roi}.pdf', 'Pearson r', noise_ceiling)
@@ -176,7 +176,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    PlotVoxelROIEncoding(args).run()
+    PlotROIEncoding(args).run()
 
 
 if __name__ == '__main__':

@@ -37,9 +37,9 @@ def filter_r(rs, ps):
     return rs, rs_mask, threshold
 
 
-class PlotEncoding():
+class PlotVoxelEncoding():
     def __init__(self, args):
-        self.process = 'PlotEncoding'
+        self.process = 'PlotVoxelEncoding'
         if args.s_num == 'all':
             self.sid = args.s_num
         else:
@@ -200,7 +200,7 @@ def main():
     parser.add_argument('--figure_dir', '-figure', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    PlotEncoding(args).run()
+    PlotVoxelEncoding(args).run()
 
 
 if __name__ == '__main__':

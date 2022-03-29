@@ -15,6 +15,7 @@ class VoxelEncoding:
     def __init__(self, args):
         self.process = 'VoxelEncoding'
         self.n_subjs = args.n_subjs
+        self.set = args.set
         self.include_control = args.include_control
         self.layer = args.layer
         if self.include_control:
@@ -35,10 +36,10 @@ class VoxelEncoding:
 
     def run(self, regression_splits=10, random_state=1):
         if self.include_control:
-            control_model = np.load(f'{self.out_dir}/generate_models/control_model_conv{self.layer}.npy')
+            control_model = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}.npy')
         else:
             control_model = None
-        X = np.load(f'{self.out_dir}/generate_models/annotated_model.npy')
+        X = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-{self.set}.npy')
 
         # Get the feature names for the annotated model
         features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv').columns.to_list()
@@ -88,6 +89,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--layer', '-l', type=str, default=None)
+    parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--by_feature', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
