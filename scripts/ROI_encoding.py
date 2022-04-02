@@ -100,7 +100,7 @@ class ROIEncoding:
         kf = KFold(n_splits=regression_splits, shuffle=True, random_state=random_state)
 
         # load the beta values and mask to reliable voxels
-        beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_train-data.npy')
+        beta_map = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_train-data.npy')
         indices = self.load_mask()
         y = beta_map[indices, :].mean(axis=0)
 

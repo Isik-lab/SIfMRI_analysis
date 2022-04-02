@@ -55,12 +55,12 @@ class VoxelEncoding:
             for i in range(self.n_subjs):
                 sid = str(i+1).zfill(2)
                 if beta_map is None:
-                    beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_train-data.npy')
+                    beta_map = np.load(f'{self.out_dir}/GroupRuns/sub-{sid}/sub-{sid}_train-data.npy')
                 else:
-                    beta_map += np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_train-data.npy')
+                    beta_map += np.load(f'{self.out_dir}/GroupRuns/sub-{sid}/sub-{sid}_train-data.npy')
             beta_map /= self.n_subjs
         else:
-            beta_map = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_train-data.npy')
+            beta_map = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_train-data.npy')
         mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy')
         indices = np.where(mask)[0]
         beta_map = beta_map[indices, :]

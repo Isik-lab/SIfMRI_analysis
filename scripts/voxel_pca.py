@@ -15,7 +15,8 @@ import nibabel as nib
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 import seaborn as sns
-from src.custom_plotting import custom_nilearn_cmap, custom_seaborn_cmap, feature_categories
+from src.custom_plotting import custom_nilearn_cmap, custom_seaborn_cmap,\
+    feature_categories, custom_pca_cmap
 
 
 def plot_feature_correlation(cur, ax):
@@ -99,7 +100,7 @@ class VoxelPCA():
         X = []
         for sid_ in range(self.n_subjects):
             sid = str(sid_ + 1).zfill(2)
-            betas = np.load(f'{self.out_dir}/grouped_runs/sub-{sid}/sub-{sid}_{self.set}-data.npy')
+            betas = np.load(f'{self.out_dir}/GroupRuns/sub-{sid}/sub-{sid}_{self.set}-data.npy')
 
             # Filter the beta values to the reliable voxels or to the roi within subject
             if self.roi is not None:
@@ -135,25 +136,34 @@ class VoxelPCA():
         return roi_mask, n_voxels
 
     def load_mask(self):
-        im = nib.load(f'{self.out_dir}/Reliability/sub-all_stat-rho_statmap.nii.gz')
+        im = nib.load(f'{self.out_dir}/Reliability/sub-all_set-test_stat-rho_statmap.nii.gz')
         if self.roi is not None:
             mask, n_voxels = self.load_roi_mask()
         else:
-            mask = np.load(f'{self.out_dir}/Reliability/sub-all_reliability-mask.npy').astype('bool')
+            mask = np.load(f'{self.out_dir}/Reliability/sub-all_set-test_reliability-mask.npy').astype('bool')
             n_voxels = None
         return mask, n_voxels, im
 
     def vol_to_surf(self, im, hemi):
         return surface.vol_to_surf(im, surf_mesh=self.fsaverage[f'pial_{hemi}'], radius=2.)
 
-    def plot_brain(self, stat, mask, im):
-        cmap = sns.color_palette('Paired', as_cmap=True)
+    def plot_brain(self, stat, mask, im, sid):
+        # cmap = sns.color_palette('Paired', as_cmap=True)
+        cmap = custom_pca_cmap(self.n_components)
         volume = cp.mkNifti(stat, mask, im)
         texture = {'left': self.vol_to_surf(volume, 'left'),
                    'right': self.vol_to_surf(volume, 'right')}
+        if 'STS' in self.roi:
+            hemis = ['left']
+            modes = ['lateral']
+        else:
+            hemis = ['left', 'right'],
+            modes = ['lateral', 'ventral']
         cp.plot_surface_stats(self.fsaverage, texture,
                               cmap=cmap, threshold=1,
-                              output_file=f'{self.figure_dir}/brain_PCs_set-{self.set}.pdf')
+                              hemis=hemis,
+                              modes=modes,
+                              output_file=f'{self.figure_dir}/sub-{sid}_set-{self.set}_PCs.pdf')
 
     def plot_variance(self, vals):
         fig, ax = plt.subplots()
@@ -195,7 +205,7 @@ class VoxelPCA():
             # plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
             ev = df.loc[df['PC'] == iname, "Explained variance"].unique()[0]
-            plt.suptitle(f'PC {i+1}, \n Explained variance = {ev:.2f}', fontsize=20)
+            plt.suptitle(f'PC {i+1} \n Explained variance = {np.round(ev*100):.0f}', fontsize=20)
             plt.tight_layout()
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()
@@ -203,19 +213,25 @@ class VoxelPCA():
     def run(self):
         # Load neural data and do PCA
         mask, n_voxels, im = self.load_mask()
-        neural = self.load_neural(mask)
-        vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
-
-        # Plot on the brain
-        if self.roi is None:
-            vox = np.argmax(comp_vox.reshape((-1, 4, np.sum(mask))).mean(axis=-2), axis=0) + 1
-            self.plot_brain(vox, mask, im)
-
-        # Interpret the PCs
-        feature_names, features, videos = self.load_features()
-        self.plot_variance(explained_variance.cumsum())
-        df = self.PC_to_features(features, feature_names, vid_comp, explained_variance)
-        self.plot_PC_results(df, videos, vid_comp)
+        print(n_voxels)
+        # neural = self.load_neural(mask)
+        # vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
+        #
+        # # Plot on the brain
+        # if self.roi is None or 'STS' in self.roi:
+        #     vox = np.argmax(comp_vox.reshape((-1, 4, np.sum(mask))).mean(axis=-2), axis=0) + 1
+        #     self.plot_brain(vox, mask, im, 'all')
+        #
+        #     sub_vox = comp_vox.reshape((-1, 4, np.sum(mask)))
+        #     for i in range(self.n_subjects):
+        #         vox = np.argmax(sub_vox[:, i, :], axis=0) + 1
+        #         self.plot_brain(vox, mask, im, str(i+1).zfill(2))
+        #
+        # # Interpret the PCs
+        # feature_names, features, videos = self.load_features()
+        # self.plot_variance(explained_variance.cumsum())
+        # df = self.PC_to_features(features, feature_names, vid_comp, explained_variance)
+        # self.plot_PC_results(df, videos, vid_comp)
 
 
 def main():

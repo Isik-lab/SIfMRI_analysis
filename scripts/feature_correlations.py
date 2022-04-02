@@ -117,11 +117,12 @@ class FeatureCorrelations():
         plt.imshow(rs, cmap=cmap, vmin=vmin, vmax=vmax)
         for ((j, i), label) in np.ndenumerate(rs):
             if not np.isnan(rs[j, i]):
-                color = 'black' if ps[j, i] else 'white'
-                weight = 'bold' if ps[j, i] else 'normal'
-                label = label if np.round_(label, decimals=1) != 0 else int(0)
-                ax.text(i, j, '{:.1f}'.format(label), ha='center', va='center',
-                        color=color, fontsize=r_size, weight=weight)
+                # color = 'black' if ps[j, i] else 'white'
+                # weight = 'bold' if ps[j, i] else 'normal'
+                if ps[j, i]:
+                    label = label if np.round_(label, decimals=1) != 0 else int(0)
+                    ax.text(i, j, '{:.1f}'.format(label), ha='center', va='center',
+                            color='black', fontsize=r_size, weight='bold')
         ax.grid(False)
         cbar = plt.colorbar()
         cbar.ax.tick_params(size=0)
@@ -159,6 +160,9 @@ class FeatureCorrelations():
     def run(self, context='talk'):
         if self.rsa:
             df = pd.read_csv(f'{self.out_dir}/FeatureRDMs/rdms_set-{self.set}.csv')
+            columns = df.columns.to_list()
+            columns.remove('AlexNet conv5')
+            df = df[columns]
         else:
             df = self.load_annotations()
 

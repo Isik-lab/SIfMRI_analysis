@@ -136,7 +136,7 @@ X = []
 n_voxels = sum(mask)
 for sid_ in range(4):
     sid = str(sid_ + 1).zfill(2)
-    preproc_betas = np.load(f'{out_dir}/grouped_runs/sub-{sid}/sub-{sid}_train-data.npy')
+    preproc_betas = np.load(f'{out_dir}/GroupRuns/sub-{sid}/sub-{sid}_train-data.npy')
 
     # Filter the beta values to the reliable voxels
     preproc_betas = preproc_betas[mask, :]

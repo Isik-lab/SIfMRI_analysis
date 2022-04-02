@@ -16,11 +16,16 @@ import src.custom_plotting as cm
 class Reliability():
     def __init__(self, args):
         self.process = 'Reliability'
+        self.n_subjects = 4
         if args.s_num == 'all':
             self.sid = args.s_num
         else:
             self.sid = str(int(args.s_num)).zfill(2)
         self.set = args.set
+        if self.set == 'test':
+            self.threshold = 0.279
+        else: #self.set == 'train'
+            self.threshold = 0.139
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -53,9 +58,49 @@ class Reliability():
         inverted_mask = np.invert(mask)
         return np.where(inverted_mask)[0]
 
-    def run(self, threshold=0.279, n_subjs=4):
+    def load_test_betas(self, n_voxels, n_conds):
+        even = np.zeros((n_voxels, n_conds))
+        odd = np.zeros_like(even)
+        if self.sid == 'all':
+            for i in tqdm(range(1, self.n_subjects+1), total=self.n_subjects):
+                i = str(i).zfill(2)
+
+                # Load the data
+                arr = np.load(f'{self.out_dir}/GroupRuns/sub-{i}/sub-{i}_test-data.npy')
+                print(arr.shape)
+                even += arr[..., 1::2].mean(axis=-1)
+                odd += arr[..., ::2].mean(axis=-1)
+
+            # Get the average of the even and odd runs across subjects
+            even /= self.n_subjects
+            odd /= self.n_subjects
+        else:
+            arr = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_test-data.npy')
+            even += arr[..., 1::2].mean(axis=-1)
+            odd += arr[..., ::2].mean(axis=-1)
+        return even, odd
+
+    def load_betas(self, n_voxels, n_conds):
+        if self.sid == 'all':
+            even = np.zeros((n_voxels, n_conds))
+            odd = np.zeros_like(even)
+            for i in tqdm(range(1, self.n_subjects+1), total=self.n_subjects):
+                i = str(i).zfill(2)
+                # Load the data
+                even += np.load(f'{self.out_dir}/GroupRuns/sub-{i}/sub-{i}_{self.set}-even-data.npy')
+                odd += np.load(f'{self.out_dir}/GroupRuns/sub-{i}/sub-{i}_{self.set}-odd-data.npy')
+
+            # Get the average of the even and odd runs across subjects
+            even /= self.n_subjects
+            odd /= self.n_subjects
+        else:
+            even = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_{self.set}-even-data.npy')
+            odd = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_{self.set}-odd-data.npy')
+        return even, odd
+
+    def run(self):
         videos = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
-        nconds = len(videos)
+        n_conds = len(videos)
         
         # Load an ROI file to get meta data about the images
         im = nib.load(f'{self.data_dir}/ROI_masks/sub-01/sub-01_region-EVC_mask.nii.gz')
@@ -63,25 +108,8 @@ class Reliability():
         n_voxels = np.prod(vol)
         affine = im.affine
 
-        even = np.zeros((n_voxels, nconds)) 
-        odd = np.zeros_like(even)
         print('loading betas...')
-        if self.sid == 'all':
-            for i in tqdm(range(1, n_subjs+1), total=n_subjs):
-                i = str(i).zfill(2)
-
-                # Load the data
-                arr = np.load(f'{self.out_dir}/grouped_runs/sub-{i}/sub-{i}_{self.set}-data.npy')
-                even += arr[..., 1::2].mean(axis=-1)
-                odd += arr[..., ::2].mean(axis=-1)
-
-            # Get the average of the even and odd runs across subjects
-            even /= n_subjs
-            odd /= n_subjs
-        else:
-            arr = np.load(f'{self.out_dir}/grouped_runs/sub-{self.sid}/sub-{self.sid}_{self.set}-data.npy')
-            even += arr[..., 1::2].mean(axis=-1)
-            odd += arr[..., ::2].mean(axis=-1)
+        even, odd = self.load_betas(n_voxels, n_conds)
 
         # Remove signal coming from outside the brain
         indices = self.brain_indices(affine, vol)
@@ -96,43 +124,44 @@ class Reliability():
         print('saving reliability nifti')
         r_map = np.nan_to_num(r_map)
         r_im = nib.Nifti1Image(np.array(r_map).reshape(vol), affine)
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_stat-rho_statmap.nii.gz'
+        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_stat-rho_statmap.nii.gz'
         nib.save(r_im, r_name)
 
         #Save the numpy array
         print('saving reliability numpy arr')
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_stat-rho_statmap.npy'
+        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_stat-rho_statmap.npy'
         np.save(r_name, r_map)
 
         #Save the mask
         print('saving reliability mask')
         r_mask = np.zeros_like(r_map, dtype='int')
-        r_mask[(r_map >= threshold) & (~np.isnan(r_map))] = 1
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_reliability-mask.npy'
+        r_mask[(r_map >= self.threshold) & (~np.isnan(r_map))] = 1
+        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_reliability-mask.npy'
         np.save(r_name, r_mask)
 
         # remove the EVC and save
         r_mask = self.rm_EVC(r_mask)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_reliability-mask_noEVC.npy', r_mask)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_reliability-mask_noEVC.npy', r_mask)
 
         # Plot in the volume
         print('saving figures')
         cmap = sns.color_palette('magma', as_cmap=True)
         plotting.plot_stat_map(r_im, display_mode='ortho',
-                               threshold=threshold,
+                               threshold=self.threshold,
                                symmetric_cbar=False,
-                               output_file=f'{self.figure_dir}/sub-{self.sid}_view-volume_stat-rho_statmap.pdf',
+                               output_file=f'{self.figure_dir}/sub-{self.sid}_view-volume_set-{self.set}_stat-rho_statmap.pdf',
                                cmap=cmap)
 
         # Plot on the surface
-        name = f'{self.figure_dir}/sub-{self.sid}_view-surface_stat-rho_statmap.pdf'
+        name = f'{self.figure_dir}/sub-{self.sid}_view-surface_set-{self.set}_stat-rho_statmap.pdf'
         texture = {'left': surface.vol_to_surf(r_im, self.fsaverage['pial_left'],
                                                interpolation='linear'),
                    'right': surface.vol_to_surf(r_im, self.fsaverage['pial_right'],
                                                 interpolation='linear')}
         vmax = cm.get_vmax(texture)
         cm.plot_surface_stats(self.fsaverage, texture,
-                              threshold=threshold,
+                              threshold=self.threshold,
+                              modes=['lateral', 'ventral'],
                               cmap=cmap,
                               output_file=name,
                               vmax=vmax)

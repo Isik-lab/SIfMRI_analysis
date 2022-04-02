@@ -41,7 +41,7 @@ class FeatureVariance():
         palette = custom_palette(rgb=False)
         colors = feature_colors()
         df = self.load_annotations()
-        sns.set(style='white', context='talk', rc={'figure.figsize': (15, 20)})
+        sns.set(style='white', context='poster', rc={'figure.figsize': (15, 20)})
         fig, ax = plt.subplots(nrows=4, ncols=3, sharex=True, sharey=True)
         ax = ax.flatten()
         for i, feature in enumerate(df.columns):

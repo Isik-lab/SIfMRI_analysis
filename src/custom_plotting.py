@@ -1,10 +1,13 @@
+import nilearn.image
 import numpy as np
 from matplotlib import gridspec
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import itertools
 import matplotlib.pyplot as plt
-from nilearn.plotting import plot_surf_roi
+from matplotlib.colors import ListedColormap
+from nilearn import plotting, surface
+from nilearn.plotting import plot_surf_roi, plot_surf_contours
 import nibabel as nib
 import seaborn as sns
 
@@ -90,6 +93,22 @@ def custom_nilearn_cmap():
     return cmap
 
 
+def custom_pca_cmap(n):
+    # initialize a cmap object
+    cmap = sns.color_palette('Paired', n)
+    cmap = ListedColormap(cmap)
+
+    palette = sns.color_palette("rocket", n)
+
+    out_colors = []
+    for i, rgb in enumerate(palette):
+        if i == n:
+            break
+        out_colors.append(rgb)
+    cmap.colors = tuple(out_colors)
+    return cmap
+
+
 def mkNifti(arr, mask, im, nii=True):
     out_im = np.zeros(mask.size, dtype=arr.dtype)
     inds = np.where(mask)[0]
@@ -146,7 +165,37 @@ def _colorbar_from_array(array, threshold, cmap, vmax=None):
     return sm
 
 
+def roi_paths(hemi):
+    if hemi == 'left':
+        h = 'l'
+    else:
+        h = 'r'
+    d = dict()
+    topdir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw/group_parcels/'
+    d['STS'] = f'{topdir}/BenDeen_fROIs/{h}STS.nii.gz'
+    d['LOC'] = f'{topdir}/kanwisher_gss/object_parcels/{h}LOC.img'
+    d['PPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}PPA.img'
+    d['OPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}TOS.img'
+    d['EBA'] = f'{topdir}/kanwisher_gss/body_parcels/{h}EBA.img'
+    d['FFA'] = f'{topdir}/kanwisher_gss/face_parcels/{h}FFA.img'
+    d['TPJ'] = f'{topdir}/fROItMaps/{h.capitalize()}TPJ_wxyz.img'
+    d['MT'] = f'{topdir}/SabineKastner/subj_vol_all/perc_VTPM_vol_roi13_{h}h.nii.gz'
+    return d
+
+
+def load_parcellation(fsaverage, roi, hemi):
+    paths = roi_paths(hemi)
+    vol = nib.load(paths[roi])
+    parcellation = surface.vol_to_surf(vol, fsaverage[f'pial_{hemi}'], interpolation='nearest')
+    if roi != 'PPA':
+        parcellation[parcellation > 0.5] = 1
+    else:
+        parcellation[parcellation != 0] = 1
+    return parcellation.astype('int')
+
+
 def plot_surface_stats(fsaverage, texture,
+                       roi=None,
                        title=None,
                        modes=['lateral', 'medial', 'ventral'],
                        hemis=['left', 'right'],
@@ -166,19 +215,26 @@ def plot_surface_stats(fsaverage, texture,
     axes = []
     for i, (mode, hemi) in enumerate(itertools.product(modes, hemis)):
         bg_map = fsaverage['sulc_%s' % hemi]
+
         ax = fig.add_subplot(grid[i + len(hemis)], projection="3d")
         axes.append(ax)
         plot_surf_roi(surf_mesh=fsaverage[f'infl_{hemi}'],
                       roi_map=texture[hemi],
                       view=mode, hemi=hemi,
                       bg_map=bg_map,
-                      alpha=1,
+                      alpha=1.,
                       axes=ax,
                       colorbar=False,  # Colorbar created externally.
                       vmax=vmax,
                       threshold=threshold,
                       cmap=cmap,
                       **kwargs)
+
+        if roi is not None:
+            parcellation = load_parcellation(fsaverage, roi, hemi)
+            plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[roi],
+                               levels=[1], axes=ax, legend=False,
+                               colors=['black'])
         # We increase this value to better position the camera of the
         # 3D projection plot. The default value makes meshes look too small.
         ax.dist = 7
@@ -187,10 +243,12 @@ def plot_surface_stats(fsaverage, texture,
         array = np.hstack((texture['left'], texture['right']))
         sm = _colorbar_from_array(array, threshold, get_cmap(cmap), vmax)
 
-        cbar_grid = gridspec.GridSpecFromSubplotSpec(3, 3, grid[-1, :])
+        cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+        for t in cbar.ax.get_xticklabels():
+            t.set_fontsize(18)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
@@ -218,7 +276,7 @@ def plot_ROI_results(df, out_name, variable, noise_ceiling=None,
 
     # Plot noise ceiling
     if noise_ceiling is not None:
-        x = np.linspace(-0.5, n_features-0.5, num=3)
+        x = np.linspace(-0.5, n_features - 0.5, num=3)
         y1 = np.ones_like(x) * noise_ceiling
         ax.plot(x, y1, color='gray', alpha=0.5, linewidth=3)
 

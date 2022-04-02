@@ -121,7 +121,7 @@ class FeaturePCA():
             # plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
             ev = df.loc[df['PC'] == iname, "Explained variance"].unique()[0]
-            plt.suptitle(f'PC {i + 1}, \n Explained variance = {ev:.2f}', fontsize=20)
+            plt.suptitle(f'PC {i + 1} \n Explained variance = {np.round(ev*100):.0f}', fontsize=20)
             plt.tight_layout()
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()

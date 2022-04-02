@@ -44,6 +44,8 @@ class PlotVoxelEncoding():
             self.sid = args.s_num
         else:
             self.sid = str(int(args.s_num)).zfill(2)
+        self.roi_parcel = args.roi_parcel
+        self.noise_ceiling_set = args.noise_ceiling_set
         self.stat_dir = args.stat_dir
         self.mask_dir = args.mask_dir
         self.annotation_dir = args.annotation_dir
@@ -56,6 +58,8 @@ class PlotVoxelEncoding():
         self.overall = args.overall
         self.control = args.control
         self.pca_before_regression = args.pca_before_regression
+        assert np.sum([self.overall, self.group_features, self.separate_features, self.individual_features]) == 1,\
+            "Must select one (and only one) type to plot"
         if self.overall:
             self.cmap = sns.color_palette('magma', as_cmap=True)
             self.out_name = 'overall'
@@ -68,26 +72,27 @@ class PlotVoxelEncoding():
             self.cmap = sns.color_palette('Paired', as_cmap=True)
             self.out_name = 'separate'
             self.threshold = 1.
-        elif self.individual_features:
+        else: #self.individual_features:
             assert self.feature is not None, "Must define an input feature"
             self.cmap = sns.color_palette('magma', as_cmap=True)
             self.out_name = f'individual_features/{self.feature}'
             self.threshold = None
-        else:
-            raise RuntimeError ("One of overall, group_features, separate_features, or individual_features must be True")
         print(self.out_name)
         self.figure_dir = f'{args.figure_dir}/{self.process}/{self.control}/{self.out_name}'
-        path = Path(self.figure_dir)
-        path.mkdir(parents=True, exist_ok=True)
+        Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
 
     def load_features(self):
         df = pd.read_csv(f'{self.annotation_dir}/annotations.csv')
-        train = pd.read_csv(f'{self.annotation_dir}/train.csv')
-        df = df.merge(train)
-        df.sort_values(by=['video_name'], inplace=True)
         df.drop(columns=['video_name'], inplace=True)
         features = np.array(df.columns)
         self.features = np.array([feature.replace(' ', '_') for feature in features])
+
+    def load_noise_ceiling(self, mask):
+        noise_ceiling = np.load(f'{self.mask_dir}/sub-{self.sid}_set-{self.noise_ceiling_set}_stat-rho_statmap.npy')
+        inds = np.where(noise_ceiling < 0.)[0]
+        noise_ceiling[inds] = 0.
+        inds = np.where(mask)[0]
+        return noise_ceiling[inds]
 
     def preference_maps(self, mask, mask_im):
         rs = np.load(
@@ -120,7 +125,8 @@ class PlotVoxelEncoding():
         ps = np.load(
             f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_ps.npy')
 
-        # Filter the r-values, set threshold, and save output
+        # Normalize by noise ceiling
+        rs = rs / self.load_noise_ceiling(mask)
         rs, rs_mask, threshold = filter_r(rs, ps)
         self.threshold = threshold
         np.save(
@@ -138,6 +144,7 @@ class PlotVoxelEncoding():
             f'{self.stat_dir}/sub-{self.sid}_feature-{self.feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}_ps.npy')
 
         # Filter the r-values, set threshold, and save output
+        rs = rs / self.load_noise_ceiling(mask)
         rs, rs_mask, threshold = filter_r(rs, ps)
         self.threshold = threshold
         np.save(
@@ -149,8 +156,8 @@ class PlotVoxelEncoding():
         return cm.mkNifti(rs, mask, mask_im)
 
     def load(self):
-        mask_im = nib.load(f'{self.mask_dir}/sub-all_stat-rho_statmap.nii.gz')
-        mask = np.load(f'{self.mask_dir}/sub-all_reliability-mask.npy')
+        mask_im = nib.load(f'{self.mask_dir}/sub-all_set-test_stat-rho_statmap.nii.gz')
+        mask = np.load(f'{self.mask_dir}/sub-all_set-test_reliability-mask.npy')
         if self.overall:
             volume = self.overall_prediction(mask, mask_im)
         elif self.separate_features or self.group_features:
@@ -168,22 +175,27 @@ class PlotVoxelEncoding():
         self.load_features()
         volume, texture = self.load()
         if self.overall or self.individual_features:
-            vmax = cm.get_vmax(texture)
+            vmax = 1.
             if self.threshold >= vmax:
                 vmax = self.threshold + 0.1
         else:
             vmax = None
+        print(self.threshold)
         cm.plot_surface_stats(self.fsaverage, texture,
+                              roi=self.roi_parcel,
                               cmap=self.cmap,
+                              modes=['lateral', 'ventral'],
                               output_file=f'{self.figure_dir}/sub-{self.sid}.png',
-                              threshold=self.threshold,
+                              threshold=0.1,#self.threshold,
                               vmax=vmax)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--roi_parcel', type=str, default=None)
     parser.add_argument('--mesh', type=str, default='fsaverage5')
+    parser.add_argument('--noise_ceiling_set', type=str, default='train')
     parser.add_argument('--control', type=str, default='conv2')
     parser.add_argument('--feature', type=str, default='None')
     parser.add_argument('--separate_features', action=argparse.BooleanOptionalAction, default=False)
