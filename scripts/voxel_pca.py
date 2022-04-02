@@ -4,8 +4,13 @@
 import argparse
 import glob
 import os
+import shutil
+
+import nilearn.image
 import numpy as np
 import pandas as pd
+from pathlib import Path
+
 from src import custom_plotting as cp
 
 from sklearn.decomposition import PCA
@@ -15,8 +20,8 @@ import nibabel as nib
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 import seaborn as sns
-from src.custom_plotting import custom_nilearn_cmap, custom_seaborn_cmap,\
-    feature_categories, custom_pca_cmap
+from src.custom_plotting import custom_nilearn_cmap, custom_seaborn_cmap, \
+    feature_categories, custom_pca_cmap, roi_paths
 
 
 def plot_feature_correlation(cur, ax):
@@ -57,7 +62,7 @@ def plot_video_loadings(loading, videos, ax):
 
 
 def pca(X, n_components):
-    model = PCA(whiten=True, n_components=n_components)
+    model = PCA(whiten=True, n_components=n_components, random_state=0)
     out = model.fit_transform(X)
     return out, model.components_, model.explained_variance_ratio_
 
@@ -67,18 +72,20 @@ class VoxelPCA():
         self.process = 'VoxelPCA'
         self.set = args.set
         self.roi = args.roi
+        self.parcel = args.parcel
+        assert not np.all([self.roi, self.parcel]), "Either an ROI or a parcel can be defined, not both"
         if self.roi is not None:
             self.out_name = self.roi
+        elif self.parcel is not None:
+            self.out_name = self.parcel
         else:
             self.out_name = 'reliable_voxels'
         self.n_subjects = 4
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}/{self.out_name}'
-        if not os.path.exists(f'{self.out_dir}/{self.process}'):
-            os.mkdir(f'{self.out_dir}/{self.process}')
-        if not os.path.exists(self.figure_dir):
-            os.mkdir(self.figure_dir)
+        Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
+        Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         self.n_components = args.n_components
         if self.n_components > 1:
             self.n_components = int(self.n_components)
@@ -88,9 +95,8 @@ class VoxelPCA():
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
-        # df['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
-        # df['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
-        # df['AlexNet conv5'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv5_set-{self.set}_avg')
+        df['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
+        df['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
         df.sort_values(by=['video_name'], inplace=True)
         new = df.drop(columns=['video_name'])
         categories = pd.read_csv(f'{self.data_dir}/annotations/{self.set}_categories.csv')
@@ -135,13 +141,27 @@ class VoxelPCA():
             n_voxels[f'sub-{sid}'] = np.sum(cur)
         return roi_mask, n_voxels
 
+    def load_parcel_mask(self, im):
+        arr = []
+        for hemi in ['left', 'right']:
+            paths = roi_paths(hemi)
+            vol = nib.load(paths[self.parcel])
+            vol = nilearn.image.resample_to_img(vol, im, interpolation='nearest')
+            if type(arr) is list:
+                arr = np.array(vol.dataobj)
+            else:
+                arr += np.array(vol.dataobj)
+        return arr.astype('bool').flatten()
+
     def load_mask(self):
         im = nib.load(f'{self.out_dir}/Reliability/sub-all_set-test_stat-rho_statmap.nii.gz')
+        n_voxels = None
         if self.roi is not None:
             mask, n_voxels = self.load_roi_mask()
+        elif self.parcel is not None:
+            mask = self.load_parcel_mask(im)
         else:
             mask = np.load(f'{self.out_dir}/Reliability/sub-all_set-test_reliability-mask.npy').astype('bool')
-            n_voxels = None
         return mask, n_voxels, im
 
     def vol_to_surf(self, im, hemi):
@@ -153,11 +173,11 @@ class VoxelPCA():
         volume = cp.mkNifti(stat, mask, im)
         texture = {'left': self.vol_to_surf(volume, 'left'),
                    'right': self.vol_to_surf(volume, 'right')}
-        if 'STS' in self.roi:
-            hemis = ['left']
+        if self.parcel is not None:
+            hemis = ['left', 'right']
             modes = ['lateral']
         else:
-            hemis = ['left', 'right'],
+            hemis = ['left', 'right']
             modes = ['lateral', 'ventral']
         cp.plot_surface_stats(self.fsaverage, texture,
                               cmap=cmap, threshold=1,
@@ -191,7 +211,7 @@ class VoxelPCA():
                 d['Explained variance'] = explained_variance[iPC]
                 df = pd.concat([df, pd.DataFrame(d)])
         df.category = pd.Categorical(df.category,
-                              categories=['scene', 'object', 'social primitive', 'social'],
+                              categories=['scene', 'object', 'social primitive', 'social', 'low-level model'],
                               ordered=True)
         df.to_csv(f'{self.out_dir}/{self.process}/PCs_set-{self.set}.csv', index=False)
         return df
@@ -210,33 +230,48 @@ class VoxelPCA():
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()
 
+    def videos(self, vid_comp, df):
+        def copy_videos(inds_, df_, pc, part):
+            for i, ind in enumerate(inds_):
+                name = df_.loc[ind, 'video_name']
+                Path(f'{self.figure_dir}/videos/PC-{pc}').mkdir(exist_ok=True, parents=True)
+                shutil.copyfile(f'{self.data_dir}/videos/{name}',
+                                f'{self.figure_dir}/videos/PC-{pc}/{part}-{i}_{name}')
+
+        for icomp in range(self.n_components):
+            inds = np.argsort(vid_comp[:, icomp])
+            copy_videos(inds[:5], df, icomp, 'bottom')
+            copy_videos(inds[-5:], df, icomp, 'top')
+
+
     def run(self):
         # Load neural data and do PCA
         mask, n_voxels, im = self.load_mask()
-        print(n_voxels)
-        # neural = self.load_neural(mask)
-        # vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
-        #
-        # # Plot on the brain
-        # if self.roi is None or 'STS' in self.roi:
-        #     vox = np.argmax(comp_vox.reshape((-1, 4, np.sum(mask))).mean(axis=-2), axis=0) + 1
-        #     self.plot_brain(vox, mask, im, 'all')
-        #
-        #     sub_vox = comp_vox.reshape((-1, 4, np.sum(mask)))
-        #     for i in range(self.n_subjects):
-        #         vox = np.argmax(sub_vox[:, i, :], axis=0) + 1
-        #         self.plot_brain(vox, mask, im, str(i+1).zfill(2))
-        #
-        # # Interpret the PCs
-        # feature_names, features, videos = self.load_features()
-        # self.plot_variance(explained_variance.cumsum())
-        # df = self.PC_to_features(features, feature_names, vid_comp, explained_variance)
-        # self.plot_PC_results(df, videos, vid_comp)
+        neural = self.load_neural(mask)
+        vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
+
+        # Plot on the brain
+        if self.roi is None:
+            vox = np.argmax(comp_vox.reshape((-1, 4, np.sum(mask))).mean(axis=-2), axis=0) + 1
+            self.plot_brain(vox, mask, im, 'all')
+
+            sub_vox = comp_vox.reshape((-1, 4, np.sum(mask)))
+            for i in range(self.n_subjects):
+                vox = np.argmax(sub_vox[:, i, :], axis=0) + 1
+                self.plot_brain(vox, mask, im, str(i+1).zfill(2))
+
+        # Interpret the PCs
+        feature_names, features, videos = self.load_features()
+        self.videos(vid_comp, features)
+        self.plot_variance(explained_variance.cumsum())
+        df = self.PC_to_features(features, feature_names, vid_comp, explained_variance)
+        self.plot_PC_results(df, videos, vid_comp)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--roi', type=str, default=None)
+    parser.add_argument('--parcel', type=str, default=None)
     parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--n_components', type=float, default=10)

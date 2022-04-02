@@ -19,14 +19,12 @@ def custom_palette(rgb=True):
         colors['reddish'] = tuple(np.array([218., 83., 91.]) / 256)
         colors['purple'] = tuple(np.array([133., 88., 244.]) / 256)
         colors['cyan'] = tuple(np.array([115., 210., 223.]) / 256)
-        colors['blue'] = tuple(np.array([105., 150., 237.]) / 256)
         colors['gray'] = tuple(np.array([128., 128., 128.]) / 256)
     else:
         colors['mustard'] = '#F5DD40'
         colors['reddish'] = '#DA535B'
         colors['purple'] = '#8558F4'
         colors['cyan'] = '#73D2DF'
-        colors['blue'] = '#6796ED'
         colors['gray'] = '#808080'
     return colors
 
@@ -45,6 +43,9 @@ def feature_categories():
     d['intimacy'] = 'social'
     d['valence'] = 'social'
     d['arousal'] = 'social'
+    d['motion energy'] = 'low-level model'
+    d['AlexNet conv2'] = 'low-level model'
+    d['AlexNet conv5'] = 'low-level model'
     return d
 
 
