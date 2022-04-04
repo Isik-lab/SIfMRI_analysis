@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import argparse
-import os
 import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -45,6 +44,7 @@ class PlotVoxelEncoding():
         else:
             self.sid = str(int(args.s_num)).zfill(2)
         self.roi_parcel = args.roi_parcel
+        print(self.roi_parcel)
         self.noise_ceiling_set = args.noise_ceiling_set
         self.stat_dir = args.stat_dir
         self.mask_dir = args.mask_dir
@@ -193,7 +193,7 @@ class PlotVoxelEncoding():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
-    parser.add_argument('--roi_parcel', type=str, default=None)
+    parser.add_argument('--roi_parcel', action='append', default=[])
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--noise_ceiling_set', type=str, default='train')
     parser.add_argument('--control', type=str, default='conv2')

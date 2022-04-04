@@ -231,11 +231,13 @@ def plot_surface_stats(fsaverage, texture,
                       cmap=cmap,
                       **kwargs)
 
-        if roi is not None:
-            parcellation = load_parcellation(fsaverage, roi, hemi)
-            plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[roi],
-                               levels=[1], axes=ax, legend=False,
-                               colors=['black'])
+        if roi:
+            for r in roi:
+                print(r)
+                parcellation = load_parcellation(fsaverage, r, hemi)
+                plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[r],
+                                   levels=[1], axes=ax, legend=False,
+                                   colors=['black'])
         # We increase this value to better position the camera of the
         # 3D projection plot. The default value makes meshes look too small.
         ax.dist = 7
