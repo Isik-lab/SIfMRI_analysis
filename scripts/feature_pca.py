@@ -3,8 +3,11 @@
 
 import argparse
 import os
+import shutil
+
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 from sklearn.decomposition import PCA
 from scipy.stats import spearmanr
@@ -29,7 +32,7 @@ def plot_feature_correlation(cur, ax):
     ax.spines['right'].set_visible(False)
     ax.set_xlabel('')
     ax.set_ylabel(r'Correlation ($\rho$)')
-    ax.set_ylim([-.7, 0.7])
+    ax.set_ylim([-1, 0.7])
     legend = ax.get_legend()
     legend.remove()
 
@@ -51,7 +54,7 @@ def plot_video_loadings(loading, videos, ax):
 
 
 def pca(X, n_components):
-    model = PCA(whiten=True, n_components=n_components)
+    model = PCA(whiten=True, n_components=n_components, random_state=0)
     out = model.fit_transform(X)
     return out, model.components_, model.explained_variance_ratio_
 
@@ -76,10 +79,17 @@ class FeaturePCA():
         train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
         df.sort_values(by=['video_name'], inplace=True)
-        new = df.drop(columns=['video_name'])
 
+        new = df.copy()
+        new['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
+        new['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
+        names = new.columns.to_list()
+        names.remove('video_name')
+        names = np.array(names)
+
+        df = df.drop(columns=['video_name'])
         categories = pd.read_csv(f'{self.data_dir}/annotations/{self.set}_categories.csv')
-        return np.array(new.columns), new, categories.action_categories.to_numpy()
+        return names, df, new, categories.action_categories.to_numpy()
 
     def plot_variance(self, vals):
         fig, ax = plt.subplots()
@@ -107,7 +117,7 @@ class FeaturePCA():
                 d['Explained variance'] = [explained_variance[iPC]]
                 df = pd.concat([df, pd.DataFrame(d)])
         df.category = pd.Categorical(df.category,
-                              categories=['scene', 'object', 'social primitive', 'social'],
+                              categories=['scene', 'object', 'social primitive', 'social', 'low-level model'],
                               ordered=True)
         df.to_csv(f'{self.out_dir}/{self.process}/PCs_set-{self.set}.csv', index=False)
         return df
@@ -126,18 +136,31 @@ class FeaturePCA():
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()
 
+    def videos(self, vid_comp, df):
+        def copy_videos(inds_, df_, pc, part):
+            for i, ind in enumerate(inds_):
+                name = df_.loc[ind, 'video_name']
+                Path(f'{self.figure_dir}/videos/PC-{pc}').mkdir(exist_ok=True, parents=True)
+                shutil.copyfile(f'{self.data_dir}/videos/{name}',
+                                f'{self.figure_dir}/videos/PC-{pc}/{part}-{i}_{name}')
+
+        for icomp in range(self.n_components):
+            inds = np.argsort(vid_comp[:, icomp])
+            copy_videos(inds[:5], df, icomp, 'bottom')
+            copy_videos(inds[-5:], df, icomp, 'top')
+
     def run(self):
-        feature_names, features, videos = self.load_features()
-        print(features.head())
+        feature_names, features, features_low, videos = self.load_features()
         vid_comp, comp_feature, explained_variance = pca(features, self.n_components)
+        self.videos(vid_comp, features_low)
         self.plot_variance(explained_variance.cumsum())
-        df = self.PC_to_features(features, feature_names, vid_comp, explained_variance)
+        df = self.PC_to_features(features_low, feature_names, vid_comp, explained_variance)
         self.plot_PC_results(df, videos, vid_comp)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_components', type=float, default=10)
+    parser.add_argument('--n_components', type=float, default=4)
     parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
