@@ -81,8 +81,8 @@ class FeaturePCA():
         df.sort_values(by=['video_name'], inplace=True)
 
         new = df.copy()
-        new['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
-        new['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
+        # new['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
+        # new['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
         names = new.columns.to_list()
         names.remove('video_name')
         names = np.array(names)
@@ -131,7 +131,7 @@ class FeaturePCA():
             # plot_video_loadings(vid_comp[:, i], videos, ax[1])
             plt.xticks(rotation=90)
             ev = df.loc[df['PC'] == iname, "Explained variance"].unique()[0]
-            plt.suptitle(f'PC {i + 1} \n Explained variance = {np.round(ev*100):.0f}', fontsize=20)
+            plt.suptitle(f'PC {i + 1} \n Explained variance = {np.round(ev*100):.0f}%', fontsize=20)
             plt.tight_layout()
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()

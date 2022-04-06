@@ -15,7 +15,7 @@ from src import custom_plotting as cp
 
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from nilearn import datasets, surface
+from nilearn import datasets, surface, plotting
 import nibabel as nib
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
@@ -71,8 +71,10 @@ class VoxelPCA():
     def __init__(self, args):
         self.process = 'VoxelPCA'
         self.set = args.set
+        self.regress_out = args.regress_out
         self.roi = args.roi
         self.parcel = args.parcel
+        self.square_plot = args.square_plot
         assert not np.all([self.roi, self.parcel]), "Either an ROI or a parcel can be defined, not both"
         if self.roi is not None:
             self.out_name = self.roi
@@ -80,6 +82,8 @@ class VoxelPCA():
             self.out_name = self.parcel
         else:
             self.out_name = 'reliable_voxels'
+        if self.regress_out:
+            self.out_name += '_controlled'
         self.n_subjects = 4
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
@@ -91,12 +95,21 @@ class VoxelPCA():
             self.n_components = int(self.n_components)
         self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
 
+    def regress_out_control(self, y):
+        from sklearn.linear_model import LinearRegression
+        X = np.load(f'{self.out_dir}/GenerateModels/control_model_conv2_set-{self.set}.npy')
+        lr = LinearRegression(fit_intercept=False)
+        lr.fit(X, y)
+        y_hat = lr.predict(X)
+        return y - y_hat
+
     def load_features(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
-        df['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
-        df['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
+        if self.roi == 'MT':
+            df['motion energy'] = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy')
+            df['AlexNet conv2'] = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avg.npy')
         df.sort_values(by=['video_name'], inplace=True)
         new = df.drop(columns=['video_name'])
         categories = pd.read_csv(f'{self.data_dir}/annotations/{self.set}_categories.csv')
@@ -109,7 +122,7 @@ class VoxelPCA():
             betas = np.load(f'{self.out_dir}/GroupRuns/sub-{sid}/sub-{sid}_{self.set}-data.npy')
 
             # Filter the beta values to the reliable voxels or to the roi within subject
-            if self.roi is not None:
+            if self.roi is not None or self.parcel is not None:
                 betas = betas[mask[f'sub-{sid}'], :]
             else:
                 betas = betas[mask, :]
@@ -122,7 +135,27 @@ class VoxelPCA():
                 X = betas.T
             else:
                 X = np.hstack([X, betas.T])
-        return StandardScaler().fit_transform(X)
+        X = StandardScaler().fit_transform(X)
+        if self.regress_out:
+            X = self.regress_out_control(X)
+        return X
+
+    def load_roi_mask(self):
+        roi_mask = dict()
+        n_voxels = dict()
+        for sid_ in range(1, self.n_subjects + 1):
+            sid = str(sid_).zfill(2)
+            files = glob.glob(f'{self.data_dir}/ROI_masks/sub-{sid}/sub-{sid}_*{self.roi}*nii.gz')
+            if len(files) > 1:
+                for f in files:
+                    if 'nooverlap' in f:
+                        file = f
+            else:
+                file = files[0]
+            cur = np.array(nib.load(file).dataobj, dtype='bool').flatten()
+            roi_mask[f'sub-{sid}'] = cur
+            n_voxels[f'sub-{sid}'] = np.sum(cur)
+        return roi_mask, n_voxels
 
     def load_roi_mask(self):
         roi_mask = dict()
@@ -142,16 +175,25 @@ class VoxelPCA():
         return roi_mask, n_voxels
 
     def load_parcel_mask(self, im):
-        arr = []
-        for hemi in ['left', 'right']:
-            paths = roi_paths(hemi)
-            vol = nib.load(paths[self.parcel])
-            vol = nilearn.image.resample_to_img(vol, im, interpolation='nearest')
-            if type(arr) is list:
-                arr = np.array(vol.dataobj)
-            else:
-                arr += np.array(vol.dataobj)
-        return arr.astype('bool').flatten()
+        roi_mask = dict()
+        n_voxels = dict()
+        for sid_ in range(1, self.n_subjects + 1):
+            sid = str(sid_).zfill(2)
+            mask = np.load(f'{self.out_dir}/Reliability/sub-{sid}_set-test_reliability-mask.npy').astype('bool')
+            arr = []
+            for hemi in ['left', 'right']:
+                paths = roi_paths(hemi)
+                vol = nib.load(paths[self.parcel])
+                vol = nilearn.image.resample_to_img(vol, im, interpolation='nearest')
+                if type(arr) is list:
+                    arr = np.array(vol.dataobj)
+                else:
+                    arr += np.array(vol.dataobj)
+            arr = arr.astype('bool').flatten()
+            arr = np.all(np.hstack([np.expand_dims(mask, axis=1), np.expand_dims(arr, axis=1)]), axis=1)
+            roi_mask[f'sub-{sid}'] = arr
+            n_voxels[f'sub-{sid}'] = np.sum(arr)
+        return roi_mask, n_voxels
 
     def load_mask(self):
         im = nib.load(f'{self.out_dir}/Reliability/sub-all_set-test_stat-rho_statmap.nii.gz')
@@ -159,9 +201,10 @@ class VoxelPCA():
         if self.roi is not None:
             mask, n_voxels = self.load_roi_mask()
         elif self.parcel is not None:
-            mask = self.load_parcel_mask(im)
+            mask, n_voxels = self.load_parcel_mask(im)
         else:
             mask = np.load(f'{self.out_dir}/Reliability/sub-all_set-test_reliability-mask.npy').astype('bool')
+
         return mask, n_voxels, im
 
     def vol_to_surf(self, im, hemi):
@@ -220,12 +263,15 @@ class VoxelPCA():
         sns.set(style='white', context='poster')
         for i, iname in enumerate(np.unique(df.PC)):
             # _, ax = plt.subplots(1, 2, figsize=(18, 9), gridspec_kw={'width_ratios': [1, 1.5]})
-            _, ax = plt.subplots(1, 1, figsize=(7, 7))
+            if self.square_plot:
+                _, ax = plt.subplots(1, 1, figsize=(7, 7))
+            else:
+                _, ax = plt.subplots(1, 1, figsize=(7, 5))
             plot_feature_correlation(df[df['PC'] == iname], ax)
             # plot_video_loadings(vid_comp[:, i], videos, ax[1])
-            plt.xticks(rotation=90)
+            plt.xticks(rotation=90, fontsize=16)
             ev = df.loc[df['PC'] == iname, "Explained variance"].unique()[0]
-            plt.suptitle(f'PC {i+1} \n Explained variance = {np.round(ev*100):.0f}', fontsize=20)
+            plt.suptitle(f'PC {i+1}, Variance = {np.round(ev*100):.0f}%', fontsize=20)
             plt.tight_layout()
             plt.savefig(f'{self.figure_dir}/PC{str(i).zfill(2)}_set-{self.set}.pdf')
             plt.close()
@@ -251,13 +297,15 @@ class VoxelPCA():
         vid_comp, comp_vox, explained_variance = pca(neural, self.n_components)
 
         # Plot on the brain
-        if self.roi is None:
+        if self.roi is None and self.parcel is None:
             vox = np.argmax(comp_vox.reshape((-1, 4, np.sum(mask))).mean(axis=-2), axis=0) + 1
+            print(np.unique(vox, return_counts=True))
             self.plot_brain(vox, mask, im, 'all')
 
             sub_vox = comp_vox.reshape((-1, 4, np.sum(mask)))
             for i in range(self.n_subjects):
                 vox = np.argmax(sub_vox[:, i, :], axis=0) + 1
+                print(np.unique(vox, return_counts=True))
                 self.plot_brain(vox, mask, im, str(i+1).zfill(2))
 
         # Interpret the PCs
@@ -274,7 +322,9 @@ def main():
     parser.add_argument('--parcel', type=str, default=None)
     parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--mesh', type=str, default='fsaverage5')
-    parser.add_argument('--n_components', type=float, default=10)
+    parser.add_argument('--n_components', type=float, default=4)
+    parser.add_argument('--regress_out', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--square_plot', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

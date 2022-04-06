@@ -6,7 +6,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from nilearn import datasets
+from nilearn import datasets, plotting
 from statsmodels.stats.multitest import multipletests
 from src import custom_plotting as cm
 from nilearn import surface
@@ -44,7 +44,6 @@ class PlotVoxelEncoding():
         else:
             self.sid = str(int(args.s_num)).zfill(2)
         self.roi_parcel = args.roi_parcel
-        print(self.roi_parcel)
         self.noise_ceiling_set = args.noise_ceiling_set
         self.stat_dir = args.stat_dir
         self.mask_dir = args.mask_dir
@@ -69,7 +68,7 @@ class PlotVoxelEncoding():
             self.out_name = 'grouped'
             self.threshold = 1.
         elif self.separate_features:
-            self.cmap = sns.color_palette('Paired', as_cmap=True)
+            self.cmap = cm.custom_preference_cmap()
             self.out_name = 'separate'
             self.threshold = 1.
         else: #self.individual_features:
@@ -77,7 +76,6 @@ class PlotVoxelEncoding():
             self.cmap = sns.color_palette('magma', as_cmap=True)
             self.out_name = f'individual_features/{self.feature}'
             self.threshold = None
-        print(self.out_name)
         self.figure_dir = f'{args.figure_dir}/{self.process}/{self.control}/{self.out_name}'
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
 
@@ -98,7 +96,6 @@ class PlotVoxelEncoding():
         rs = np.load(
             f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy').astype(
             'bool')
-        rs = cm.mkNifti(rs, mask, mask_im, nii=False)
 
         base = f'{self.stat_dir}/sub-{self.sid}_feature-XXX_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
         pred = []
@@ -114,8 +111,8 @@ class PlotVoxelEncoding():
         preference += 1
 
         # Make the preference values into a volume mask
+        preference[~rs] = 0
         volume = cm.mkNifti(preference, mask, mask_im, nii=False)
-        volume[~rs] = 0
         volume = volume.astype('float')
         return nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
 
@@ -180,7 +177,6 @@ class PlotVoxelEncoding():
                 vmax = self.threshold + 0.1
         else:
             vmax = None
-        print(self.threshold)
         cm.plot_surface_stats(self.fsaverage, texture,
                               roi=self.roi_parcel,
                               cmap=self.cmap,

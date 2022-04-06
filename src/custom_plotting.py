@@ -99,7 +99,7 @@ def custom_pca_cmap(n):
     cmap = sns.color_palette('Paired', n)
     cmap = ListedColormap(cmap)
 
-    palette = sns.color_palette("rocket", n)
+    palette = sns.color_palette("cubehelix", n)
 
     out_colors = []
     for i, rgb in enumerate(palette):
@@ -107,6 +107,26 @@ def custom_pca_cmap(n):
             break
         out_colors.append(rgb)
     cmap.colors = tuple(out_colors)
+    return cmap
+
+def custom_preference_cmap():
+    palette = [[0.95703125, 0.86328125, 0.25], #mustard
+               [0.57421875, 0.51796875, 0.15], #mustard
+               [0.8515625, 0.32421875, 0.35546875], #red
+               [0.51953125, 0.34375, 0.953125], #purple
+               [0.31171875, 0.20625, 0.571875], #purple
+               [0.44921875, 0.8203125, 0.87109375], #cyan
+               [0.35938, 0.65625, 0.69688],
+               [0.2875, 0.525, 0.5575],
+               [0.23, 0.42, 0.446],
+               [0.184, 0.336, 0.3568],
+               [0.1472, 0.2688, 0.28544],
+               [0.11776, 0.21504, 0.22835]]
+
+    # initialize a discrete cmap object
+    cmap = sns.color_palette('Paired', len(palette))
+    cmap = ListedColormap(cmap)
+    cmap.colors = tuple(palette)
     return cmap
 
 
@@ -148,22 +168,17 @@ def _colorbar_from_array(array, threshold, cmap, vmax=None):
 
     if vmax is None:
         vmax = np.nanmax(array)
-    norm = Normalize(vmin=threshold, vmax=vmax)
+    cmap = plt.get_cmap(cmap, vmax - threshold)
     cmaplist = [cmap(i) for i in range(cmap.N)]
 
-    # set colors to grey for absolute values < threshold
-    istart = int(threshold)
-    istop = int(norm(threshold, clip=True) * (cmap.N - 1))
-    for i in range(istart, istop):
-        cmaplist[i] = (0.5, 0.5, 0.5, 1.)
     our_cmap = LinearSegmentedColormap.from_list('Custom cmap',
                                                  cmaplist, cmap.N)
     sm = plt.cm.ScalarMappable(cmap=our_cmap,
                                norm=plt.Normalize(vmin=threshold, vmax=vmax))
-    # fake up the array of the scalar mappable.
+    # # fake up the array of the scalar mappable.
     sm._A = []
 
-    return sm
+    return sm, vmax
 
 
 def roi_paths(hemi):
@@ -174,6 +189,7 @@ def roi_paths(hemi):
     d = dict()
     topdir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw/group_parcels/'
     d['STS'] = f'{topdir}/BenDeen_fROIs/{h}STS.nii.gz'
+    d['STS'] = f'{topdir}/BenDeen_fROIs/{h}STS.nii.gz'
     d['LOC'] = f'{topdir}/kanwisher_gss/object_parcels/{h}LOC.img'
     d['PPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}PPA.img'
     d['OPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}TOS.img'
@@ -181,6 +197,10 @@ def roi_paths(hemi):
     d['FFA'] = f'{topdir}/kanwisher_gss/face_parcels/{h}FFA.img'
     d['TPJ'] = f'{topdir}/fROItMaps/{h.capitalize()}TPJ_wxyz.img'
     d['MT'] = f'{topdir}/SabineKastner/subj_vol_all/perc_VTPM_vol_roi13_{h}h.nii.gz'
+    d['V1v'] = f'{topdir}/SabineKastner/subj_vol_all/perc_VTPM_vol_roi1_{h}h.nii.gz'
+    d['V1d'] = f'{topdir}/SabineKastner/subj_vol_all/perc_VTPM_vol_roi2_{h}h.nii.gz'
+    d['V2v'] = f'{topdir}/SabineKastner/subj_vol_all/perc_VTPM_vol_roi3_{h}h.nii.gz'
+    d['V2d'] = f'{topdir}/SabineKastner/subj_vol_all/perc_VTPM_vol_roi4_{h}h.nii.gz'
     return d
 
 
@@ -237,21 +257,24 @@ def plot_surface_stats(fsaverage, texture,
                 parcellation = load_parcellation(fsaverage, r, hemi)
                 plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[r],
                                    levels=[1], axes=ax, legend=False,
-                                   colors=['black'])
+                                   colors=['lightgreen'])
         # We increase this value to better position the camera of the
         # 3D projection plot. The default value makes meshes look too small.
         ax.dist = 7
 
     if colorbar:
         array = np.hstack((texture['left'], texture['right']))
-        sm = _colorbar_from_array(array, threshold, get_cmap(cmap), vmax)
+        sm, vmax = _colorbar_from_array(array, threshold, cmap, vmax)
 
         cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
-        for t in cbar.ax.get_xticklabels():
-            t.set_fontsize(18)
+        ticks = np.arange(start=threshold, stop=vmax + 1, step=1, dtype='int')
+        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal', ticks=ticks)
+        for t, i in zip(cbar.ax.get_xticklabels(), ticks):
+            t.set_label(f'PC{i}')
+            t.set_fontsize(30)
+
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
