@@ -60,6 +60,7 @@ class GenerateModels():
         df.sort_values(by=['video_name'], inplace=True)
         features = df.columns.to_list()
         features.remove('video_name')
+        print(features)
         
         model = []
         for feature in features:
@@ -77,7 +78,7 @@ class GenerateModels():
         
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--layer', '-l', type=str)
+    parser.add_argument('--layer', '-l', type=str, default='2')
     parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

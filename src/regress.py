@@ -26,42 +26,64 @@ def outer_ridge(X_train_, y_train_, alpha):
     return lr, lr.coef_
 
 
-def scale_by_feature(X_train_, X_test_, n_features):
+def scale(X_train_, X_test_):
+    n_features = X_test_.shape[-1]
     scaler = StandardScaler()
     X_train_ = scaler.fit_transform(X_train_)
-    mean = scaler.mean_[:n_features]
-    var = scaler.var_[:n_features]
+    mean = scaler.mean_[:n_features].squeeze()
+    var = scaler.var_[:n_features].squeeze()
     return X_train_, (X_test_ - mean) / var
 
 
-def scale(X_train_, X_test_):
-    scaler = StandardScaler()
-    X_train_ = scaler.fit_transform(X_train_)
-    if X_test_ is not None:
-        scaler.transform(X_test_)
-    return X_train_, X_test_
+def get_feature_inds(filter_features):
+    features = ['indoor', 'expanse', 'transitivity', 'agent distance',
+                'facingness', 'joint action', 'communication', 'cooperation', 'dominance',
+                'intimacy', 'valence', 'arousal']
+    inds = []
+    for f in filter_features:
+        inds.append(features.index(f))
+    return inds
 
 
-def predict_by_feature(X_test_, y_train_, betas, n_features):
+def predict_multi_feature(X_test_, y_train_, betas, inds):
+    n_features = len(inds)
     if len(betas.shape) > 1:
         # Make the prediction for each voxel
         y_pred = np.zeros((n_features, X_test_.shape[0], y_train_.shape[-1]))
-        for i_feature in range(n_features):
-            for i in range(X_test_.shape[0]):
-                y_pred[i_feature, i, :] = np.multiply(X_test_[i, i_feature],
-                                                      betas[:, i_feature])
-    else:
+        for i in range(y_train_.shape[0]):
+            for count, i_feature in enumerate(inds):
+                y_pred[count, :, i] = np.multiply(X_test_[:, i_feature], betas[i, i_feature])
+        # add up the prediction for each of the features as would be done in the matrix multiplication
+        y_pred = y_pred.sum(axis=0)
+    else: #1D prediction, like for the ROI analysis
         y_pred = np.zeros((n_features, X_test_.shape[0]))
-        for i_feature in range(n_features):
-            y_pred[i_feature, :] = np.multiply(X_test_[:, i_feature], betas[i_feature])
+        for count, i_feature in enumerate(inds):
+            y_pred[count, :] = np.multiply(X_test_[:, i_feature], betas[i_feature])
+        # add up the prediction for each of the features as would be done in the matrix multiplication
+        y_pred = y_pred.sum(axis=0)
     return y_pred
 
 
-def predict(model, X_test_):
-    if X_test_ is not None:
-        return model.predict(X_test_)
-    else:
-        return None
+def predict(X_test_, y_train_, betas, n_nuisance=40, by_feature=False):
+    n_features = betas.shape[-1] - n_nuisance
+    if len(betas.shape) > 1:
+        # Make the prediction for each voxel
+        y_pred = np.zeros((n_features, X_test_.shape[0], y_train_.shape[-1]))
+        for i in range(y_train_.shape[0]):
+            for i_feature in range(n_features):
+                y_pred[i_feature, :, i] = np.multiply(X_test_[:, i_feature], betas[i, i_feature])
+        if not by_feature:
+            # add up the prediction for each of the features as would be done in the matrix multiplication
+            y_pred = y_pred.sum(axis=0)
+    else: #1D prediction, like for the ROI analysis
+        y_pred = np.zeros((n_features, X_test_.shape[0]))
+        for i_feature in range(n_features):
+            y_pred[i_feature, :] = np.multiply(X_test_[:, i_feature], betas[i_feature])
+        if not by_feature:
+            # add up the prediction for each of the features as would be done in the matrix multiplication
+            y_pred = y_pred.sum(axis=0)
+    return y_pred
+
 
 def pca(X_train_, X_test_):
     pca_ = PCA(svd_solver='full', whiten=True)
@@ -71,10 +93,11 @@ def pca(X_train_, X_test_):
 def cross_validated_ridge(X, X_control,
                           y, n_features,
                           splitter,
-                          by_feature=False,
+                          predict_by_feature=False,
                           include_control=False,
                           pca_before_regression=False,
-                          n_conditions=200):
+                          n_conditions=200,
+                          inds=None):
     # Get counts
     if len(y.shape) > 1:
         y = y.T
@@ -85,7 +108,7 @@ def cross_validated_ridge(X, X_control,
     n_conds_per_split = int(n_conditions / n_splits)
 
     # Iterate through the different splits
-    if by_feature:
+    if predict_by_feature:
         y_pred = np.zeros((n_splits, n_features, n_conds_per_split, n_voxels)).squeeze()
     else:
         y_pred = np.zeros((n_splits, n_conds_per_split, n_voxels)).squeeze()
@@ -102,15 +125,13 @@ def cross_validated_ridge(X, X_control,
 
         # new X - combine the annotated features with the nuisance regressors
         if include_control:
+            n_nuissance = X_control.shape[-1]
             X_train = np.hstack((X_train, X_control[train_index]))
-            if not by_feature:
-                X_test = np.hstack((X_test, X_control[test_index]))
+        else:
+            n_nuissance = 0
 
         # Standardize X
-        if by_feature:
-            X_train, X_test = scale_by_feature(X_train, X_test, n_features)
-        else:
-            X_train, X_test = scale(X_train, X_test)
+        X_train, X_test = scale(X_train, X_test)
 
         # Orthogonalize
         if pca_before_regression:
@@ -123,12 +144,15 @@ def cross_validated_ridge(X, X_control,
         model, betas = outer_ridge(X_train, y_train, alpha)
 
         # Prediction
-        if by_feature:
-            y_pred[i, ...] = predict_by_feature(X_test, y_train, betas, n_features)
+        if inds is None:
+            if predict_by_feature:
+                y_pred[i, ...] = predict(X_test, y_train, betas, n_nuissance, by_feature=True)
+            else:
+                y_pred[i, ...] = predict(X_test, y_train, betas, n_nuissance)
         else:
-            y_pred[i, ...] = predict(model, X_test)
+            y_pred[i, ...] = predict_multi_feature(X_test, y_train, betas, inds)
 
-    if by_feature:
+    if predict_by_feature:
         y_pred = np.swapaxes(y_pred, 0, 1).reshape((n_features, n_conditions, n_voxels)).squeeze()
     else:
         y_pred = y_pred.reshape((n_conditions, n_voxels)).squeeze()

@@ -2,6 +2,8 @@
 # coding: utf-8
 
 import argparse
+import glob
+
 import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -27,6 +29,12 @@ def correct(ps_, rs_, p_crit=5e-2):
 
 
 def filter_r(rs, ps):
+    # remove nan
+    indices = np.isnan(rs)
+    rs[indices] = 0
+    ps[indices] = 1
+
+    # correct
     ps, threshold = correct(ps, rs)
     ps = np.invert(ps)
     indices = np.where(ps)[0]
@@ -51,14 +59,12 @@ class PlotVoxelEncoding():
         self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
         self.features = []
         self.feature = args.feature
-        self.separate_features = args.separate_features
-        self.individual_features = args.individual_features
+        self.predict_individual_features = args.predict_individual_features
+        self.model_individual_features = args.model_individual_features
         self.group_features = args.group_features
         self.overall = args.overall
         self.control = args.control
-        self.pca_before_regression = args.pca_before_regression
-        assert np.sum([self.overall, self.group_features, self.separate_features, self.individual_features]) == 1,\
-            "Must select one (and only one) type to plot"
+        self.pca_before_regression = False
         if self.overall:
             self.cmap = sns.color_palette('magma', as_cmap=True)
             self.out_name = 'overall'
@@ -67,14 +73,15 @@ class PlotVoxelEncoding():
             self.cmap = cm.custom_nilearn_cmap()
             self.out_name = 'grouped'
             self.threshold = 1.
-        elif self.separate_features:
-            self.cmap = cm.custom_preference_cmap()
-            self.out_name = 'separate'
-            self.threshold = 1.
-        else: #self.individual_features:
+        elif self.predict_individual_features:
             assert self.feature is not None, "Must define an input feature"
             self.cmap = sns.color_palette('magma', as_cmap=True)
-            self.out_name = f'individual_features/{self.feature}'
+            self.out_name = f'predict_individual_features/{self.feature}'
+            self.threshold = None
+        else: #self.model_individual_features:
+            assert self.feature is not None, "Must define an input feature"
+            self.cmap = sns.color_palette('magma', as_cmap=True)
+            self.out_name = f'model_individual_features/{self.feature}'
             self.threshold = None
         self.figure_dir = f'{args.figure_dir}/{self.process}/{self.control}/{self.out_name}'
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
@@ -93,14 +100,15 @@ class PlotVoxelEncoding():
         return noise_ceiling[inds]
 
     def preference_maps(self, mask, mask_im):
-        rs = np.load(
-            f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy').astype(
-            'bool')
+        name = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy'
+        rs = np.load(name).astype('bool')
 
-        base = f'{self.stat_dir}/sub-{self.sid}_feature-XXX_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
+        base = f'{self.stat_dir}/sub-{self.sid}_model-*_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
+        files = glob.glob(base)
         pred = []
-        for feature in self.features:
-            arr = np.load(base.replace('XXX', feature))
+        for file in files:
+            print(file.split('/')[-1])
+            arr = np.load(file)
             arr = np.expand_dims(arr, axis=1)
             if type(pred) is list:
                 pred = arr
@@ -117,39 +125,31 @@ class PlotVoxelEncoding():
         return nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
 
     def overall_prediction(self, mask, mask_im):
-        rs = np.load(
-            f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy')
-        ps = np.load(
-            f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_ps.npy')
+        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+        rs = np.load(f'{base}_rs.npy')
+        ps = np.load(f'{base}_ps.npy')
 
         # Normalize by noise ceiling
         rs = rs / self.load_noise_ceiling(mask)
         rs, rs_mask, threshold = filter_r(rs, ps)
         self.threshold = threshold
-        np.save(
-            f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy',
-            rs)
-        np.save(
-            f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy',
-            rs_mask)
+        np.save(f'{base}_rs-filtered.npy', rs)
+        np.save(f'{base}_rs-mask.npy', rs_mask)
         return cm.mkNifti(rs, mask, mask_im)
 
-    def individual_feature_prediction(self, mask, mask_im):
-        rs = np.load(
-            f'{self.stat_dir}/sub-{self.sid}_feature-{self.feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy')
-        ps = np.load(
-            f'{self.stat_dir}/sub-{self.sid}_feature-{self.feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}_ps.npy')
+    def individual_features(self, mask, mask_im):
+        if self.predict_individual_features:
+            base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+        else: #self.model_individual_features
+            base = f'{self.stat_dir}/sub-{self.sid}_model-{self.feature}_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+
+        rs = np.load(f'{base}_rs.npy')
+        ps = np.load(f'{base}_ps.npy')
 
         # Filter the r-values, set threshold, and save output
-        rs = rs / self.load_noise_ceiling(mask)
+        # rs = rs / self.load_noise_ceiling(mask)
         rs, rs_mask, threshold = filter_r(rs, ps)
         self.threshold = threshold
-        np.save(
-            f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-filtered.npy',
-            rs)
-        np.save(
-            f'{self.stat_dir}/sub-{self.sid}_feature-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy',
-            rs_mask)
         return cm.mkNifti(rs, mask, mask_im)
 
     def load(self):
@@ -157,21 +157,25 @@ class PlotVoxelEncoding():
         mask = np.load(f'{self.mask_dir}/sub-all_set-test_reliability-mask.npy')
         if self.overall:
             volume = self.overall_prediction(mask, mask_im)
-        elif self.separate_features or self.group_features:
+        elif self.group_features:
             volume = self.preference_maps(mask, mask_im)
         else:
-            volume = self.individual_feature_prediction(mask, mask_im)
+            volume = self.individual_features(mask, mask_im)
+        print(np.nanmax(volume.dataobj))
+        view = plotting.view_img(volume, threshold=0)
+        view.open_in_browser()
         texture = {'left': surface.vol_to_surf(volume, self.fsaverage['pial_left'],
                                                interpolation='nearest'),
                    'right': surface.vol_to_surf(volume, self.fsaverage['pial_right'],
                                                 interpolation='nearest')}
+        print(np.nanmax(texture['right']))
         return volume, texture
 
     def run(self):
         # load reliability files
         self.load_features()
         volume, texture = self.load()
-        if self.overall or self.individual_features:
+        if self.overall or self.model_individual_features or self.predict_individual_features:
             vmax = 1.
             if self.threshold >= vmax:
                 vmax = self.threshold + 0.1
@@ -182,7 +186,7 @@ class PlotVoxelEncoding():
                               cmap=self.cmap,
                               modes=['lateral', 'ventral'],
                               output_file=f'{self.figure_dir}/sub-{self.sid}.png',
-                              threshold=0.1,#self.threshold,
+                              threshold=self.threshold,
                               vmax=vmax)
 
 
@@ -190,15 +194,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--roi_parcel', action='append', default=[])
+    parser.add_argument('--predict_features', '-p', action='append', default=[])
+    parser.add_argument('--model_features', '-m', action='append', default=[])
+    parser.add_argument('--control', type=str, default='conv2')
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--noise_ceiling_set', type=str, default='train')
-    parser.add_argument('--control', type=str, default='conv2')
     parser.add_argument('--feature', type=str, default='None')
-    parser.add_argument('--separate_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--group_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overall', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--individual_features', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--predict_individual_features', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--model_individual_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--mask_dir', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/Reliability')
     parser.add_argument('--annotation_dir', type=str,
