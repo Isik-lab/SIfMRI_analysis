@@ -131,7 +131,7 @@ def cross_validated_ridge(X, X_control,
             n_nuissance = 0
 
         # Standardize X
-        # X_train, X_test = scale(X_train, X_test)
+        X_train, X_test = scale(X_train, X_test)
 
         # Orthogonalize
         if pca_before_regression:
