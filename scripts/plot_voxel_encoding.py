@@ -10,7 +10,7 @@ import pandas as pd
 import nibabel as nib
 from nilearn import datasets, plotting
 from statsmodels.stats.multitest import multipletests
-from src import custom_plotting as cm
+from src import custom_plotting as cp
 from nilearn import surface
 from pathlib import Path
 
@@ -70,7 +70,7 @@ class PlotVoxelEncoding():
             self.out_name = 'overall'
             self.threshold = None
         elif self.group_features:
-            self.cmap = cm.custom_nilearn_cmap()
+            self.cmap = cp.custom_nilearn_cmap()
             self.out_name = 'grouped'
             self.threshold = 1.
         elif self.predict_individual_features:
@@ -120,7 +120,7 @@ class PlotVoxelEncoding():
 
         # Make the preference values into a volume mask
         preference[~rs] = 0
-        volume = cm.mkNifti(preference, mask, mask_im, nii=False)
+        volume = cp.mkNifti(preference, mask, mask_im, nii=False)
         volume = volume.astype('float')
         return nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
 
@@ -135,7 +135,7 @@ class PlotVoxelEncoding():
         self.threshold = threshold
         np.save(f'{base}_rs-filtered.npy', rs)
         np.save(f'{base}_rs-mask.npy', rs_mask)
-        return cm.mkNifti(rs, mask, mask_im)
+        return cp.mkNifti(rs, mask, mask_im)
 
     def individual_features(self, mask, mask_im):
         if self.predict_individual_features:
@@ -150,7 +150,7 @@ class PlotVoxelEncoding():
         # rs = rs / self.load_noise_ceiling(mask)
         rs, rs_mask, threshold = filter_r(rs, ps)
         self.threshold = threshold
-        return cm.mkNifti(rs, mask, mask_im)
+        return cp.mkNifti(rs, mask, mask_im)
 
     def load(self):
         mask_im = nib.load(f'{self.mask_dir}/sub-all_set-test_stat-rho_statmap.nii.gz')
@@ -181,7 +181,7 @@ class PlotVoxelEncoding():
                 vmax = self.threshold + 0.1
         else:
             vmax = None
-        cm.plot_surface_stats(self.fsaverage, texture,
+        cp.plot_surface_stats(self.fsaverage, texture,
                               roi=self.roi_parcel,
                               cmap=self.cmap,
                               modes=['lateral', 'ventral'],

@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 
 from sklearn.decomposition import PCA
-from scipy.stats import zscore
 
 import matplotlib.pyplot as plt
 
@@ -29,7 +28,6 @@ class GenerateModels():
         # AlexNet
         alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy')
         np.save(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{self.set}_avg.npy', alexnet.mean(axis=0))
-        alexnet = zscore(alexnet, axis=-1)
 
         pca = PCA(svd_solver='full', n_components=20)
         alexnet = pca.fit_transform(alexnet.T)
@@ -41,7 +39,6 @@ class GenerateModels():
         # Optical flow
         of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
         np.save(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy', of.mean(axis=1))
-        of = zscore(of, axis=0)
         pca = PCA(svd_solver='full', n_components=20)
         of = pca.fit_transform(of)
 
@@ -64,7 +61,7 @@ class GenerateModels():
         
         model = []
         for feature in features:
-            arr = zscore(df[feature].to_numpy())
+            arr = df[feature].to_numpy()
             arr = np.expand_dims(arr, axis=0)
             if type(model) == list:
                 model = arr.copy()

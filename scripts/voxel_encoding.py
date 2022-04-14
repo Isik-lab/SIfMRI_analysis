@@ -121,7 +121,7 @@ class VoxelEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--s_num', '-s', type=str, default='1')
     parser.add_argument('--layer', '-l', type=str, default=None)
     parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
