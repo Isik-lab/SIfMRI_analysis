@@ -57,8 +57,12 @@ class PlotVoxelEncoding():
         self.mask_dir = args.mask_dir
         self.annotation_dir = args.annotation_dir
         self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
-        self.features = []
-        self.feature = args.feature
+        if len(args.feature) == 1:
+            self.feature = args.feature[0]
+        else:
+            self.feature = ''
+            for feature in args.feature:
+                self.feature += feature.replace(' ', '').capitalize()
         self.predict_individual_features = args.predict_individual_features
         self.model_individual_features = args.model_individual_features
         self.group_features = args.group_features
@@ -70,9 +74,9 @@ class PlotVoxelEncoding():
             self.out_name = 'overall'
             self.threshold = None
         elif self.group_features:
-            self.cmap = cp.custom_nilearn_cmap()
-            self.out_name = 'grouped'
-            self.threshold = 1.
+            self.cmap = sns.color_palette('magma', as_cmap=True)
+            self.out_name = f'grouped_prediction/{self.feature}'
+            self.threshold = None
         elif self.predict_individual_features:
             assert self.feature is not None, "Must define an input feature"
             self.cmap = sns.color_palette('magma', as_cmap=True)
@@ -95,34 +99,48 @@ class PlotVoxelEncoding():
     def load_noise_ceiling(self, mask):
         noise_ceiling = np.load(f'{self.mask_dir}/sub-{self.sid}_set-{self.noise_ceiling_set}_stat-rho_statmap.npy')
         inds = np.where(noise_ceiling < 0.)[0]
-        noise_ceiling[inds] = 0.
+        noise_ceiling[inds] = np.nan
         inds = np.where(mask)[0]
-        return noise_ceiling[inds]
+        noise_ceiling = noise_ceiling[inds]
+        print(np.nanmin(noise_ceiling))
+        return noise_ceiling
 
-    def preference_maps(self, mask, mask_im):
-        name = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy'
-        rs = np.load(name).astype('bool')
+    # def preference_maps(self, mask, mask_im):
+    #     # name = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy'
+    #     # rs = np.load(name).astype('bool')
+    #
+    #     base = f'{self.stat_dir}/sub-{self.sid}_model-*_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
+    #     files = glob.glob(base)
+    #     pred = []
+    #     for file in files:
+    #         arr = np.load(file)
+    #         arr = np.expand_dims(arr, axis=1)
+    #         if type(pred) is list:
+    #             pred = arr
+    #         else:
+    #             pred = np.hstack([pred, arr])
+    #     preference = np.argmax(pred, axis=1)
+    #     # Make the argmax indexed at 1
+    #     preference += 1
+    #
+    #     # Make the preference values into a volume mask
+    #     preference[~rs] = 0
+    #     volume = cp.mkNifti(preference, mask, mask_im, nii=False)
+    #     volume = volume.astype('float')
+    #     return nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
 
-        base = f'{self.stat_dir}/sub-{self.sid}_model-*_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
-        files = glob.glob(base)
-        pred = []
-        for file in files:
-            print(file.split('/')[-1])
-            arr = np.load(file)
-            arr = np.expand_dims(arr, axis=1)
-            if type(pred) is list:
-                pred = arr
-            else:
-                pred = np.hstack([pred, arr])
-        preference = np.argmax(pred, axis=1)
-        # Make the argmax indexed at 1
-        preference += 1
+    def grouped_prediction(self, mask, mask_im):
+        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+        rs = np.load(f'{base}_rs.npy')
+        ps = np.load(f'{base}_ps.npy')
 
-        # Make the preference values into a volume mask
-        preference[~rs] = 0
-        volume = cp.mkNifti(preference, mask, mask_im, nii=False)
-        volume = volume.astype('float')
-        return nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
+        # Normalize by noise ceiling
+        rs = rs / self.load_noise_ceiling(mask)
+        rs, rs_mask, threshold = filter_r(rs, ps)
+        self.threshold = threshold
+        np.save(f'{base}_rs-filtered.npy', rs)
+        np.save(f'{base}_rs-mask.npy', rs_mask)
+        return cp.mkNifti(rs, mask, mask_im)
 
     def overall_prediction(self, mask, mask_im):
         base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
@@ -147,23 +165,23 @@ class PlotVoxelEncoding():
         ps = np.load(f'{base}_ps.npy')
 
         # Filter the r-values, set threshold, and save output
-        # rs = rs / self.load_noise_ceiling(mask)
+        rs = rs / self.load_noise_ceiling(mask)
         rs, rs_mask, threshold = filter_r(rs, ps)
         self.threshold = threshold
         return cp.mkNifti(rs, mask, mask_im)
 
     def load(self):
-        mask_im = nib.load(f'{self.mask_dir}/sub-all_set-test_stat-rho_statmap.nii.gz')
-        mask = np.load(f'{self.mask_dir}/sub-all_set-test_reliability-mask.npy')
+        mask_im = nib.load(f'{self.mask_dir}/sub-{self.sid}_set-test_stat-rho_statmap.nii.gz')
+        mask = np.load(f'{self.mask_dir}/sub-{self.sid}_set-test_reliability-mask.npy')
         if self.overall:
             volume = self.overall_prediction(mask, mask_im)
         elif self.group_features:
-            volume = self.preference_maps(mask, mask_im)
+            volume = self.grouped_prediction(mask, mask_im)
         else:
             volume = self.individual_features(mask, mask_im)
         print(np.nanmax(volume.dataobj))
-        view = plotting.view_img(volume, threshold=0)
-        view.open_in_browser()
+        # view = plotting.view_img(volume, threshold=0)
+        # view.open_in_browser()
         texture = {'left': surface.vol_to_surf(volume, self.fsaverage['pial_left'],
                                                interpolation='nearest'),
                    'right': surface.vol_to_surf(volume, self.fsaverage['pial_right'],
@@ -175,12 +193,10 @@ class PlotVoxelEncoding():
         # load reliability files
         self.load_features()
         volume, texture = self.load()
-        if self.overall or self.model_individual_features or self.predict_individual_features:
-            vmax = 1.
-            if self.threshold >= vmax:
-                vmax = self.threshold + 0.1
+        if self.threshold >= 1.:
+            vmax = self.threshold + 0.1
         else:
-            vmax = None
+            vmax = 1.
         cp.plot_surface_stats(self.fsaverage, texture,
                               roi=self.roi_parcel,
                               cmap=self.cmap,
@@ -194,12 +210,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--roi_parcel', action='append', default=[])
-    parser.add_argument('--predict_features', '-p', action='append', default=[])
-    parser.add_argument('--model_features', '-m', action='append', default=[])
     parser.add_argument('--control', type=str, default='conv2')
     parser.add_argument('--mesh', type=str, default='fsaverage5')
     parser.add_argument('--noise_ceiling_set', type=str, default='train')
-    parser.add_argument('--feature', type=str, default='None')
+    parser.add_argument('--feature', '-p', action='append', default=[])
     parser.add_argument('--group_features', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overall', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--predict_individual_features', action=argparse.BooleanOptionalAction, default=False)

@@ -72,7 +72,9 @@ class VoxelEncoding:
         else:
             pred_indices = None
 
-        print(X.shape)
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_{self.regress_name}_{self.predict_name}_control-{self.control_name}_pca-{self.pca_before_regression}'
+        print(base)
+
         # Get the feature names for the annotated model
         features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv').columns.to_list()
         features.remove('video_name')
@@ -93,7 +95,7 @@ class VoxelEncoding:
             beta_map /= self.n_subjs
         else:
             beta_map = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_train-data.npy')
-        mask = np.load(f'{self.out_dir}/Reliability/sub-all_set-test_reliability-mask.npy')
+        mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_set-test_reliability-mask.npy')
         indices = np.where(mask)[0]
         print(len(indices))
         beta_map = beta_map[indices, :]
@@ -112,7 +114,6 @@ class VoxelEncoding:
         # Save the outputs of the code
         print('Saving outputs')
         start = time.time()
-        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_{self.regress_name}_{self.predict_name}_control-{self.control_name}_pca-{self.pca_before_regression}'
         np.save(f'{base}_y_true.npy', y_true)
         np.save(f'{base}_y_pred.npy', y_pred)
         np.save(f'{base}_indices.npy', indices)
@@ -121,7 +122,7 @@ class VoxelEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=str, default='1')
+    parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--layer', '-l', type=str, default=None)
     parser.add_argument('--set', type=str, default='train')
     parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
