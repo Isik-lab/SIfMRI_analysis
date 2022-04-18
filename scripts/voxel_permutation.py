@@ -35,6 +35,8 @@ class VoxelPermutation():
     def save_perm_results(self, r_true, p, r_null):
         print('Saving output')
         base = f'{self.out_dir}/{self.process}/{self.y_pred}'
+        if 'predict-features' in self.y_pred:
+            base = base.replace('predict-features', f'predict-{self.pred_feature}')
         np.save(base.replace('y_pred', 'rs'), r_true)
         np.save(base.replace('y_pred', 'ps'), p)
         np.save(base.replace('y_pred', 'r_null'), r_null)
