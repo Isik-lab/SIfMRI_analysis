@@ -106,10 +106,10 @@ class PlotVoxelEncoding():
         return noise_ceiling
 
     # def preference_maps(self, mask, mask_im):
-    #     # name = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs-mask.npy'
+    #     # name = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca-{self.pca_before_regression}_rs-mask.npy'
     #     # rs = np.load(name).astype('bool')
     #
-    #     base = f'{self.stat_dir}/sub-{self.sid}_model-*_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}_rs.npy'
+    #     base = f'{self.stat_dir}/sub-{self.sid}_model-*_predict-all_control-{self.control}_pca-{self.pca_before_regression}_rs.npy'
     #     files = glob.glob(base)
     #     pred = []
     #     for file in files:
@@ -130,7 +130,7 @@ class PlotVoxelEncoding():
     #     return nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
 
     def grouped_prediction(self, mask, mask_im):
-        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca-{self.pca_before_regression}'
         rs = np.load(f'{base}_rs.npy')
         ps = np.load(f'{base}_ps.npy')
 
@@ -143,7 +143,7 @@ class PlotVoxelEncoding():
         return cp.mkNifti(rs, mask, mask_im)
 
     def overall_prediction(self, mask, mask_im):
-        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca-{self.pca_before_regression}'
         rs = np.load(f'{base}_rs.npy')
         ps = np.load(f'{base}_ps.npy')
 
@@ -157,9 +157,9 @@ class PlotVoxelEncoding():
 
     def individual_features(self, mask, mask_im):
         if self.predict_individual_features:
-            base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+            base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca-{self.pca_before_regression}'
         else: #self.model_individual_features
-            base = f'{self.stat_dir}/sub-{self.sid}_model-{self.feature}_predict-all_control-{self.control}_pca_before_regression-{self.pca_before_regression}'
+            base = f'{self.stat_dir}/sub-{self.sid}_model-{self.feature}_predict-all_control-{self.control}_pca-{self.pca_before_regression}'
 
         rs = np.load(f'{base}_rs.npy')
         ps = np.load(f'{base}_ps.npy')

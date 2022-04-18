@@ -190,6 +190,7 @@ def roi_paths(hemi):
     topdir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw/group_parcels/'
     d['STS'] = f'{topdir}/BenDeen_fROIs/{h}STS.nii.gz'
     d['STS'] = f'{topdir}/BenDeen_fROIs/{h}STS.nii.gz'
+    d['pSTS'] = f'{topdir}/rPSTS_SI_parcel/SocialInteract_rpSTS_vol.nii.gz'
     d['LOC'] = f'{topdir}/kanwisher_gss/object_parcels/{h}LOC.img'
     d['PPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}PPA.img'
     d['OPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}TOS.img'
@@ -206,13 +207,14 @@ def roi_paths(hemi):
 
 def load_parcellation(fsaverage, roi, hemi):
     paths = roi_paths(hemi)
-    vol = nib.load(paths[roi])
-    parcellation = surface.vol_to_surf(vol, fsaverage[f'pial_{hemi}'], interpolation='nearest')
-    if roi != 'PPA':
-        parcellation[parcellation > 0.5] = 1
+    if roi == 'pSTS' and hemi == 'left':
+        parcellation = None
     else:
+        vol = nib.load(paths[roi])
+        parcellation = surface.vol_to_surf(vol, fsaverage[f'pial_{hemi}'], interpolation='nearest')
         parcellation[parcellation != 0] = 1
-    return parcellation.astype('int')
+        parcellation.astype('int')
+    return parcellation
 
 
 def plot_surface_stats(fsaverage, texture,
@@ -253,11 +255,11 @@ def plot_surface_stats(fsaverage, texture,
 
         if roi:
             for r in roi:
-                print(r)
                 parcellation = load_parcellation(fsaverage, r, hemi)
-                plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[r],
-                                   levels=[1], axes=ax, legend=False,
-                                   colors=['lightgreen'])
+                if parcellation is not None:
+                    plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[r],
+                                       levels=[1], axes=ax, legend=False,
+                                       colors=['white'])
         # We increase this value to better position the camera of the
         # 3D projection plot. The default value makes meshes look too small.
         ax.dist = 7
