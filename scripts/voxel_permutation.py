@@ -41,7 +41,7 @@ class VoxelPermutation():
 
     def run(self):
         if 'predict-features' in self.y_pred:
-            # y_true, y_pred, test_inds = self.load_by_feature()
+            y_true, y_pred, test_inds = self.load_by_feature()
             print('not completing by feature prediction')
         else:
             y_true, y_pred, test_inds = self.load()
