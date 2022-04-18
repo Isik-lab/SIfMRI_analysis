@@ -36,6 +36,9 @@ def scale(X_train_, X_test_):
 
 
 def get_feature_inds(filter_features):
+    if filter_features is str:
+        filter_features = [filter_features]
+
     features = ['indoor', 'expanse', 'transitivity', 'agent distance',
                 'facingness', 'joint action', 'communication', 'cooperation', 'dominance',
                 'intimacy', 'valence', 'arousal']
