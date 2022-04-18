@@ -6,11 +6,11 @@ for f in $FILES; do
   if [[ "$f" == *"predict-features"* ]]
   then
     for feature in "${features[@]}"; do
-      source sbatch_permutation.sh "$f" "$feature"
+      sbatch sbatch_permutation.sh "$f" "$feature"
       echo sbatch_permutation.sh "$f" "$feature"
     done
   else
-    source sbatch_permutation.sh "$f"
+    sbatch sbatch_permutation.sh "$f"
     echo sbatch_permutation.sh "$f"
   fi
 done
