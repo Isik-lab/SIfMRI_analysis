@@ -8,6 +8,7 @@
 
 file=$1
 feature="$2"
+
 ml anaconda
 conda activate nibabel
 
