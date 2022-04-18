@@ -41,7 +41,9 @@ def get_feature_inds(filter_features):
                 'intimacy', 'valence', 'arousal']
     inds = []
     for f in filter_features:
-        inds.append(features.index(f))
+        ind = features.index(f)
+        print(ind)
+        inds.append(ind)
     return inds
 
 
