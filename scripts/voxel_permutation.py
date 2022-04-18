@@ -14,6 +14,7 @@ class VoxelPermutation():
         if '/' in self.y_pred:
             self.y_pred = self.y_pred.split('/')[-1]
         self.pred_feature = args.pred_feature
+        print(self.pred_feature)
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
