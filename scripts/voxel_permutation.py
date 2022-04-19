@@ -23,8 +23,8 @@ class VoxelPermutation():
     def load(self):
         base = f'{self.out_dir}/VoxelEncoding/{self.y_pred}'
         pred = np.load(base)
-        true = np.load(base.replace('y_pred', 'y_true'))
-        indices = np.load(base.replace('y_pred', 'indices'))
+        true = np.load(base.replace('_y_pred', '_y_true'))
+        indices = np.load(base.replace('_y_pred', '_indices'))
         return true, pred, indices
 
     def load_by_feature(self):
@@ -37,9 +37,9 @@ class VoxelPermutation():
         base = f'{self.out_dir}/{self.process}/{self.y_pred}'
         if 'predict-features' in self.y_pred:
             base = base.replace('predict-features', f'predict-{self.pred_feature}')
-        np.save(base.replace('y_pred', 'rs'), r_true)
-        np.save(base.replace('y_pred', 'ps'), p)
-        np.save(base.replace('y_pred', 'r_null'), r_null)
+        np.save(base.replace('_y_pred', '_rs'), r_true)
+        np.save(base.replace('_y_pred', '_ps'), p)
+        np.save(base.replace('_y_pred', '_r_null'), r_null)
         print('Completed successfully!')
 
     def run(self):
