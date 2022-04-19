@@ -63,7 +63,7 @@ def permutation_test_2d(a, b, test_inds=None,
         p = np.sum(np.abs(r_null) >= np.abs(r_true), axis=0) / n_perm
     elif H0 == 'greater':
         p = 1 - (np.sum(r_true >= r_null, axis=0) / n_perm)
-    elif H0 == 'less':
+    else:# H0 == 'less':
         p = 1 - (np.sum(r_true <= r_null, axis=0) / n_perm)
 
     p[np.isnan(r_true)] = np.NaN

@@ -56,9 +56,8 @@ def predict_multi_feature(X_test_, y_train_, betas, inds):
     if len(betas.shape) > 1:
         # Make the prediction for each voxel
         y_pred = np.zeros((n_features, X_test_.shape[0], y_train_.shape[-1]))
-        for i_voxel in range(y_train_.shape[-1]):
-            for count, i_feature in enumerate(inds):
-                y_pred[count, :, i_voxel] = np.multiply(X_test_[:, i_feature], betas[i_voxel, i_feature])
+        for count, i_feature in enumerate(inds):
+            y_pred[count, :, :] = X_test_[:, i_feature:i_feature+1] @ betas[:, i_feature:i_feature+1].T
         # add up the prediction for each of the features as would be done in the matrix multiplication
         y_pred = y_pred.sum(axis=0)
     else: #1D prediction, like for the ROI analysis
@@ -75,9 +74,8 @@ def predict(X_test_, y_train_, betas, n_nuisance=40, by_feature=False):
     if len(betas.shape) > 1:
         # Make the prediction for each voxel
         y_pred = np.zeros((n_features, X_test_.shape[0], y_train_.shape[-1]))
-        for i_voxel in range(y_train_.shape[-1]):
-            for i_feature in range(n_features):
-                y_pred[i_feature, :, i_voxel] = np.multiply(X_test_[:, i_feature], betas[i_voxel, i_feature])
+        for i_feature in range(n_features):
+            y_pred[i_feature, :, :] = X_test_[:, i_feature:i_feature+1] @ betas[:, i_feature:i_feature+1].T
         if not by_feature:
             # add up the prediction for each of the features as would be done in the matrix multiplication
             y_pred = y_pred.sum(axis=0)
@@ -137,7 +135,7 @@ def cross_validated_ridge(X, X_control,
             n_nuissance = 0
 
         # Standardize X
-        X_train, X_test = scale(X_train, X_test)
+        # X_train, X_test = scale(X_train, X_test)
 
         # Orthogonalize
         if pca_before_regression:
