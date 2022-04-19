@@ -1,6 +1,7 @@
 #get files
 FILES="../data/interim/VoxelEncoding/*y_pred.npy"
-features=( "indoor" "expanse" "agent distance" "facingness" "transitivity" "joint action" "communication" "cooperation" "dominance" "intimacy" "valence" "arousal" )
+#features=( "indoor" "expanse" "agent distance" "facingness" "transitivity" "joint action" "communication" "cooperation" "dominance" "intimacy" "valence" "arousal" )
+features=( "transitivity" "intimacy" )
 
 for f in $FILES; do
   if [[ "$f" == *"predict-features"* ]]
