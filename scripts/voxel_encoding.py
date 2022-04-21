@@ -87,7 +87,7 @@ class VoxelEncoding:
         if self.sid == 'all':
             beta_map = None
             for i in range(self.n_subjs):
-                sid = str(i+1).zfill(2)
+                sid = str(i + 1).zfill(2)
                 if beta_map is None:
                     beta_map = np.load(f'{self.out_dir}/GroupRuns/sub-{sid}/sub-{sid}_train-data.npy')
                 else:
@@ -103,12 +103,12 @@ class VoxelEncoding:
         # Run the regression and print out the timing
         print('Starting regression')
         start = time.time()
-        y_true, y_pred, indices = regress.cross_validated_ridge(X, control_model, beta_map,
-                                                                n_features, kf,
-                                                                include_control=self.include_control,
-                                                                predict_by_feature=self.predict_by_feature,
-                                                                pca_before_regression=self.pca_before_regression,
-                                                                inds=pred_indices)
+        y_true, y_pred, indices, betas = regress.cross_validated_ridge(X, control_model, beta_map,
+                                                                       n_features, kf,
+                                                                       include_control=self.include_control,
+                                                                       predict_by_feature=self.predict_by_feature,
+                                                                       pca_before_regression=self.pca_before_regression,
+                                                                       inds=pred_indices)
         print(f'Finished regression in {(time.time() - start) / 60:.2f} minutes')
 
         # Save the outputs of the code
@@ -117,16 +117,17 @@ class VoxelEncoding:
         np.save(f'{base}_y_true.npy', y_true)
         np.save(f'{base}_y_pred.npy', y_pred)
         np.save(f'{base}_indices.npy', indices)
+        np.save(f'{base}_betas.npy', betas)
         print(f'Finished saving in {(time.time() - start) / 60:.2f} minutes')
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=str, default="1")
-    parser.add_argument('--layer', '-l', type=str, default="2")
+    parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--layer', '-l', type=str, default=None)
     parser.add_argument('--set', type=str, default='train')
-    parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--predict_by_feature', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--include_control', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--predict_by_feature', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--pca_before_regression', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--model_by_feature', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--predict_grouped_features', action=argparse.BooleanOptionalAction, default=False)

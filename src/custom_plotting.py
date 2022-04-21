@@ -7,7 +7,7 @@ import itertools
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from nilearn import plotting, surface
-from nilearn.plotting import plot_surf_roi, plot_surf_contours
+from nilearn.plotting import plot_surf_roi, plot_surf_contours, plot_surf_stat_map
 import nibabel as nib
 import seaborn as sns
 
@@ -109,13 +109,14 @@ def custom_pca_cmap(n):
     cmap.colors = tuple(out_colors)
     return cmap
 
+
 def custom_preference_cmap():
-    palette = [[0.95703125, 0.86328125, 0.25], #mustard
-               [0.57421875, 0.51796875, 0.15], #mustard
-               [0.8515625, 0.32421875, 0.35546875], #red
-               [0.51953125, 0.34375, 0.953125], #purple
-               [0.31171875, 0.20625, 0.571875], #purple
-               [0.44921875, 0.8203125, 0.87109375], #cyan
+    palette = [[0.95703125, 0.86328125, 0.25],  # mustard
+               [0.57421875, 0.51796875, 0.15],  # mustard
+               [0.8515625, 0.32421875, 0.35546875],  # red
+               [0.51953125, 0.34375, 0.953125],  # purple
+               [0.31171875, 0.20625, 0.571875],  # purple
+               [0.44921875, 0.8203125, 0.87109375],  # cyan
                [0.35938, 0.65625, 0.69688],
                [0.2875, 0.525, 0.5575],
                [0.23, 0.42, 0.446],
@@ -217,6 +218,75 @@ def load_parcellation(fsaverage, roi, hemi):
     return parcellation
 
 
+def plot_betas(fsaverage, texture,
+               roi=None,
+               title=None,
+               modes=['lateral', 'medial', 'ventral'],
+               hemis=['left', 'right'],
+               cmap=None, threshold=0.01,
+               output_file=None, colorbar=True,
+               vmax=None, kwargs={}):
+    cbar_h = .25
+    title_h = .25 * (title is not None)
+    # Set the aspect ratio, but then make the figure twice as big to increase resolution
+    w, h = plt.figaspect((len(modes) + cbar_h + title_h) / len(hemis)) * 2
+    fig = plt.figure(figsize=(w, h), constrained_layout=False)
+    height_ratios = [title_h] + [1.] * len(modes) + [cbar_h]
+    grid = gridspec.GridSpec(
+        len(modes) + 2, len(hemis),
+        left=0., right=1., bottom=0., top=1.,
+        height_ratios=height_ratios, hspace=0.0, wspace=0.0)
+    axes = []
+    for i, (mode, hemi) in enumerate(itertools.product(modes, hemis)):
+        bg_map = fsaverage['sulc_%s' % hemi]
+
+        ax = fig.add_subplot(grid[i + len(hemis)], projection="3d")
+        axes.append(ax)
+        plot_surf_stat_map(surf_mesh=fsaverage[f'infl_{hemi}'],
+                           stat_map=texture[hemi],
+                           view=mode, hemi=hemi,
+                           bg_map=bg_map,
+                           alpha=1.,
+                           axes=ax,
+                           colorbar=False,  # Colorbar created externally.
+                           vmax=vmax,
+                           threshold=threshold,
+                           cmap=cmap,
+                           symmetric_cbar=True,
+                           **kwargs)
+
+        if roi:
+            for r in roi:
+                parcellation = load_parcellation(fsaverage, r, hemi)
+                if parcellation is not None:
+                    plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[r],
+                                       levels=[1], axes=ax, legend=False,
+                                       colors=['white'])
+        # We increase this value to better position the camera of the
+        # 3D projection plot. The default value makes meshes look too small.
+        ax.dist = 7
+
+    if colorbar:
+        array = np.hstack((texture['left'], texture['right']))
+        sm, vmax = _colorbar_from_array(array, threshold, cmap, vmax)
+
+        cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
+        cbar_ax = fig.add_subplot(cbar_grid[1])
+        axes.append(cbar_ax)
+        # ticks = np.arange(start=threshold, stop=vmax + 1, step=1, dtype='int')
+        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+        # for t, i in zip(cbar.ax.get_xticklabels(), ticks):
+        #     t.set_label(f'PC{i}')
+        #     t.set_fontsize(30)
+
+    if title is not None:
+        fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
+
+    if output_file is not None:
+        fig.savefig(output_file, bbox_inches="tight")
+        plt.close(fig)
+
+
 def plot_surface_stats(fsaverage, texture,
                        roi=None,
                        title=None,
@@ -276,7 +346,6 @@ def plot_surface_stats(fsaverage, texture,
         for t, i in zip(cbar.ax.get_xticklabels(), ticks):
             t.set_label(f'PC{i}')
             t.set_fontsize(30)
-
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
