@@ -14,12 +14,12 @@ conda activate nibabel
 
 if [ -z "$feature" ]; then
   echo "no feature defined"
-  python voxel_permutation.py --y_pred "$file" \
+  python voxel_permutation_test.py --y_pred "$file" \
     --out_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim \
     --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw
 else
   echo "$feature defined"
-  python voxel_permutation.py --y_pred "$file" --pred_feature "$feature" \
+  python voxel_permutation_test.py --y_pred "$file" --pred_feature "$feature" \
     --out_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim \
     --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw
 fi

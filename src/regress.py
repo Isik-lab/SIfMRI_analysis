@@ -26,13 +26,14 @@ def outer_ridge(X_train_, y_train_, alpha):
     return lr, lr.coef_
 
 
-def scale(X_train_, X_test_):
-    n_features = X_test_.shape[-1]
+def scale(train_, test_):
+    n_features = test_.shape[-1]
     scaler = StandardScaler()
-    X_train_ = scaler.fit_transform(X_train_)
+    train_ = scaler.fit_transform(train_)
     mean = scaler.mean_[:n_features].squeeze()
     var = scaler.var_[:n_features].squeeze()
-    return X_train_, (X_test_ - mean) / var
+    var[np.isclose(var, 0.)] = np.nan
+    return train_, (test_ - mean) / var
 
 
 def get_feature_inds(filter_features):
@@ -100,6 +101,7 @@ def pca(X_train_, X_test_):
     X_train_ = pca_.fit_transform(X_train_)
     return X_train_, pca_.transform(X_test_)
 
+
 def cross_validated_ridge(X, X_control,
                           y, n_features,
                           splitter,
@@ -133,10 +135,6 @@ def cross_validated_ridge(X, X_control,
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
-        # save the current indices
-        test_indices[i, ...] = test_index
-        y_true[i, ...] = y_test
-
         # new X - combine the annotated features with the nuisance regressors
         if include_control:
             n_nuissance = X_control.shape[-1]
@@ -144,8 +142,13 @@ def cross_validated_ridge(X, X_control,
         else:
             n_nuissance = 0
 
-        # Standardize X
+        # Standardize data
         X_train, X_test = scale(X_train, X_test)
+        y_train, y_test = scale(y_train, y_test)
+
+        # save the current indices
+        test_indices[i, ...] = test_index
+        y_true[i, ...] = y_test
 
         # Orthogonalize
         if pca_before_regression:
@@ -178,7 +181,8 @@ def cross_validated_ridge(X, X_control,
     return y_true, y_pred, test_indices, betas.mean(axis=0)
 
 
-def ridge(X_train, X_control, X_test, y_train,
+def ridge(X_train, X_control, X_test,
+          y_train, y_test,
           include_control=False,
           predict_by_feature=False,
           inds=None):
@@ -189,11 +193,13 @@ def ridge(X_train, X_control, X_test, y_train,
     else:
         n_nuissance = 0
 
-    # Standardize X
+    # Standardize data
     X_train, X_test = scale(X_train, X_test)
+    y_train, y_test = scale(y_train, y_test)
 
     # Find alpha
     alpha = inner_ridge(X_train, y_train)
+    print(alpha)
 
     # Fit the regression
     model, betas = outer_ridge(X_train, y_train, alpha)
@@ -206,4 +212,4 @@ def ridge(X_train, X_control, X_test, y_train,
             y_pred, betas = predict(X_test, y_train, model.coef_, n_nuissance)
     else:
         y_pred, betas = predict_multi_feature(X_test, y_train, model.coef_, inds)
-    return y_pred, model.coef_
+    return y_pred, y_test, model.coef_

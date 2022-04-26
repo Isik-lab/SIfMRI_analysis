@@ -30,30 +30,35 @@ class GenerateModels():
         np.save(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{self.set}_avg.npy', alexnet.mean(axis=0))
 
         pca = PCA(svd_solver='full', n_components=20)
-        alexnet = pca.fit_transform(alexnet.T)
+        alexnet_pcs = pca.fit_transform(alexnet.T)
 
         _, ax = plt.subplots()
+        pca = PCA(svd_solver='full')
+        pca.fit(alexnet.T)
         ax.plot(pca.explained_variance_ratio_.cumsum())
         plt.savefig(f'{self.figure_dir}/alexnet_conv{self.layer}_set-{self.set}_pcs.pdf')
         
-        # Optical flow
+        # Motion energy
         of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
         np.save(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy', of.mean(axis=1))
         pca = PCA(svd_solver='full', n_components=20)
-        of = pca.fit_transform(of)
+        of_pcs = pca.fit_transform(of)
 
         _, ax = plt.subplots()
+        pca = PCA(svd_solver='full')
+        pca.fit(of)
         ax.plot(pca.explained_variance_ratio_.cumsum())
         plt.savefig(f'{self.figure_dir}/motion_energy_set-{self.set}_pcs.pdf')
         
         # Combine
-        control_model = np.concatenate((alexnet, of), axis=-1)
+        control_model = np.concatenate((alexnet_pcs, of_pcs), axis=-1)
         np.save(f'{self.out_dir}/{self.process}/control_model_conv{self.layer}_set-{self.set}.npy', control_model)
     
     def annotated_model(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
-        df = df.merge(train)
+        set_names = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
+        df = df.merge(set_names)
+        print(df.head())
         df.sort_values(by=['video_name'], inplace=True)
         features = df.columns.to_list()
         features.remove('video_name')

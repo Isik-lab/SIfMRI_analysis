@@ -23,7 +23,6 @@ def mantel_permutation(a, i):
     a_shuffle = a[inds][:, inds]
     return squareform(a_shuffle)
 
-
 def permutation_test(a, b, test_inds=None,
                      n_perm=int(5e3), H0='greater',
                      rsa=False):
@@ -53,8 +52,11 @@ def permutation_test_2d(a, b, test_inds=None,
     r_true = corr2d(a, b)
     r_null = np.zeros((n_perm, a.shape[-1]))
     for i in tqdm(range(n_perm), total=n_perm):
-        inds = np.random.default_rng(i).permutation(test_inds.shape[1])
-        inds = test_inds[:, inds].flatten()
+        if test_inds is not None:
+            inds = np.random.default_rng(i).permutation(test_inds.shape[1])
+            inds = test_inds[:, inds].flatten()
+        else:
+            inds = np.random.default_rng(i).permutation(a.shape[0])
         a_shuffle = a[inds, :]
         r_null[i, :] = corr2d(a_shuffle, b)
 

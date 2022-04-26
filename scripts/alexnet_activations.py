@@ -28,9 +28,9 @@ def combine(X, combination=None):
             X = X.max(axis=(X.ndim-2, X.ndim-1))
     return X.flatten()
 
-def preprocess(image_fname, resize=224):
+def preprocess(image_fname, resize=256):
     center_crop = trn.Compose([
-        trn.Resize((resize, resize)), #(256, 256)
+        trn.Resize((resize, resize)),
         #trn.CenterCrop(crop),
         trn.ToTensor(),
         trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -116,7 +116,7 @@ class AlexNetActivations():
                 cur_act.append(feature_extractor.forward(input_img, layer=self.layer, combination=None))
             activation.append(np.array(cur_act).mean(axis=0))
         activation = np.array(activation).T
-        np.save(f'{self.out_dir}/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy',activation)
+        np.save(f'{self.out_dir}/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy', activation)
 
 def main():
     parser = argparse.ArgumentParser()
