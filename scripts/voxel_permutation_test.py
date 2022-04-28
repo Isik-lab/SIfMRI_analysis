@@ -11,6 +11,8 @@ class VoxelPermutationTest():
     def __init__(self, args):
         self.process = 'VoxelPermutationTest'
         self.model = args.model
+        if '_' in self.model:
+            self.model.replace('_', ' ')
         self.sid = str(args.s_num).zfill(2)
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
