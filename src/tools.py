@@ -47,8 +47,10 @@ def permutation_test(a, b, test_inds=None,
 
     return r_true, p, r_null
 
-def permutation_test_2d(a, b, test_inds=None,
-                     n_perm=int(5e3), H0='greater'):
+def permutation_test_2d(a, b,
+                        test_inds=None,
+                        n_perm=int(5e3),
+                        H0='greater'):
     r_true = corr2d(a, b)
     r_null = np.zeros((n_perm, a.shape[-1]))
     for i in tqdm(range(n_perm), total=n_perm):
@@ -64,12 +66,9 @@ def permutation_test_2d(a, b, test_inds=None,
     if H0 == 'two_tailed':
         p = np.sum(np.abs(r_null) >= np.abs(r_true), axis=0) / n_perm
     elif H0 == 'greater':
-        p = 1 - (np.sum(r_true >= r_null, axis=0) / n_perm)
+        p = 1 - (np.sum(r_true > r_null, axis=0) / n_perm)
     else:# H0 == 'less':
-        p = 1 - (np.sum(r_true <= r_null, axis=0) / n_perm)
-
-    p[np.isnan(r_true)] = np.NaN
-    r_null[:, np.isnan(r_true)] = np.NaN
+        p = 1 - (np.sum(r_true < r_null, axis=0) / n_perm)
     return r_true, p, r_null
 
 def bootstrap(a, b, test_inds, n_samples=int(5e3)):

@@ -6,20 +6,12 @@
 #SBATCH --cpus-per-task=18
 #SBATCH --mail-type=end
 
-file=$1
-feature=$2
+subj=$1
+model=$2
 
 ml anaconda
 conda activate nibabel
 
-if [ -z "$feature" ]; then
-  echo "no feature defined"
-  python voxel_permutation_test.py --y_pred "$file" \
-    --out_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim \
-    --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw
-else
-  echo "$feature defined"
-  python voxel_permutation_test.py --y_pred "$file" --pred_feature "$feature" \
-    --out_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim \
-    --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw
-fi
+python voxel_permutation_test.py -s "$subj" -m "model" \
+  --out_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim \
+  --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw

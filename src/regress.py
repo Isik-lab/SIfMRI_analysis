@@ -205,12 +205,11 @@ def ridge(X_train, X_control, X_test,
     model, betas = outer_ridge(X_train, y_train, alpha)
 
     # Prediction
-    y_pred = model.predict(X_test)
-    # if inds is None:
-    #     if predict_by_feature:
-    #         y_pred, betas = predict(X_test, y_train, model.coef_, n_nuissance, by_feature=True)
-    #     else:
-    #         y_pred, betas = predict(X_test, y_train, model.coef_, n_nuissance)
-    # else:
-    #     y_pred, betas = predict_multi_feature(X_test, y_train, model.coef_, inds)
+    if inds is None:
+        if predict_by_feature:
+            y_pred, betas = predict(X_test, y_train, model.coef_, n_nuissance, by_feature=True)
+        else:
+            y_pred, betas = predict(X_test, y_train, model.coef_, n_nuissance)
+    else:
+        y_pred, betas = predict_multi_feature(X_test, y_train, model.coef_, inds)
     return y_pred, y_test, model.coef_

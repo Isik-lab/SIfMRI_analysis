@@ -4,7 +4,6 @@
 import argparse
 import time
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from src import regress
 
@@ -50,39 +49,38 @@ class VoxelEncodingTest:
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
 
-    def mask_neural(self, set):
-        mask = np.load(f'{self.out_dir}/Reliability/sub-all_set-test_reliability-mask.npy')
+    def load_neural(self, set):
         path = f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_{set}-data.npy'
-        beta_map = np.load(path)
-        indices = np.where(mask)[0]
-        return beta_map[indices, :].T
+        return np.load(path)
+
+    def combine_mask_sd(self, a, b):
+        mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_set-train_reliability-mask.npy').astype('bool')
+        a_sd = np.invert(np.isclose(a.std(axis=0), 0.))
+        b_sd = np.invert(np.isclose(b.std(axis=0), 0.))
+        arr = np.vstack([mask, a_sd, b_sd])
+        mask = np.all(arr, axis=0)
+        np.save(f'{self.out_dir}/Reliability/sub-{self.sid}_set-combined_reliability-mask.npy', mask)
+        return a[:, mask], b[:, mask]
 
     def run(self):
         # load the control model if used
         if self.include_control:
             train_control = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-train.npy')
-            # test_control = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-test.npy')
         else:
             train_control = None
 
         # Load the annotation model and filter if modeling by feature
-        # X = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-train.npy')
-        # X_test = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-test.npy')
-        X = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-train.npy')
-        X_test = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-test.npy')
+        X = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-train.npy')
+        X_test = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-test.npy')
 
-        # Se tthe base name for the output files
+        # Se the base name for the output files
         base = f'{self.out_dir}/{self.process}/sub-{self.sid}_{self.regress_name}_{self.predict_name}_control-{self.control_name}'
         print(f'{base}_y_pred.npy')
 
-        # Get the feature names for the annotated model
-        features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv').columns.to_list()
-        features.remove('video_name')
-        n_features = len(features)
-
         # load the beta values and mask to reliable voxels
-        y_train = self.mask_neural('train')
-        y_test = self.mask_neural('test')
+        y_train = self.load_neural('train')
+        y_test = self.load_neural('test')
+        y_train, y_test = self.combine_mask_sd(y_train, y_test)
 
         # Run the regression and print out the timing
         print('Starting regression')

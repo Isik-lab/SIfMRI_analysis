@@ -5,7 +5,6 @@ import argparse
 import glob
 import numpy as np
 import pandas as pd
-import nibabel as nib
 from pathlib import Path
 
 class GroupRuns():
@@ -14,59 +13,42 @@ class GroupRuns():
         self.process = 'GroupRuns'
         self.set = args.set
         self.data_dir = args.data_dir
-        self.real_trials_per_run = 50
-        self.runs_per_repeat = 6
         self.out_dir = f'{args.out_dir}/{self.process}/sub-{self.sid}'
         Path(self.out_dir).mkdir(parents=True, exist_ok=True)
 
     def run(self):
         videos = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         videos.sort_values(by=['video_name'], inplace=True)
-        nconds = len(videos)
-        
-        # Load an ROI file to get meta-data about the images
-        im = nib.load(f'{self.data_dir}/ROI_masks/sub-{self.sid}/sub-{self.sid}_region-EVC_mask.nii.gz')
-        vol = im.shape
-        n_voxels = np.prod(vol)
 
-        # Initialize an empty array
-        arr = np.zeros((n_voxels, nconds, 2))
+        all_runs = None
+        print(f'sub-{self.sid}')
+        for ivid in range(len(videos)):
+            vid = videos.loc[ivid, 'video_name'].split('.')[0]
+            print(f'{ivid}: {vid}')
+            cond_files = sorted(glob.glob(f"{self.data_dir}/betas/sub-{self.sid}/*cond-{vid}*.npy"))
 
-        # Count how many repeats there are
-        files = glob.glob(f'{self.data_dir}/betas/sub-{self.sid}/*beta.npy')
-        files = [file for file in files if 'crowd' not in file]
-        total_repeats = len(files) / self.runs_per_repeat / self.real_trials_per_run
-        if self.set == 'test':
-            even_denom = total_repeats
-            odd_denom = total_repeats
-            total_repeats = total_repeats * 2
-        else:
-            even_denom = np.floor(total_repeats / 2)
-            odd_denom = np.ceil(total_repeats / 2)
+            cond_arr = None
+            for irun in range(len(cond_files)):
+                arr = np.load(cond_files[irun])
+                if cond_arr is None:
+                    cond_arr = np.zeros((len(cond_files), arr.size))
 
+                cond_arr[irun, :] = arr.flatten()
 
-        for ci, cond in enumerate(videos.video_name):
-            print(f'{ci+1}: {cond}')
-            cond = cond.split('.mp4')[0]
-            # Get all the files for the current condition
-            files = sorted(glob.glob(f'{self.data_dir}/betas/sub-{self.sid}/*cond-{cond}*beta.npy'))
-            for ri, file in enumerate(files):
-                if (ri+1) % 2 == 0:
-                    arr[..., ci, 0] += np.load(file).flatten()
-                else:
-                    arr[..., ci, 1] += np.load(file).flatten()
+            if all_runs is None:
+                all_runs = np.zeros((len(videos), arr.size))
+                odd = np.zeros_like(all_runs)
+                even = np.zeros_like(all_runs)
 
-        #even/odd
-        odd = arr[..., 0] / odd_denom
-        even = arr[..., 1] / even_denom
-
-        #overall average
-        arr = (arr[..., 0] + arr[..., 1]) / total_repeats
+            even[ivid, :] = cond_arr[1::2, :].mean(axis=0)
+            odd[ivid, :] = cond_arr[::2, :].mean(axis=0)
+            all_runs[ivid, :] = cond_arr.mean(axis=0)
 
         # Save the subject data
         np.save(f'{self.out_dir}/sub-{self.sid}_{self.set}-even-data.npy', even)
         np.save(f'{self.out_dir}/sub-{self.sid}_{self.set}-odd-data.npy', odd)
-        np.save(f'{self.out_dir}/sub-{self.sid}_{self.set}-data.npy', arr)
+        np.save(f'{self.out_dir}/sub-{self.sid}_{self.set}-data.npy', all_runs)
+        print()
 
 def main():
     parser = argparse.ArgumentParser()

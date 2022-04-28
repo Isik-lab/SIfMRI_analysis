@@ -1,17 +1,9 @@
 #get files
-FILES="../data/interim/VoxelEncodingTest/*y_pred.npy"
-features=( "indoor" "expanse" "agent distance" "facingness" "transitivity" "joint action" "communication" "cooperation" "dominance" "intimacy" "valence" "arousal" )
-#features=( "transitivity" "intimacy" )
+subjs=( 1 2 3 4 )
+features=( "visual" "socialprimitive" "social" "indoor" "expanse" "agent distance" "facingness" "transitivity" "joint action" "communication" "cooperation" "dominance" "intimacy" "valence" "arousal" )
 
-for f in $FILES; do
-  if [[ "$f" == *"predict-features"* ]]
-  then
-    for feature in "${features[@]}"; do
-      sbatch sbatch_permutation.sh "$f" "$feature"
-      echo sbatch_permutation.sh "$f" "$feature"
-    done
-  else
-    sbatch sbatch_permutation.sh "$f"
-    echo sbatch_permutation.sh "$f"
-  fi
+for subj in ${subjs[@]}; do
+  for model in ${models[@]}; do
+    sbatch
+  done
 done

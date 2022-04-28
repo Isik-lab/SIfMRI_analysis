@@ -53,10 +53,10 @@ class Reliability():
     def brain_indices(self, affine, shape):
         mask = datasets.load_mni152_brain_mask()
         mask = image.resample_img(mask, target_affine=affine,
-                                        target_shape=shape, interpolation='nearest')
+                                  target_shape=shape,
+                                  interpolation='nearest')
         mask = np.array(mask.dataobj, dtype='bool').flatten()
-        inverted_mask = np.invert(mask)
-        return np.where(inverted_mask)[0]
+        return np.invert(mask)
 
     def load_test_betas(self, n_voxels, n_conds):
         even = np.zeros((n_voxels, n_conds))
@@ -80,19 +80,25 @@ class Reliability():
             odd += arr[..., ::2].mean(axis=-1)
         return even, odd
 
-    def load_betas(self, n_voxels, n_conds):
+    def load_betas(self):
         if self.sid == 'all':
-            even = np.zeros((n_voxels, n_conds))
-            odd = np.zeros_like(even)
-            for i in tqdm(range(1, self.n_subjects+1), total=self.n_subjects):
-                i = str(i).zfill(2)
+            even = None
+            for si in tqdm(range(self.n_subjects), total=self.n_subjects):
+                sub = str(si+1).zfill(2)
                 # Load the data
-                even += np.load(f'{self.out_dir}/GroupRuns/sub-{i}/sub-{i}_{self.set}-even-data.npy')
-                odd += np.load(f'{self.out_dir}/GroupRuns/sub-{i}/sub-{i}_{self.set}-odd-data.npy')
+                seven = np.load(f'{self.out_dir}/GroupRuns/sub-{sub}/sub-{sub}_{self.set}-even-data.npy')
+                sodd = np.load(f'{self.out_dir}/GroupRuns/sub-{sub}/sub-{sub}_{self.set}-odd-data.npy')
+
+                if even is None:
+                    even = np.zeros((self.n_subjects, seven.shape[0], seven.shape[1]))
+                    odd = np.zeros_like(even)
+
+                even[si, ...] = seven
+                odd[si, ...] = sodd
 
             # Get the average of the even and odd runs across subjects
-            even /= self.n_subjects
-            odd /= self.n_subjects
+            even = even.mean(axis=0)
+            odd = odd.mean(axis=0)
         else:
             even = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_{self.set}-even-data.npy')
             odd = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_{self.set}-odd-data.npy')
@@ -101,7 +107,7 @@ class Reliability():
     def run(self):
         videos = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         n_conds = len(videos)
-        
+
         # Load an ROI file to get meta data about the images
         im = nib.load(f'{self.data_dir}/ROI_masks/sub-01/sub-01_region-EVC_mask.nii.gz')
         vol = im.shape
@@ -112,13 +118,13 @@ class Reliability():
         even, odd = self.load_betas(n_voxels, n_conds)
 
         # Remove signal coming from outside the brain
-        indices = self.brain_indices(affine, vol)
-        even[indices, :] = 0
-        odd[indices, :] = 0
+        brain_mask = self.brain_indices(affine, vol)
+        even[:, brain_mask] = 0.
+        odd[:, brain_mask] = 0.
         
         # Compute the correlation
         print('computing the correlation')
-        r_map = tools.corr2d(even.T, odd.T)
+        r_map = tools.corr2d(even, odd)
 
         # Make the array into a nifti image and save
         print('saving reliability nifti')
