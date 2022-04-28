@@ -1,6 +1,6 @@
 #!/bin/bash -l
-#SBATCH --job-name=regress
-#SBATCH --time=12:00:00
+#SBATCH --job-name=permutation
+#SBATCH --time=1:00:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=18
