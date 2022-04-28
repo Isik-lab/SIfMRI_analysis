@@ -60,14 +60,16 @@ class VoxelEncodingTest:
     def run(self):
         # load the control model if used
         if self.include_control:
-            control_model = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-train.npy')
+            train_control = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-train.npy')
+            # test_control = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-test.npy')
         else:
-            control_model = None
+            train_control = None
 
         # Load the annotation model and filter if modeling by feature
-        X = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-train.npy')
-        print(X.shape)
-        X_test = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-test.npy')
+        # X = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-train.npy')
+        # X_test = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-test.npy')
+        X = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-train.npy')
+        X_test = np.load(f'{self.out_dir}/GenerateModels/control_model_conv{self.layer}_set-test.npy')
 
         # Se tthe base name for the output files
         base = f'{self.out_dir}/{self.process}/sub-{self.sid}_{self.regress_name}_{self.predict_name}_control-{self.control_name}'
@@ -85,9 +87,9 @@ class VoxelEncodingTest:
         # Run the regression and print out the timing
         print('Starting regression')
         start = time.time()
-        y_pred, y_true, betas = regress.ridge(X, control_model, X_test,
+        y_pred, y_true, betas = regress.ridge(X, train_control, X_test,
                                               y_train, y_test,
-                                              n_features,
+                                              include_control=self.include_control,
                                               predict_by_feature=self.predict_by_feature,
                                               inds=self.pred_indices)
         print(f'Finished regression in {(time.time() - start) / 60:.2f} minutes')

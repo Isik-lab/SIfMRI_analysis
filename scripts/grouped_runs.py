@@ -21,15 +21,18 @@ class GroupRuns():
 
     def run(self):
         videos = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
+        videos.sort_values(by=['video_name'], inplace=True)
         nconds = len(videos)
         
-        # Load an ROI file to get meta data about the images
+        # Load an ROI file to get meta-data about the images
         im = nib.load(f'{self.data_dir}/ROI_masks/sub-{self.sid}/sub-{self.sid}_region-EVC_mask.nii.gz')
         vol = im.shape
         n_voxels = np.prod(vol)
 
         # Initialize an empty array
         arr = np.zeros((n_voxels, nconds, 2))
+
+        # Count how many repeats there are
         files = glob.glob(f'{self.data_dir}/betas/sub-{self.sid}/*beta.npy')
         files = [file for file in files if 'crowd' not in file]
         total_repeats = len(files) / self.runs_per_repeat / self.real_trials_per_run
@@ -40,6 +43,8 @@ class GroupRuns():
         else:
             even_denom = np.floor(total_repeats / 2)
             odd_denom = np.ceil(total_repeats / 2)
+
+
         for ci, cond in enumerate(videos.video_name):
             print(f'{ci+1}: {cond}')
             cond = cond.split('.mp4')[0]

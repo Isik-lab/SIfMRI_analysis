@@ -32,10 +32,11 @@ class GenerateModels():
         pca = PCA(svd_solver='full', n_components=20)
         alexnet_pcs = pca.fit_transform(alexnet.T)
 
-        _, ax = plt.subplots()
         pca = PCA(svd_solver='full')
         pca.fit(alexnet.T)
-        ax.plot(pca.explained_variance_ratio_.cumsum())
+        _, ax = plt.subplots(2, 1)
+        ax[0].plot(pca.explained_variance_ratio_.cumsum())
+        ax[1].plot(pca.explained_variance_ratio_, '.')
         plt.savefig(f'{self.figure_dir}/alexnet_conv{self.layer}_set-{self.set}_pcs.pdf')
         
         # Motion energy
@@ -44,10 +45,11 @@ class GenerateModels():
         pca = PCA(svd_solver='full', n_components=20)
         of_pcs = pca.fit_transform(of)
 
-        _, ax = plt.subplots()
         pca = PCA(svd_solver='full')
         pca.fit(of)
-        ax.plot(pca.explained_variance_ratio_.cumsum())
+        _, ax = plt.subplots(2, 1)
+        ax[0].plot(pca.explained_variance_ratio_.cumsum())
+        ax[1].plot(pca.explained_variance_ratio_, '.')
         plt.savefig(f'{self.figure_dir}/motion_energy_set-{self.set}_pcs.pdf')
         
         # Combine
@@ -60,19 +62,9 @@ class GenerateModels():
         df = df.merge(set_names)
         print(df.head())
         df.sort_values(by=['video_name'], inplace=True)
-        features = df.columns.to_list()
-        features.remove('video_name')
-        print(features)
-        
-        model = []
-        for feature in features:
-            arr = df[feature].to_numpy()
-            arr = np.expand_dims(arr, axis=0)
-            if type(model) == list:
-                model = arr.copy()
-            else:
-                model = np.append(model, arr, axis=0) 
-        np.save(f'{self.out_dir}/{self.process}/annotated_model_set-{self.set}.npy', model.T)
+        df.drop(columns=['video_name'], inplace=True)
+        model = df.to_numpy()
+        np.save(f'{self.out_dir}/{self.process}/annotated_model_set-{self.set}.npy', model)
         
     def run(self):
         self.control_model()

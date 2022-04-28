@@ -26,7 +26,8 @@ class MotionEnergyActivations():
         pyramid = moten.get_default_pyramid(vhsize=(vdim, hdim), fps=fps)
 
         out_moten = []
-        for vid in df.video_name:
+        for ivid, vid in enumerate(df.video_name):
+            print(f'{ivid}: {vid}')
             vid_obj = imageio.get_reader(f'{vid_dir}/{vid}', 'ffmpeg')
             vid = []
             for i in range(90):

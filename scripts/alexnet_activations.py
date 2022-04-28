@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import argparse
-from tqdm import tqdm
 import copy
 import os
 
@@ -93,6 +92,7 @@ class AlexNetActivations():
         self.process = 'AlexNetActivations'
         self.set = args.set
         self.layer = args.layer
+        assert self.layer is not None, "Must define an input layer"
         self.data_dir = args.data_dir
         self.out_dir = f'{args.out_dir}/{self.process}'
         if not os.path.exists(self.out_dir):
@@ -108,7 +108,8 @@ class AlexNetActivations():
         feature_extractor = alexnet_extractor(model)
 
         activation = []
-        for vid in tqdm(df.video_name, total=len(df)):
+        for ivid, vid in enumerate(df.video_name):
+            print(f'{ivid}: {vid}')
             vid = imageio.get_reader(f'{vid_dir}/{vid}', 'ffmpeg')
             cur_act = []
             for i in range(90):

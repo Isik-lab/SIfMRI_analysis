@@ -131,8 +131,11 @@ def custom_preference_cmap():
     return cmap
 
 
-def mkNifti(arr, mask, im, nii=True):
-    out_im = np.zeros(mask.size, dtype=arr.dtype)
+def mkNifti(arr, mask, im, nii=True, fill=0):
+    if fill == 0:
+        out_im = np.zeros(mask.size, dtype=arr.dtype)
+    else:
+        out_im = np.ones(mask.size, dtype=arr.dtype)*fill
     inds = np.where(mask)[0]
     out_im[inds] = arr
     if nii:
