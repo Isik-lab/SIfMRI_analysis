@@ -9,7 +9,7 @@ import glob
 from src.tools import corr2d
 
 
-class VoxelPermutationTest():
+class VoxelPermutation():
     def __init__(self, args):
         self.process = 'VoxelPermutation'
         self.model = args.model.replace('_', ' ')
@@ -23,6 +23,8 @@ class VoxelPermutationTest():
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
+        instance_variables = vars(self)
+        print(instance_variables)
 
     def load(self):
         if self.cross_validation:
@@ -99,7 +101,7 @@ def main():
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
     args = parser.parse_args()
-    VoxelPermutationTest(args).run()
+    VoxelPermutation(args).run()
 
 if __name__ == '__main__':
     main()
