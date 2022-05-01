@@ -132,12 +132,21 @@ def custom_preference_cmap():
 
 
 def mkNifti(arr, mask, im, nii=True, fill=0):
-    if fill == 0:
-        out_im = np.zeros(mask.size, dtype=arr.dtype)
+    def fill_arr(dims, dtype, fill):
+        if fill == 0:
+            a = np.zeros(dims, dtype=dtype)
+        else:
+            a = np.ones(dims, dtype=dtype)*fill
+        return a
+
+    mask = mask.astype('bool')
+    if arr.ndim == 1:
+        out_im = fill_arr(mask.size, arr.dtype, fill)
+        out_im[mask] = arr
     else:
-        out_im = np.ones(mask.size, dtype=arr.dtype)*fill
-    inds = np.where(mask)[0]
-    out_im[inds] = arr
+        out_im = fill_arr((mask.size,) + arr.shape[1:], arr.dtype, fill)
+        out_im[mask, ...] = arr
+
     if nii:
         out_im = out_im.reshape(im.shape)
         out_im = nib.Nifti1Image(out_im, affine=im.affine)

@@ -3,70 +3,103 @@
 
 import argparse
 import numpy as np
-from src import tools, regress
+from tqdm import tqdm
 from pathlib import Path
+import glob
+from src.tools import corr2d
 
 
-class VoxelPermutation():
+class VoxelPermutationTest():
     def __init__(self, args):
         self.process = 'VoxelPermutation'
-        self.y_pred = args.y_pred
-        if '/' in self.y_pred:
-            self.y_pred = self.y_pred.split('/')[-1]
-        self.pred_feature = args.pred_feature
-        print(self.pred_feature)
+        self.model = args.model.replace('_', ' ')
+        self.sid = str(args.s_num).zfill(2)
+        self.cross_validation = args.cross_validation
+        if self.cross_validation:
+            self.method = 'CV'
+        else:
+            self.method = 'test'
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
 
     def load(self):
-        base = f'{self.out_dir}/VoxelEncoding/{self.y_pred}'
-        pred = np.load(base)
-        true = np.load(base.replace('_y_pred', '_y_true'))
-        indices = np.load(base.replace('_y_pred', '_indices'))
-        return true, pred, indices
+        if self.cross_validation:
+            pred_files = sorted(glob.glob(
+                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_method-CV_loop*.npy'))
+            true_files = sorted(
+                glob.glob(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop*.npy'))
+            pred = None
+            for i, (pred_file, true_file) in enumerate(zip(pred_files, true_files)):
+                pred_file = np.load(pred_file)
+                true_file = np.load(true_file)
+                if pred is None:
+                    pred = np.zeros((pred_file.shape[0], len(pred_files), pred_file.shape[1]))
+                    true = np.zeros_like(pred)
+                pred[:, i, :] = pred_file
+                true[:, i, :] = true_file
+        else:
+            pred = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_method-test.npy')
+            true = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
+        return true, pred
 
-    def load_by_feature(self):
-        feature_index = regress.get_feature_inds(self.pred_feature)
-        true, pred, indices = self.load()
-        return true, pred[feature_index, ...].squeeze(), indices
+    def permutation_test_2d(self, a, b,
+                            n_perm=int(5e3),
+                            H0='greater'):
+        r_true = corr2d(a, b)
+        r_null = np.zeros((n_perm, a.shape[-1]))
+        for i in tqdm(range(n_perm), total=n_perm):
+            inds = np.random.default_rng(i).permutation(a.shape[0])
+            if a.ndim == 3:
+                a_shuffle = a[inds, :, :].reshape(a.shape[0]*a.shape[1], a.shape[-1])
+                b_not_shuffled = b.reshape(b.shape[0]*b.shape[1], b.shape[-1])
+            elif a.ndim == 2:
+                a_shuffle = a[inds, :]
+                b_not_shuffled = b.copy()
+            r_null[i, :] = corr2d(a_shuffle, b_not_shuffled)
+
+        # Get the p-value depending on the type of test
+        denominator = n_perm + 1
+        if H0 == 'two_tailed':
+            numerator = np.sum(np.abs(r_null) >= np.abs(r_true), axis=0) + 1
+            p = numerator / denominator
+        elif H0 == 'greater':
+            numerator = np.sum(r_true > r_null, axis=0) + 1
+            p = 1 - (numerator / denominator)
+        else:  # H0 == 'less':
+            numerator = np.sum(r_true < r_null, axis=0) + 1
+            p = 1 - (numerator / denominator)
+        return r_true, p, r_null
 
     def save_perm_results(self, r_true, p, r_null):
         print('Saving output')
-        base = f'{self.out_dir}/{self.process}/{self.y_pred}'
-        if 'predict-features' in self.y_pred:
-            base = base.replace('predict-features', f'predict-{self.pred_feature}')
-        np.save(base.replace('_y_pred', '_rs'), r_true)
-        np.save(base.replace('_y_pred', '_ps'), p)
-        np.save(base.replace('_y_pred', '_r_null'), r_null)
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_method-{self.method}'
+        np.save(f'{base}_rs.npy', r_true)
+        np.save(f'{base}_ps.npy', p)
+        np.save(f'{base}_rnull.npy', r_null)
         print('Completed successfully!')
 
     def run(self):
-        if 'predict-features' in self.y_pred:
-            print('by feature prediction')
-            y_true, y_pred, test_inds = self.load_by_feature()
-        else:
-            print('not completing by feature prediction')
-            y_true, y_pred, test_inds = self.load()
+        y_true, y_pred = self.load()
         print(y_true.shape)
         print(y_pred.shape)
-        r_true, p, r_null = tools.permutation_test_2d(y_true, y_pred,
-                                                      test_inds=test_inds, n_perm=self.n_perm)
+        r_true, p, r_null = self.permutation_test_2d(y_true, y_pred, n_perm=self.n_perm)
         self.save_perm_results(r_true, p, r_null)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--y_pred', type=str)
-    parser.add_argument('--pred_feature', type=str)
-    parser.add_argument('--n_perm', type=int, default=5000)
+    parser.add_argument('--s_num', '-s', type=int, default=1)
+    parser.add_argument('--model', '-m', type=str, default='visual')
+    parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--n_perm', type=int, default=10)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
     args = parser.parse_args()
-    VoxelPermutation(args).run()
+    VoxelPermutationTest(args).run()
 
 if __name__ == '__main__':
     main()
