@@ -8,10 +8,12 @@
 
 subj=$1
 model=$2
+cv=$3
 
 ml anaconda
 conda activate nibabel
 
-python voxel_permutation_test.py -s "$subj" -m "$model" \
+python voxel_permutation.py -s "$subj" -m "$model" \
   --out_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim \
-  --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw
+  --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw \
+  $cv

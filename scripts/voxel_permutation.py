@@ -92,7 +92,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--model', '-m', type=str, default='visual')
-    parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=10)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
