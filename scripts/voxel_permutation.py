@@ -49,14 +49,19 @@ class VoxelPermutation():
     def permutation_test_2d(self, a, b,
                             n_perm=int(5e3),
                             H0='greater'):
-        r_true = corr2d(a, b)
+        if a.ndim == 3:
+            r_true = corr2d(a.reshape(a.shape[0]*a.shape[1], a.shape[-1]),
+                            b.reshape(b.shape[0]*b.shape[1], b.shape[-1]))
+        else:
+            r_true = corr2d(a, b)
+
         r_null = np.zeros((n_perm, a.shape[-1]))
         for i in tqdm(range(n_perm), total=n_perm):
             inds = np.random.default_rng(i).permutation(a.shape[0])
             if a.ndim == 3:
                 a_shuffle = a[inds, :, :].reshape(a.shape[0]*a.shape[1], a.shape[-1])
                 b_not_shuffled = b.reshape(b.shape[0]*b.shape[1], b.shape[-1])
-            elif a.ndim == 2:
+            else: #a.ndim == 2:
                 a_shuffle = a[inds, :]
                 b_not_shuffled = b.copy()
             r_null[i, :] = corr2d(a_shuffle, b_not_shuffled)
