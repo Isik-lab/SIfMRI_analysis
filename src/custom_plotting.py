@@ -266,6 +266,9 @@ def plot_betas(fsaverage, texture,
                            cmap=cmap,
                            symmetric_cbar=True,
                            **kwargs)
+        rect = ax.patch
+        rect.set_facecolor('white')
+
 
         if roi:
             for r in roi:
@@ -335,6 +338,9 @@ def plot_surface_stats(fsaverage, texture,
                       cmap=cmap,
                       **kwargs)
 
+        rect = ax.patch
+        rect.set_facecolor('white')
+
         if roi:
             for r in roi:
                 parcellation = load_parcellation(fsaverage, r, hemi)
@@ -353,7 +359,7 @@ def plot_surface_stats(fsaverage, texture,
         cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        ticks = np.arange(start=threshold, stop=vmax + 1, step=1, dtype='int')
+        ticks = np.arange(start=0, stop=vmax + threshold, step=.5)
         cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal', ticks=ticks)
         for t, i in zip(cbar.ax.get_xticklabels(), ticks):
             t.set_label(f'PC{i}')
@@ -363,7 +369,7 @@ def plot_surface_stats(fsaverage, texture,
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
 
     if output_file is not None:
-        fig.savefig(output_file, bbox_inches="tight")
+        fig.savefig(output_file, facecolor='white')
         plt.close(fig)
 
 
