@@ -56,14 +56,13 @@ def preprocess(X_train_, X_test_, X_control_, y_train_, y_test_):
 def zero_inds(arr, inds_, max_val):
     for i in range(max_val):
         if i not in inds_:
-            arr[:, i] = 0.
+            arr[i, :] = 0.
     return arr
 
 
 def regress(X_train_, y_train_, n_features):
     # inner ridge for alpha
     alpha = inner_ridge(X_train_, y_train_)
-    print(alpha)
 
     # outer ridge
     betas_ = outer_ridge(X_train_, y_train_, alpha)
@@ -103,9 +102,9 @@ class VoxelRegression():
 
         models = self.mk_models()
         for key in models:
-            cur_X_test_ = zero_inds(X_test_, models[key], X_test_.shape[-1])
-            cur_betas_ = zero_inds(betas_, models[key], X_test_.shape[-1])
-            y_pred = cur_X_test_ @ cur_betas_
+            cur_betas_ = betas_.copy()
+            cur_betas_ = zero_inds(cur_betas_, models[key], X_test_.shape[-1])
+            y_pred = X_test_ @ cur_betas_
 
             if i is not None:
                 np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_method-CV_loop-{i}.npy',
