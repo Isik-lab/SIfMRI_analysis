@@ -43,7 +43,7 @@ class VoxelGroupResults():
             sid = str(i+1).zfill(2)
             r = np.load(f'{self.out_dir}/VoxelPermutation/sub-{sid}_prediction-{self.model}_method-{self.method}_rs.npy')
             null = np.load(
-                f'{self.out_dir}/VoxelPermutation/sub-{sid}_prediction-{self.model}_method-{self.method}_rnull.npy')
+                f'{self.out_dir}/VoxelPermutation/rnull/sub-{sid}_prediction-{self.model}_method-{self.method}_rnull.npy')
             if rs is None:
                 rs = r.copy()
                 rs_null = null.copy()

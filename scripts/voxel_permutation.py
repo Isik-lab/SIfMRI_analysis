@@ -84,7 +84,7 @@ class VoxelPermutation():
         base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_method-{self.method}'
         np.save(f'{base}_rs.npy', r_true)
         np.save(f'{base}_ps.npy', p)
-        np.save(f'{base}_rnull.npy', r_null)
+        np.save(f'{self.out_dir}/{self.process}/rnull/sub-{self.sid}_prediction-{self.model}_method-{self.method}_rnull.npy', r_null)
         print('Completed successfully!')
 
     def run(self):
