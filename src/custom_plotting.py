@@ -31,9 +31,9 @@ def custom_palette(rgb=True):
 
 def feature_categories():
     d = dict()
-    d['indoor'] = 'scene'
-    d['expanse'] = 'scene'
-    d['transitivity'] = 'object'
+    d['indoor'] = 'visual'
+    d['expanse'] = 'visual'
+    d['transitivity'] = 'visual'
     d['agent distance'] = 'social primitive'
     d['facingness'] = 'social primitive'
     d['joint action'] = 'social'
@@ -53,7 +53,7 @@ def feature_colors():
     d = dict()
     d['indoor'] = 'mustard'
     d['expanse'] = 'mustard'
-    d['transitivity'] = 'reddish'
+    d['transitivity'] = 'mustard'
     d['agent distance'] = 'purple'
     d['facingness'] = 'purple'
     d['joint action'] = 'cyan'

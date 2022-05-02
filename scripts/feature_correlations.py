@@ -95,11 +95,11 @@ class FeatureCorrelations():
         p_bool[i, j] = ps
         return plotting_rsm, p_bool
 
-    def plot(self, rs, ps, ticks, context='talk'):
+    def plot(self, rs, ps, ticks, context='poster'):
         if context == 'talk':
             r_size = 12
         else:
-            r_size = 18
+            r_size = 20
 
         nqs = len(ticks)
         sns.set(rc={'figure.figsize': (9, 7)}, context=context)
@@ -135,12 +135,14 @@ class FeatureCorrelations():
         ax.set_yticklabels(ticks[1:])
         for ticklabel, pointer in zip(ticks[1:], ax.get_yticklabels()):
             pointer.set_color(palette[colors[ticklabel]])
+            pointer.set_weight('bold')
 
         # x axis
         ax.set_xticks(np.arange(nqs - 1))
         ax.set_xticklabels(ticks[:-1], rotation=90, ha='center')
         for ticklabel, pointer in zip(ticks[:-1], ax.get_xticklabels()):
             pointer.set_color(palette[colors[ticklabel]])
+            pointer.set_weight('bold')
 
         ax.grid(False)
         plt.tight_layout()
