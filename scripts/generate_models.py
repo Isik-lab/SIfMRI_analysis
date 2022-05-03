@@ -25,35 +25,20 @@ class GenerateModels():
             os.mkdir(self.figure_dir)
 
     def control_model(self):
-        # AlexNet
         alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy')
-        np.save(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{self.set}_avg.npy', alexnet.mean(axis=0))
-
-        pca = PCA(svd_solver='full', n_components=20)
-        alexnet_pcs = pca.fit_transform(alexnet.T)
-
-        pca = PCA(svd_solver='full')
-        pca.fit(alexnet.T)
-        _, ax = plt.subplots(2, 1)
-        ax[0].plot(pca.explained_variance_ratio_.cumsum())
-        ax[1].plot(pca.explained_variance_ratio_, '.')
-        plt.savefig(f'{self.figure_dir}/alexnet_conv{self.layer}_set-{self.set}_pcs.pdf')
-        
-        # Motion energy
         of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
-        np.save(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}_avg.npy', of.mean(axis=1))
-        pca = PCA(svd_solver='full', n_components=20)
-        of_pcs = pca.fit_transform(of)
+        control_model = np.hstack([alexnet.T, of])
 
         pca = PCA(svd_solver='full')
-        pca.fit(of)
+        pca.fit(control_model)
         _, ax = plt.subplots(2, 1)
         ax[0].plot(pca.explained_variance_ratio_.cumsum())
         ax[1].plot(pca.explained_variance_ratio_, '.')
-        plt.savefig(f'{self.figure_dir}/motion_energy_set-{self.set}_pcs.pdf')
+        plt.savefig(f'{self.figure_dir}/alexnet_and_motion_set-{self.set}_pcs.pdf')
         
         # Combine
-        control_model = np.concatenate((alexnet_pcs, of_pcs), axis=-1)
+        pca = PCA(svd_solver='full', n_components=15)
+        pca.fit(control_model)
         np.save(f'{self.out_dir}/{self.process}/control_model_conv{self.layer}_set-{self.set}.npy', control_model)
     
     def annotated_model(self):
