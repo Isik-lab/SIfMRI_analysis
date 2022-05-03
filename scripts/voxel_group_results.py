@@ -32,7 +32,7 @@ class VoxelGroupResults():
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.n_subjs = 1
+        self.n_subjs = 4
         Path(f'{self.out_dir}/VoxelPermutation').mkdir(parents=True, exist_ok=True)
         instance_variables = vars(self)
         print(instance_variables)
