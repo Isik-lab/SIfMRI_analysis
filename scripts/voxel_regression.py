@@ -49,6 +49,7 @@ class VoxelRegression():
     def __init__(self, args):
         self.process = 'VoxelRegression'
         self.sid = str(args.s_num).zfill(2)
+        print(f'sub-{self.sid}')
         self.cross_validation = args.cross_validation
         self.n_PCs = args.n_PCs
         self.n_annotated_features = 12
