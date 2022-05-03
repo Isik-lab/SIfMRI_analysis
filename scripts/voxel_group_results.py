@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def compute_ps(r_true, r_null, H0='greater'):
-    n_perm = r_null.shape[1]
+    n_perm = r_null.shape[0]
     denominator = n_perm + 1
     if H0 == 'two_tailed':
         numerator = np.sum(np.abs(r_null) >= np.abs(r_true), axis=0) + 1
@@ -32,7 +32,7 @@ class VoxelGroupResults():
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.n_subjs = 4
+        self.n_subjs = 1
         Path(f'{self.out_dir}/VoxelPermutation').mkdir(parents=True, exist_ok=True)
         instance_variables = vars(self)
         print(instance_variables)
