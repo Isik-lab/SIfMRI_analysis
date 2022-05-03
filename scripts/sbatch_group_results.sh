@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH --job-name=permutation
+#SBATCH --job-name=group_results
 #SBATCH --time=30:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
