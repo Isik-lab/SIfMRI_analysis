@@ -62,6 +62,7 @@ class VoxelGroupResults():
         rs, rs_null = self.load()
         ps = compute_ps(rs, rs_null)
         self.save(rs, ps)
+        print("Completed successfully")
 
 
 def main():

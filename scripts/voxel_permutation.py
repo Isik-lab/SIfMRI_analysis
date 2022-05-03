@@ -89,8 +89,6 @@ class VoxelPermutation():
 
     def run(self):
         y_true, y_pred = self.load()
-        print(y_true.shape)
-        print(y_pred.shape)
         r_true, p, r_null = self.permutation_test_2d(y_true, y_pred, n_perm=self.n_perm)
         self.save_perm_results(r_true, p, r_null)
 
