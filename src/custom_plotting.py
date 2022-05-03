@@ -236,7 +236,7 @@ def plot_betas(fsaverage, texture,
                modes=['lateral', 'medial', 'ventral'],
                hemis=['left', 'right'],
                cmap=None, threshold=0.01,
-               output_file=None, colorbar=True,
+               output_file=None, colorbar=False,
                vmax=None, kwargs={}):
     cbar_h = .25
     title_h = .25 * (title is not None)
@@ -260,7 +260,7 @@ def plot_betas(fsaverage, texture,
                            bg_map=bg_map,
                            alpha=1.,
                            axes=ax,
-                           colorbar=False,  # Colorbar created externally.
+                           colorbar=True,  # Colorbar created externally.
                            vmax=vmax,
                            threshold=threshold,
                            cmap=cmap,
@@ -283,16 +283,18 @@ def plot_betas(fsaverage, texture,
 
     if colorbar:
         array = np.hstack((texture['left'], texture['right']))
-        sm, vmax = _colorbar_from_array(array, threshold, cmap, vmax)
+        sm, _ = _colorbar_from_array(array, threshold, cmap, vmax)
 
         cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        # ticks = np.arange(start=threshold, stop=vmax + 1, step=1, dtype='int')
+        vmax = array.max()
+        ticks = np.linspace(start=-1*vmax, stop=vmax, num=5)
         cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
-        # for t, i in zip(cbar.ax.get_xticklabels(), ticks):
-        #     t.set_label(f'PC{i}')
-        #     t.set_fontsize(30)
+        print(cbar.ax.get_xticklabels())
+        print(ticks)
+        for t, i in zip(cbar.ax.get_xticklabels(), ticks):
+            t.set_fontsize(25)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
