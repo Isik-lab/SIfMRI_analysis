@@ -181,8 +181,11 @@ def _colorbar_from_array(cmap, vmax):
 
     our_cmap = LinearSegmentedColormap.from_list('Custom cmap',
                                                  cmaplist, cmap.N)
+
+    vmax = np.round(vmax, decimals=1)
+    norm = plt.Normalize(vmin=-1 * vmax, vmax=vmax)
     sm = plt.cm.ScalarMappable(cmap=our_cmap,
-                               norm=plt.Normalize(vmin=0., vmax=vmax))
+                               norm=norm)
     # # fake up the array of the scalar mappable.
     sm._A = []
     return sm
@@ -231,6 +234,7 @@ def _colorbar_betas(cmap, vmax):
     our_cmap = LinearSegmentedColormap.from_list('Custom cmap',
                                                  cmaplist, cmap.N)
 
+    vmax = np.round(vmax, decimals=1)
     norm = plt.Normalize(vmin=-1*vmax, vmax=vmax)
     sm = plt.cm.ScalarMappable(cmap=our_cmap,
                                norm=norm)
