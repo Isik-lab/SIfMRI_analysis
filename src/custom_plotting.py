@@ -159,7 +159,7 @@ def get_vmax(texture):
     return array[i].mean() + (3 * array[i].std())
 
 
-def _colorbar_from_array(array, threshold, cmap, vmax=None):
+def _colorbar_from_array(cmap, vmax):
     """Generate a custom colorbar for an array.
     Internal function used by plot_img_on_surf
     array : np.ndarray
@@ -176,22 +176,16 @@ def _colorbar_from_array(array, threshold, cmap, vmax=None):
         The name of a matplotlib or nilearn colormap.
         Default='cold_hot'.
     """
-    if threshold is None:
-        threshold = 0.
-
-    if vmax is None:
-        vmax = np.nanmax(array)
-    cmap = plt.get_cmap(cmap, vmax - threshold)
+    cmap = plt.get_cmap(cmap, vmax)
     cmaplist = [cmap(i) for i in range(cmap.N)]
 
     our_cmap = LinearSegmentedColormap.from_list('Custom cmap',
                                                  cmaplist, cmap.N)
     sm = plt.cm.ScalarMappable(cmap=our_cmap,
-                               norm=plt.Normalize(vmin=threshold, vmax=vmax))
+                               norm=plt.Normalize(vmin=0., vmax=vmax))
     # # fake up the array of the scalar mappable.
     sm._A = []
-
-    return sm, vmax
+    return sm
 
 
 def roi_paths(hemi):
@@ -230,14 +224,33 @@ def load_parcellation(fsaverage, roi, hemi):
     return parcellation
 
 
+def _colorbar_betas(cmap, vmax):
+    cmap = plt.get_cmap(cmap)
+    cmaplist = [cmap(i) for i in range(cmap.N)]
+
+    our_cmap = LinearSegmentedColormap.from_list('Custom cmap',
+                                                 cmaplist, cmap.N)
+
+    norm = plt.Normalize(vmin=-1*vmax, vmax=vmax)
+    sm = plt.cm.ScalarMappable(cmap=our_cmap,
+                               norm=norm)
+
+    # # fake up the array of the scalar mappable.
+    sm._A = []
+    return sm
+
+
 def plot_betas(fsaverage, texture,
                roi=None,
                title=None,
                modes=['lateral', 'medial', 'ventral'],
                hemis=['left', 'right'],
                cmap=None, threshold=0.01,
-               output_file=None, colorbar=False,
-               vmax=None, kwargs={}):
+               output_file=None, colorbar=True,
+               kwargs={}):
+
+    array = np.hstack((texture['left'], texture['right']))
+    vmax = array.max().round(decimals=2)
     cbar_h = .25
     title_h = .25 * (title is not None)
     # Set the aspect ratio, but then make the figure twice as big to increase resolution
@@ -260,7 +273,7 @@ def plot_betas(fsaverage, texture,
                            bg_map=bg_map,
                            alpha=1.,
                            axes=ax,
-                           colorbar=True,  # Colorbar created externally.
+                           colorbar=False,  # Colorbar created externally.
                            vmax=vmax,
                            threshold=threshold,
                            cmap=cmap,
@@ -268,7 +281,6 @@ def plot_betas(fsaverage, texture,
                            **kwargs)
         rect = ax.patch
         rect.set_facecolor('white')
-
 
         if roi:
             for r in roi:
@@ -282,19 +294,14 @@ def plot_betas(fsaverage, texture,
         ax.dist = 7
 
     if colorbar:
-        array = np.hstack((texture['left'], texture['right']))
-        sm, _ = _colorbar_from_array(array, threshold, cmap, vmax)
+        sm = _colorbar_betas(cmap, vmax)
 
         cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        vmax = array.max()
-        ticks = np.linspace(start=-1*vmax, stop=vmax, num=5)
         cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
-        print(cbar.ax.get_xticklabels())
-        print(ticks)
-        for t, i in zip(cbar.ax.get_xticklabels(), ticks):
-            t.set_fontsize(25)
+        for t in cbar.ax.get_xticklabels():
+            t.set_fontsize(18)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
@@ -355,17 +362,14 @@ def plot_surface_stats(fsaverage, texture,
         ax.dist = 7
 
     if colorbar:
-        array = np.hstack((texture['left'], texture['right']))
-        sm, vmax = _colorbar_from_array(array, threshold, cmap, vmax)
+        sm = _colorbar_from_array(cmap, vmax)
 
         cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        ticks = np.arange(start=0, stop=vmax + threshold, step=.5)
-        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal', ticks=ticks)
-        for t, i in zip(cbar.ax.get_xticklabels(), ticks):
-            t.set_label(f'PC{i}')
-            t.set_fontsize(30)
+        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+        for t in cbar.ax.get_xticklabels():
+            t.set_fontsize(22)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
