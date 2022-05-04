@@ -373,7 +373,7 @@ def plot_surface_stats(fsaverage, texture,
         axes.append(cbar_ax)
         cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
         for t in cbar.ax.get_xticklabels():
-            t.set_fontsize(22)
+            t.set_fontsize(18)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
