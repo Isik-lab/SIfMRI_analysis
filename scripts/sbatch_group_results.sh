@@ -11,6 +11,6 @@ model=$1
 ml anaconda
 conda activate nibabel
 
-python voxel_group_results.py -m "$model" \
+python voxel_group_results.py -m "$model" --cross_validation \
   --out_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/interim \
   --data_dir /home-2/emcmaho7@jhu.edu/work/mcmahoneg/SIfMRI_analysis/data/raw
