@@ -105,7 +105,7 @@ class FeatureCorrelations():
         sns.set(rc={'figure.figsize': (9, 7)}, context=context)
         fig, ax = plt.subplots()
 
-        vmax = np.nanmax(np.abs(rs))
+        vmax = 0.7#np.nanmax(np.abs(rs))
         if self.rsa:
             vmin = 0
             cmap = cm.get_cmap(sns.color_palette("light:b", as_cmap=True))
@@ -124,8 +124,12 @@ class FeatureCorrelations():
                     ax.text(i, j, '{:.1f}'.format(label), ha='center', va='center',
                             color='black', fontsize=r_size, weight='bold')
         ax.grid(False)
+        # ticks = np.linspace(vmin, vmax, num=12).round(decimals=1)
         cbar = plt.colorbar()
         cbar.ax.tick_params(size=0)
+        cbar.set_label(label=r"Correlation ($r$)", size=20)
+        # for t in cbar.ax.get_yticklabels():
+        #     t.set_fontsize(28)
 
         colors = feature_colors()
         palette = custom_palette(rgb=False)

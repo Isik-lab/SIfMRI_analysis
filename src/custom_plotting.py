@@ -1,6 +1,6 @@
 import nilearn.image
 import numpy as np
-from matplotlib import gridspec
+from matplotlib import gridspec, ticker
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import itertools
@@ -183,7 +183,7 @@ def _colorbar_from_array(cmap, vmax):
                                                  cmaplist, cmap.N)
 
     vmax = np.round(vmax, decimals=1)
-    norm = plt.Normalize(vmin=-1 * vmax, vmax=vmax)
+    norm = plt.Normalize(vmin=0., vmax=vmax)
     sm = plt.cm.ScalarMappable(cmap=our_cmap,
                                norm=norm)
     # # fake up the array of the scalar mappable.
@@ -200,7 +200,7 @@ def roi_paths(hemi):
     topdir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw/group_parcels/'
     d['STS'] = f'{topdir}/BenDeen_fROIs/{h}STS.nii.gz'
     d['STS'] = f'{topdir}/BenDeen_fROIs/{h}STS.nii.gz'
-    d['pSTS'] = f'{topdir}/rPSTS_SI_parcel/SocialInteract_rpSTS_vol.nii.gz'
+    d['SIpSTS'] = f'{topdir}/rPSTS_SI_parcel/SocialInteract_rpSTS_vol.nii.gz'
     d['LOC'] = f'{topdir}/kanwisher_gss/object_parcels/{h}LOC.img'
     d['PPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}PPA.img'
     d['OPA'] = f'{topdir}/kanwisher_gss/scene_parcels/{h}TOS.img'
@@ -247,14 +247,16 @@ def _colorbar_betas(cmap, vmax):
 def plot_betas(fsaverage, texture,
                roi=None,
                title=None,
+               vmax=None,
                modes=['lateral', 'medial', 'ventral'],
                hemis=['left', 'right'],
                cmap=None, threshold=0.01,
                output_file=None, colorbar=True,
+               cbar_title=r"$\beta$ weights",
                kwargs={}):
-
-    array = np.hstack((texture['left'], texture['right']))
-    vmax = array.max().round(decimals=2)
+    if vmax is None:
+        array = np.hstack((texture['left'], texture['right']))
+        vmax = array.max().round(decimals=2)
     cbar_h = .25
     title_h = .25 * (title is not None)
     # Set the aspect ratio, but then make the figure twice as big to increase resolution
@@ -287,12 +289,13 @@ def plot_betas(fsaverage, texture,
         rect.set_facecolor('white')
 
         if roi:
-            for r in roi:
+            colors = [['white'], ['black'], ['gray']]
+            for ir, r in enumerate(roi):
                 parcellation = load_parcellation(fsaverage, r, hemi)
                 if parcellation is not None:
                     plot_surf_contours(fsaverage[f'infl_{hemi}'], parcellation, labels=[r],
                                        levels=[1], axes=ax, legend=False,
-                                       colors=['white'])
+                                       colors=colors[ir])
         # We increase this value to better position the camera of the
         # 3D projection plot. The default value makes meshes look too small.
         ax.dist = 7
@@ -303,9 +306,14 @@ def plot_betas(fsaverage, texture,
         cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+        bar_max = vmax-.01
+        ticks = np.linspace((-1*bar_max), bar_max, num=3).round(decimals=2)
+        cbar = fig.colorbar(sm, cax=cbar_ax,
+                            orientation='horizontal', ticks=ticks)
+                            # label=cbar_title)
+        cbar.set_label(label=cbar_title, size=34)
         for t in cbar.ax.get_xticklabels():
-            t.set_fontsize(18)
+            t.set_fontsize(30)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")
@@ -322,7 +330,9 @@ def plot_surface_stats(fsaverage, texture,
                        hemis=['left', 'right'],
                        cmap=None, threshold=0.01,
                        output_file=None, colorbar=True,
-                       vmax=None, kwargs={}):
+                       vmax=None,
+                       cbar_title=r"Correlation ($r$)",
+                       kwargs={}):
     cbar_h = .25
     title_h = .25 * (title is not None)
     # Set the aspect ratio, but then make the figure twice as big to increase resolution
@@ -371,9 +381,12 @@ def plot_surface_stats(fsaverage, texture,
         cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+        ticks = np.linspace(0, 1.0, num=3).round(decimals=1)
+        cbar = fig.colorbar(sm, cax=cbar_ax,
+                            orientation='horizontal', ticks=ticks)
+        cbar.set_label(label=cbar_title, size=32)
         for t in cbar.ax.get_xticklabels():
-            t.set_fontsize(18)
+            t.set_fontsize(28)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")

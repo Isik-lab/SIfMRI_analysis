@@ -115,7 +115,7 @@ class Reliability():
         affine = im.affine
 
         print('loading betas...')
-        even, odd = self.load_betas(n_voxels, n_conds)
+        even, odd = self.load_betas()
 
         # Remove signal coming from outside the brain
         brain_mask = self.brain_indices(affine, vol)
@@ -165,13 +165,13 @@ class Reliability():
                    'right': surface.vol_to_surf(r_im, self.fsaverage['pial_right'],
                                                 interpolation='linear')}
         # vmax = cm.get_vmax(texture)
-        vmax = 0.8
+        # vmax = 0.8
         cm.plot_surface_stats(self.fsaverage, texture,
                               threshold=self.threshold,
                               modes=['lateral'],
                               cmap=cmap,
                               output_file=name,
-                              vmax=vmax)
+                              vmax=1.0)
 
 def main():
     parser = argparse.ArgumentParser()
