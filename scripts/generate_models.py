@@ -45,6 +45,8 @@ class GenerateModels():
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         set_names = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(set_names)
+        #Remove the high-level social dimensions -- 06/21/2022
+        df.drop(columns=['cooperation', 'dominance', 'intimacy'], inplace=True)
         print(df.head())
         df.sort_values(by=['video_name'], inplace=True)
         df.drop(columns=['video_name'], inplace=True)
