@@ -32,8 +32,8 @@ def custom_palette(rgb=True):
 def feature_categories():
     d = dict()
     d['indoor'] = 'visual'
-    d['expanse'] = 'visual'
-    d['transitivity'] = 'visual'
+    d['spatial expanse'] = 'visual'
+    d['object'] = 'visual'
     d['agent distance'] = 'social primitive'
     d['facingness'] = 'social primitive'
     d['joint action'] = 'social'
@@ -52,8 +52,8 @@ def feature_categories():
 def feature_colors():
     d = dict()
     d['indoor'] = 'mustard'
-    d['expanse'] = 'mustard'
-    d['transitivity'] = 'mustard'
+    d['spatial expanse'] = 'mustard'
+    d['object'] = 'mustard'
     d['agent distance'] = 'purple'
     d['facingness'] = 'purple'
     d['joint action'] = 'cyan'
@@ -378,13 +378,13 @@ def plot_surface_stats(fsaverage, texture,
     if colorbar:
         sm = _colorbar_from_array(cmap, vmax)
 
-        cbar_grid = gridspec.GridSpecFromSubplotSpec(2, 3, grid[-1, :])
+        cbar_grid = gridspec.GridSpecFromSubplotSpec(3, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
         ticks = np.linspace(0, 1.0, num=3).round(decimals=1)
         cbar = fig.colorbar(sm, cax=cbar_ax,
                             orientation='horizontal', ticks=ticks)
-        cbar.set_label(label=cbar_title, size=32)
+        cbar.set_label(label=cbar_title, size=30)
         for t in cbar.ax.get_xticklabels():
             t.set_fontsize(28)
 

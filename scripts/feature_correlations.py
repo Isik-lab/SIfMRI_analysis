@@ -179,7 +179,14 @@ class FeatureCorrelations():
         else:
             rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}.npy')
             ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}.npy')
-        self.plot(rs, ps, df.columns, context=context)
+        features = []
+        for feature in df.columns:
+            if feature == 'expanse':
+                feature = 'spatial expanse'
+            elif feature == 'transitivity':
+                feature = 'object'
+            features.append(feature)
+        self.plot(rs, ps, features, context=context)
 
 
 def main():

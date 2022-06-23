@@ -52,7 +52,7 @@ class VoxelRegression():
         print(f'sub-{self.sid}')
         self.cross_validation = args.cross_validation
         self.n_PCs = args.n_PCs
-        self.n_annotated_features = 12
+        self.n_annotated_features = 9
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -60,17 +60,19 @@ class VoxelRegression():
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
 
     def mk_models(self):
-        models = {'all': None,
-                  'nuissance': list(np.arange(self.n_annotated_features,
-                                              self.n_annotated_features + self.n_PCs)),
-                  'annotated': list(np.arange(self.n_annotated_features)),
-                  'visual': list(np.arange(3)),
-                  'socialprimitive': [3, 4],
-                  'social': list(np.arange(5, self.n_annotated_features))}
+        models = {'all': None}
+        #           'nuissance': list(np.arange(self.n_annotated_features,
+        #                                       self.n_annotated_features + self.n_PCs)),
+        #           'annotated': list(np.arange(self.n_annotated_features)),
+        #           'visual': list(np.arange(3)),
+        #           'socialprimitive': [3, 4],
+        #           'social': list(np.arange(5, self.n_annotated_features))}
         features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
+        features.drop(columns=['cooperation', 'dominance', 'intimacy', 'valence', 'arousal'], inplace=True)
         features = features.sort_values(by=['video_name']).drop(columns=['video_name']).columns.to_numpy()
+        inds = np.arange(self.n_annotated_features + self.n_PCs)
         for ifeature, feature in enumerate(features):
-            models[feature] = [ifeature]
+            models[feature] = list(np.delete(inds, ifeature))
         return models
 
     def preprocess(self, X_train_, X_test_,

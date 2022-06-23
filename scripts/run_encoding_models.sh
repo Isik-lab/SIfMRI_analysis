@@ -1,5 +1,5 @@
 subjs=( "1" "2" "3" "4" "all" )
-features=( "indoor" "expanse" "agent distance" "facingness" "transitivity" "joint action" "communication" "cooperation" "dominance" "intimacy" "valence" "arousal" )
+features=( "indoor" "expanse" "agent distance" "facingness" "transitivity" "joint action" "communication" "valence" "arousal" )
 
 for subj in "${subjs[@]}"; do
   #Full model
