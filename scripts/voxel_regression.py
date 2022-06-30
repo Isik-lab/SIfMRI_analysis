@@ -45,7 +45,7 @@ def regress(X_train_, y_train_):
     return lr.coef_.T
 
 
-class VoxelRegression():
+class VoxelRegression:
     def __init__(self, args):
         self.process = 'VoxelRegression'
         self.sid = str(args.s_num).zfill(2)
@@ -60,19 +60,22 @@ class VoxelRegression():
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
 
     def mk_models(self):
-        models = {'all': None}
-        #           'nuissance': list(np.arange(self.n_annotated_features,
-        #                                       self.n_annotated_features + self.n_PCs)),
-        #           'annotated': list(np.arange(self.n_annotated_features)),
-        #           'visual': list(np.arange(3)),
-        #           'socialprimitive': [3, 4],
-        #           'social': list(np.arange(5, self.n_annotated_features))}
+        models = {'all': None,
+                  'visual': [0, 1, 2],
+                  'primitive': [3, 4],
+                  'social': [5, 6],
+                  'affective': [7, 8]}
         features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        features.drop(columns=['cooperation', 'dominance', 'intimacy', 'valence', 'arousal'], inplace=True)
+        features.drop(columns=['cooperation', 'dominance', 'intimacy'], inplace=True)
         features = features.sort_values(by=['video_name']).drop(columns=['video_name']).columns.to_numpy()
         inds = np.arange(self.n_annotated_features + self.n_PCs)
+        # This makes the visual model the annotated visual dimensions and the highlevel
+        models['nuissance'] = list(np.delete(inds,
+                                             [j for i in models if models[i] is not None for j in models[i]]))
+        models['lowhighvis'] = list(np.delete(inds,
+                                                  [models['primitive'], models['social'], models['affective']]))
         for ifeature, feature in enumerate(features):
-            models[feature] = list(np.delete(inds, ifeature))
+            models[feature] = [ifeature]
         return models
 
     def preprocess(self, X_train_, X_test_,
