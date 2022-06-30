@@ -74,6 +74,7 @@ class VoxelRegression:
                                              [j for i in models if models[i] is not None for j in models[i]]))
         models['lowhighvis'] = list(np.delete(inds,
                                                   [models['primitive'], models['social'], models['affective']]))
+        models['annotated'] = list(np.arange(self.n_annotated_features))
         for ifeature, feature in enumerate(features):
             models[feature] = [ifeature]
         return models
