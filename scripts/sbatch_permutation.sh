@@ -1,10 +1,13 @@
 #!/bin/bash -l
-#SBATCH --job-name=permutation
+
+#SBATCH
+#SBATCH --job-name=fmriprep
 #SBATCH --time=2:30:00
-#SBATCH --partition=shared
+#SBATCH --partition=defq
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=18
+#SBATCH --cpus-per-task=16
 #SBATCH --mail-type=end
+#SBATCH --mail-user=emcmaho7@jhu.edu
 
 subj=$1
 model=$2
