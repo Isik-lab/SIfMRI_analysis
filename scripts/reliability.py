@@ -152,11 +152,11 @@ class Reliability():
         # Plot in the volume
         print('saving figures')
         cmap = sns.color_palette('magma', as_cmap=True)
-        plotting.plot_stat_map(r_im, display_mode='ortho',
-                               threshold=self.threshold,
-                               symmetric_cbar=False,
-                               output_file=f'{self.figure_dir}/sub-{self.sid}_view-volume_set-{self.set}_stat-rho_statmap.pdf',
-                               cmap=cmap)
+        # plotting.plot_stat_map(r_im, display_mode='ortho',
+        #                        threshold=self.threshold,
+        #                        symmetric_cbar=False,
+        #                        output_file=f'{self.figure_dir}/sub-{self.sid}_view-volume_set-{self.set}_stat-rho_statmap.pdf',
+        #                        cmap=cmap)
 
         # Plot on the surface
         name = f'{self.figure_dir}/sub-{self.sid}_view-surface_set-{self.set}_stat-rho_statmap.pdf'
@@ -167,8 +167,8 @@ class Reliability():
         # vmax = cm.get_vmax(texture)
         # vmax = 0.8
         cm.plot_surface_stats(self.fsaverage, texture,
-                              threshold=self.threshold,
-                              modes=['lateral'],
+                              threshold=0.2,
+                              modes=['lateral', 'ventral'],
                               cmap=cmap,
                               output_file=name,
                               vmax=1.0)
