@@ -384,9 +384,9 @@ def plot_surface_stats(fsaverage, texture,
         ticks = np.linspace(0, 1.0, num=3).round(decimals=1)
         cbar = fig.colorbar(sm, cax=cbar_ax,
                             orientation='horizontal', ticks=ticks)
-        cbar.set_label(label=cbar_title, size=30)
+        cbar.set_label(label=cbar_title, size=26)
         for t in cbar.ax.get_xticklabels():
-            t.set_fontsize(28)
+            t.set_fontsize(21)
 
     if title is not None:
         fig.suptitle(title, y=1. - title_h / sum(height_ratios), va="bottom")

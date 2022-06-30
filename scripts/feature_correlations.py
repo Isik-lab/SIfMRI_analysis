@@ -5,6 +5,7 @@ import argparse
 import os
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import PCA
 from tqdm import tqdm
 
 import matplotlib.pyplot as plt
@@ -24,6 +25,16 @@ def diag(arr, cut=True):
         return arr[1:, :-1]
     else:
         return arr
+
+
+def pca(a, b=None, n_components=8):
+    pca_ = PCA(svd_solver='full', whiten=True, n_components=n_components)
+    a_out = pca_.fit_transform(a)
+    if b is not None:
+        b_out = pca_.transform(b)
+    else:
+        b_out = None
+    return a_out, b_out
 
 
 class FeatureCorrelations():
@@ -96,8 +107,9 @@ class FeatureCorrelations():
         return plotting_rsm, p_bool
 
     def plot(self, rs, ps, ticks, context='poster'):
-        if context == 'talk':
-            r_size = 12
+        if context == 'talk' or context == 'paper':
+            r_size = 10
+            label_size = 12
         else:
             r_size = 20
 
@@ -127,9 +139,9 @@ class FeatureCorrelations():
         # ticks = np.linspace(vmin, vmax, num=12).round(decimals=1)
         cbar = plt.colorbar()
         cbar.ax.tick_params(size=0)
-        cbar.set_label(label=r"Correlation ($r$)", size=20)
-        # for t in cbar.ax.get_yticklabels():
-        #     t.set_fontsize(28)
+        cbar.set_label(label=r"Correlation ($r$)", size=label_size+2)
+        for t in cbar.ax.get_yticklabels():
+            t.set_fontsize(label_size)
 
         colors = feature_colors()
         palette = custom_palette(rgb=False)
@@ -138,15 +150,23 @@ class FeatureCorrelations():
         ax.set_yticks(np.arange(nqs - 1))
         ax.set_yticklabels(ticks[1:])
         for ticklabel, pointer in zip(ticks[1:], ax.get_yticklabels()):
-            pointer.set_color(palette[colors[ticklabel]])
+            if ticklabel in colors.keys():
+                pointer.set_color(palette[colors[ticklabel]])
+            else:
+                pointer.set_color('gray')
             pointer.set_weight('bold')
+            pointer.set_fontsize(label_size)
 
         # x axis
         ax.set_xticks(np.arange(nqs - 1))
         ax.set_xticklabels(ticks[:-1], rotation=90, ha='center')
         for ticklabel, pointer in zip(ticks[:-1], ax.get_xticklabels()):
-            pointer.set_color(palette[colors[ticklabel]])
+            if ticklabel in colors.keys():
+                pointer.set_color(palette[colors[ticklabel]])
+            else:
+                pointer.set_color('gray')
             pointer.set_weight('bold')
+            pointer.set_fontsize(label_size)
 
         ax.grid(False)
         plt.tight_layout()
@@ -160,8 +180,15 @@ class FeatureCorrelations():
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
-        df = df.drop(columns=['video_name'])
+        df = df.drop(columns=['video_name', 'cooperation', 'dominance', 'intimacy'])
         return df
+
+    def load_nuisance_regressors(self, n_components=8):
+        alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avgframe.npy').T
+        of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
+        pcs, _ = pca(np.hstack([alexnet, of]), n_components=n_components)
+        cols = [f'nuisance comp{i + 1}' for i in range(n_components)]
+        return pd.DataFrame(pcs, columns=cols)
 
     def run(self, context='talk'):
         if self.rsa:
@@ -171,6 +198,8 @@ class FeatureCorrelations():
             df = df[columns]
         else:
             df = self.load_annotations()
+            nuisance = self.load_nuisance_regressors()
+            df = pd.concat([df, nuisance], axis=1)
 
         if not self.precomputed:
             rs, ps = self.compute_mat(np.array(df))
