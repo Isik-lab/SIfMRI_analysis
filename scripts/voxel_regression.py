@@ -110,7 +110,7 @@ class VoxelRegression:
                 np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_method-test.npy', y_pred)
 
     def load_neural(self):
-        mask = np.load(f'{self.out_dir}/Reliability/sub-all_set-test_reliability-mask.npy').astype('bool')
+        mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_set-test_reliability-mask.npy').astype('bool')
         train = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_train-data.npy')
         test = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_test-data.npy')
         return train[:, mask], test[:, mask]
