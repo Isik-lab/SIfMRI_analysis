@@ -13,10 +13,14 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 
-def pca(a, b, n_components):
+def pca(a, b=None, n_components=8):
     pca_ = PCA(svd_solver='full', whiten=True, n_components=n_components)
     a_out = pca_.fit_transform(a)
-    return a_out, pca_.transform(b)
+    if b is not None:
+        b_out = pca_.transform(b)
+    else:
+        b_out = None
+    return a_out, b_out
 
 
 def scale(train_, test_):
