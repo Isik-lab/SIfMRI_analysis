@@ -187,7 +187,7 @@ class FeatureCorrelations():
         alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avgframe.npy').T
         of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
         pcs, _ = pca(np.hstack([alexnet, of]), n_components=n_components)
-        cols = [f'nuisance comp{i + 1}' for i in range(n_components)]
+        cols = [f'low-level PC {i + 1}' for i in range(n_components)]
         return pd.DataFrame(pcs, columns=cols)
 
     def run(self, context='talk'):
