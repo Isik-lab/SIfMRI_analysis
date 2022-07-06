@@ -49,13 +49,10 @@ def regress(X_train_, y_train_):
     return lr.coef_.T
 
 
-class VoxelRegression:
+class VoxelUniqueRegression:
     def __init__(self, args):
-        self.process = 'VoxelRegression'
+        self.process = 'VoxelUniqueRegression'
         self.sid = str(args.s_num).zfill(2)
-        self.unique_model = args.unique_model
-        if self.unique_model is not None:
-            self.unique_model = self.unique_model.replace('_', ' ')
         print(f'sub-{self.sid}')
         self.cross_validation = args.cross_validation
         self.n_PCs = args.n_PCs
@@ -67,23 +64,23 @@ class VoxelRegression:
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
 
     def mk_models(self):
-        models = {'all': None}
-                  # 'visual': [0, 1, 2],
-                  # 'primitive': [3, 4],
-                  # 'social': [5, 6],
-                  # 'affective': [7, 8]}
-        # features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        # features.drop(columns=['cooperation', 'dominance', 'intimacy'], inplace=True)
-        # features = features.sort_values(by=['video_name']).drop(columns=['video_name']).columns.to_numpy()
-        # inds = np.arange(self.n_annotated_features + self.n_PCs)
-        # # This makes the visual model the annotated visual dimensions and the highlevel
-        # models['nuissance'] = list(np.delete(inds,
-        #                                      [j for i in models if models[i] is not None for j in models[i]]))
-        # models['lowhighvis'] = list(np.delete(inds,
-        #                                           [models['primitive'], models['social'], models['affective']]))
-        # models['annotated'] = list(np.arange(self.n_annotated_features))
-        # for ifeature, feature in enumerate(features):
-        #     models[feature] = [ifeature]
+        models = {'all': None,
+                  'visual': [0, 1, 2],
+                  'primitive': [3, 4],
+                  'social': [5, 6],
+                  'affective': [7, 8]}
+        features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
+        features.drop(columns=['cooperation', 'dominance', 'intimacy'], inplace=True)
+        features = features.sort_values(by=['video_name']).drop(columns=['video_name']).columns.to_numpy()
+        inds = np.arange(self.n_annotated_features + self.n_PCs)
+        # This makes the visual model the annotated visual dimensions and the highlevel
+        models['nuissance'] = list(np.delete(inds,
+                                             [j for i in models if models[i] is not None for j in models[i]]))
+        models['lowhighvis'] = list(np.delete(inds,
+                                                  [models['primitive'], models['social'], models['affective']]))
+        models['annotated'] = list(np.arange(self.n_annotated_features))
+        for ifeature, feature in enumerate(features):
+            models[feature] = [ifeature]
         return models
 
     def preprocess(self, X_train_, X_test_,
@@ -98,13 +95,12 @@ class VoxelRegression:
         return X_train_, X_test_, y_train_, y_test_
 
     def prediction(self, X_test_, betas_, y_test_, i=None):
-        if self.unique_model is None:
-            if i is not None:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-CV_loop-{i}.npy', betas_)
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop-{i}.npy', y_test_)
-            else:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-test.npy', betas_)
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy', y_test_)
+        if i is not None:
+            np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-CV_loop-{i}.npy', betas_)
+            np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop-{i}.npy', y_test_)
+        else:
+            np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-test.npy', betas_)
+            np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy', y_test_)
 
         models = self.mk_models()
         for key in models:
@@ -112,10 +108,10 @@ class VoxelRegression:
             y_pred = X_test_ @ cur_betas_
 
             if i is not None:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_drop-{self.unique_model}_method-CV_loop-{i}.npy',
+                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_method-CV_loop-{i}.npy',
                         y_pred)
             else:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_drop-{self.unique_model}_method-test.npy', y_pred)
+                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_method-test.npy', y_pred)
 
     def load_neural(self):
         mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_set-test_reliability-mask.npy').astype('bool')
@@ -128,24 +124,11 @@ class VoxelRegression:
         of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{dataset}.npy')
         return np.hstack([alexnet, of])
 
-    def load_annotated_features(self, dataset):
-        df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        set_names = pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv')
-        df = df.merge(set_names)
-        #Remove the high-level social dimensions -- 06/21/2022
-        df.drop(columns=['cooperation', 'dominance', 'intimacy', 'valence', 'arousal'], inplace=True)
-        df.sort_values(by=['video_name'], inplace=True)
-        cols_drop = ['video_name']
-        if self.unique_model is not None:
-            cols_drop.append(self.unique_model)
-        df.drop(columns=cols_drop, inplace=True)
-        return df.to_numpy()
-
     def load_features(self):
         X_control_train_ = self.load_nuissance_regressors('train')
         X_control_test_ = self.load_nuissance_regressors('test')
-        X_train_ = self.load_annotated_features('train')
-        X_test_ = self.load_annotated_features('test')
+        X_train_ = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-train.npy')
+        X_test_ = np.load(f'{self.out_dir}/GenerateModels/annotated_model_set-test.npy')
         return X_train_, X_test_, X_control_train_, X_control_test_
 
     def load(self):
@@ -201,7 +184,6 @@ class VoxelRegression:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--unique_model', '-m', type=str, default=None)
     parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_PCs', type=int, default=8)
     parser.add_argument('--data_dir', '-data', type=str,

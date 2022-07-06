@@ -381,7 +381,7 @@ def plot_surface_stats(fsaverage, texture,
         cbar_grid = gridspec.GridSpecFromSubplotSpec(3, 3, grid[-1, :])
         cbar_ax = fig.add_subplot(cbar_grid[1])
         axes.append(cbar_ax)
-        ticks = np.linspace(0, 1.0, num=3).round(decimals=1)
+        ticks = np.linspace(0, vmax, num=3).round(decimals=2)
         cbar = fig.colorbar(sm, cax=cbar_ax,
                             orientation='horizontal', ticks=ticks)
         cbar.set_label(label=cbar_title, size=26)

@@ -13,6 +13,7 @@ class VoxelPermutation():
     def __init__(self, args):
         self.process = 'VoxelPermutation'
         self.model = args.model.replace('_', ' ')
+        self.unique_model = args.unique_model.replace('_', ' ')
         self.sid = str(args.s_num).zfill(2)
         self.cross_validation = args.cross_validation
         if self.cross_validation:
@@ -28,8 +29,9 @@ class VoxelPermutation():
 
     def load(self):
         if self.cross_validation:
-            pred_files = sorted(glob.glob(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_method-CV_loop*.npy'))
+            fnames = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-CV_loop*.npy'
+            print(fnames)
+            pred_files = sorted(glob.glob(fnames))
             true_files = sorted(
                 glob.glob(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop*.npy'))
             pred = None
@@ -42,7 +44,7 @@ class VoxelPermutation():
                 pred[:, i, :] = pred_file
                 true[:, i, :] = true_file
         else:
-            pred = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_method-test.npy')
+            pred = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-test.npy')
             true = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
         return true, pred
 
@@ -81,10 +83,10 @@ class VoxelPermutation():
 
     def save_perm_results(self, r_true, p, r_null):
         print('Saving output')
-        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_method-{self.method}'
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-{self.method}'
         np.save(f'{base}_rs.npy', r_true)
         np.save(f'{base}_ps.npy', p)
-        np.save(f'{self.out_dir}/{self.process}/rnull/sub-{self.sid}_prediction-{self.model}_method-{self.method}_rnull.npy', r_null)
+        np.save(f'{self.out_dir}/{self.process}/rnull/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-{self.method}_rnull.npy', r_null)
         print('Completed successfully!')
 
     def run(self):
@@ -96,7 +98,8 @@ class VoxelPermutation():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--model', '-m', type=str, default='visual')
+    parser.add_argument('--unique_model', '-m', type=str, default='None')
+    parser.add_argument('--model', type=str, default='all')
     parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=5000)
     parser.add_argument('--data_dir', '-data', type=str,

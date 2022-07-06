@@ -23,9 +23,9 @@ class Reliability():
             self.sid = str(int(args.s_num)).zfill(2)
         self.set = args.set
         if self.set == 'test':
-            self.threshold = 0.279
+            self.threshold = 0.235
         else: #self.set == 'train'
-            self.threshold = 0.139
+            self.threshold = 0.117
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -167,7 +167,7 @@ class Reliability():
         # vmax = cm.get_vmax(texture)
         # vmax = 0.8
         cm.plot_surface_stats(self.fsaverage, texture,
-                              threshold=0.2,
+                              threshold=0.01,
                               modes=['lateral', 'ventral'],
                               cmap=cmap,
                               output_file=name,
