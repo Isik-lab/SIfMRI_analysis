@@ -54,36 +54,23 @@ class VoxelRegression:
         self.process = 'VoxelRegression'
         self.sid = str(args.s_num).zfill(2)
         self.unique_model = args.unique_model
+        self.single_model = args.single_model
+        assert (self.unique_model is None or self.single_model is None)
         if self.unique_model is not None:
             self.unique_model = self.unique_model.replace('_', ' ')
-        print(f'sub-{self.sid}')
+        if self.single_model is not None:
+            self.single_model = self.single_model.replace('_', ' ')
         self.cross_validation = args.cross_validation
         self.n_PCs = args.n_PCs
-        self.n_annotated_features = 9
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
+        print(vars(self))
 
     def mk_models(self):
         models = {'all': None}
-                  # 'visual': [0, 1, 2],
-                  # 'primitive': [3, 4],
-                  # 'social': [5, 6],
-                  # 'affective': [7, 8]}
-        # features = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        # features.drop(columns=['cooperation', 'dominance', 'intimacy'], inplace=True)
-        # features = features.sort_values(by=['video_name']).drop(columns=['video_name']).columns.to_numpy()
-        # inds = np.arange(self.n_annotated_features + self.n_PCs)
-        # # This makes the visual model the annotated visual dimensions and the highlevel
-        # models['nuissance'] = list(np.delete(inds,
-        #                                      [j for i in models if models[i] is not None for j in models[i]]))
-        # models['lowhighvis'] = list(np.delete(inds,
-        #                                           [models['primitive'], models['social'], models['affective']]))
-        # models['annotated'] = list(np.arange(self.n_annotated_features))
-        # for ifeature, feature in enumerate(features):
-        #     models[feature] = [ifeature]
         return models
 
     def preprocess(self, X_train_, X_test_,
@@ -98,7 +85,7 @@ class VoxelRegression:
         return X_train_, X_test_, y_train_, y_test_
 
     def prediction(self, X_test_, betas_, y_test_, i=None):
-        if self.unique_model is None:
+        if (self.unique_model is None) and (self.single_model is None):
             if i is not None:
                 np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-CV_loop-{i}.npy', betas_)
                 np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop-{i}.npy', y_test_)
@@ -108,14 +95,15 @@ class VoxelRegression:
 
         models = self.mk_models()
         for key in models:
+            name_base = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}'
             cur_betas_ = zero_inds(betas_, models[key], X_test_.shape[-1])
             y_pred = X_test_ @ cur_betas_
 
             if i is not None:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_drop-{self.unique_model}_method-CV_loop-{i}.npy',
+                np.save(f'{name_base}_drop-{self.unique_model}_single-{self.single_model}_method-CV_loop-{i}.npy',
                         y_pred)
             else:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}_drop-{self.unique_model}_method-test.npy', y_pred)
+                np.save(f'{name_base}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy', y_pred)
 
     def load_neural(self):
         mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_set-test_reliability-mask.npy').astype('bool')
@@ -132,14 +120,19 @@ class VoxelRegression:
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         set_names = pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv')
         df = df.merge(set_names)
-        #Remove the high-level social dimensions -- 06/21/2022
-        df.drop(columns=['cooperation', 'dominance', 'intimacy', 'valence', 'arousal'], inplace=True)
         df.sort_values(by=['video_name'], inplace=True)
-        cols_drop = ['video_name']
+        # Remove the high-level social dimensions -- 06/21/2022
+        cols_drop = ['video_name', 'cooperation', 'dominance', 'intimacy']
+
+        # If unique_model is not None, add that to the list of columns to drop
         if self.unique_model is not None:
             cols_drop.append(self.unique_model)
-        df.drop(columns=cols_drop, inplace=True)
-        return df.to_numpy()
+
+        if self.single_model is not None:
+            out = np.expand_dims(df[self.single_model].to_numpy(), axis=1)
+        else:
+            out = df.drop(columns=cols_drop).to_numpy()
+        return out
 
     def load_features(self):
         X_control_train_ = self.load_nuissance_regressors('train')
@@ -201,7 +194,8 @@ class VoxelRegression:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--unique_model', '-m', type=str, default=None)
+    parser.add_argument('--unique_model', type=str, default=None)
+    parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_PCs', type=int, default=8)
     parser.add_argument('--data_dir', '-data', type=str,

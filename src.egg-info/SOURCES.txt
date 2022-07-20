@@ -2,7 +2,9 @@ LICENSE
 README.md
 setup.py
 src/__init__.py
+src/custom_plotting.py
 src/regress.py
+src/testing.py
 src/tools.py
 src.egg-info/PKG-INFO
 src.egg-info/SOURCES.txt

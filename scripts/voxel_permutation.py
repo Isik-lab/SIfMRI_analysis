@@ -13,7 +13,13 @@ class VoxelPermutation():
     def __init__(self, args):
         self.process = 'VoxelPermutation'
         self.model = args.model.replace('_', ' ')
-        self.unique_model = args.unique_model.replace('_', ' ')
+        self.unique_model = args.unique_model
+        self.single_model = args.single_model
+        assert (self.unique_model is None or self.single_model is None)
+        if self.unique_model is not None:
+            self.unique_model = self.unique_model.replace('_', ' ')
+        if self.single_model is not None:
+            self.single_model = self.single_model.replace('_', ' ')
         self.sid = str(args.s_num).zfill(2)
         self.cross_validation = args.cross_validation
         if self.cross_validation:
@@ -29,7 +35,7 @@ class VoxelPermutation():
 
     def load(self):
         if self.cross_validation:
-            fnames = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-CV_loop*.npy'
+            fnames = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-CV_loop*.npy'
             print(fnames)
             pred_files = sorted(glob.glob(fnames))
             true_files = sorted(
@@ -44,7 +50,7 @@ class VoxelPermutation():
                 pred[:, i, :] = pred_file
                 true[:, i, :] = true_file
         else:
-            pred = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-test.npy')
+            pred = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy')
             true = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
         return true, pred
 
@@ -98,7 +104,8 @@ class VoxelPermutation():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--unique_model', '-m', type=str, default='None')
+    parser.add_argument('--unique_model', type=str, default='None')
+    parser.add_argument('--single_model', type=str, default='None')
     parser.add_argument('--model', type=str, default='all')
     parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=5000)
