@@ -1,5 +1,5 @@
 #get files
-models=( "agent_distance" "facingness" "joint_action" "communication" "valence" "arousal" )
+models=( "agent_distance" "arousal" "communication" "facingness" "joint_action"  "valence" )
 
 for subj in 1 2 3 4; do
    for model in ${models[@]}; do

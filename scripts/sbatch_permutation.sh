@@ -15,6 +15,6 @@ model=$2
 ml anaconda
 conda activate nibabel
 
-python voxel_permutation.py -s "$subj" --single_model "$model" --cross_validation \
+python voxel_permutation.py -s "$subj" --cross_validation \
   --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
   --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw
