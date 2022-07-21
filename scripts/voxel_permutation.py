@@ -15,7 +15,7 @@ class VoxelPermutation():
         self.model = args.model.replace('_', ' ')
         self.unique_model = args.unique_model
         self.single_model = args.single_model
-        assert (self.unique_model is None or self.single_model is None)
+        assert (self.unique_model is not None or self.single_model is not None)
         if self.unique_model is not None:
             self.unique_model = self.unique_model.replace('_', ' ')
         if self.single_model is not None:
@@ -89,10 +89,10 @@ class VoxelPermutation():
 
     def save_perm_results(self, r_true, p, r_null):
         print('Saving output')
-        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-{self.method}'
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
         np.save(f'{base}_rs.npy', r_true)
         np.save(f'{base}_ps.npy', p)
-        np.save(f'{self.out_dir}/{self.process}/rnull/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_method-{self.method}_rnull.npy', r_null)
+        np.save(f'{self.out_dir}/{self.process}/rnull/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_rnull.npy', r_null)
         print('Completed successfully!')
 
     def run(self):

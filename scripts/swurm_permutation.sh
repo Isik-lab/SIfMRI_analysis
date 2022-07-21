@@ -1,9 +1,8 @@
 #get files
-subjs=( 1 2 3 4 )
-models=( "all" "visual" "primitive" "social" "affective" "nuissance" "lowhighvis" "annotated" "indoor" "expanse" "transitivity" "agent_distance" "facingness" "joint_action" "communication" "valence" "arousal" )
+models=( "agent_distance" "facingness" "joint_action" "communication" "valence" "arousal" )
 
-for subj in ${subjs[@]}; do
-  for model in ${models[@]}; do
-      sbatch sbatch_permutation.sh "$subj" "$model"
-  done
+for subj in 1 2 3 4; do
+   for model in ${models[@]}; do
+     sbatch sbatch_permutation.sh $subj $model
+   done
 done

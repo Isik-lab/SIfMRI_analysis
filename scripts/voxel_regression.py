@@ -55,7 +55,7 @@ class VoxelRegression:
         self.sid = str(args.s_num).zfill(2)
         self.unique_model = args.unique_model
         self.single_model = args.single_model
-        assert (self.unique_model is None or self.single_model is None)
+        assert (self.unique_model is not None or self.single_model is not None)
         if self.unique_model is not None:
             self.unique_model = self.unique_model.replace('_', ' ')
         if self.single_model is not None:
