@@ -21,7 +21,7 @@ class VoxelPermutation():
         if self.single_model is not None:
             self.single_model = self.single_model.replace('_', ' ')
         self.sid = str(args.s_num).zfill(2)
-        self.cross_validation = args.cross_validation
+        self.cross_validation = args.CV
         if self.cross_validation:
             self.method = 'CV'
         else:
@@ -107,7 +107,7 @@ def main():
     parser.add_argument('--unique_model', type=str, default='None')
     parser.add_argument('--single_model', type=str, default='None')
     parser.add_argument('--model', type=str, default='all')
-    parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=5000)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

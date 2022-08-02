@@ -2,26 +2,37 @@
 # coding: utf-8
 
 import argparse
-import os
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from nilearn import plotting, image, datasets, surface
 import nibabel as nib
 from src import tools
 import seaborn as sns
 import src.custom_plotting as cm
+from pathlib import Path
+
+
+def mask_img(img, mask, fill=0.):
+    if type(img) is nib.nifti1.Nifti1Image:
+        masked_img = np.array(img.dataobj)
+        mask = np.array(mask.dataobj)
+    else:
+        masked_img = img.copy()
+    mask = np.invert(mask.astype('bool'))
+    i, j, k = np.where(mask)
+    masked_img[i, j, k] = fill
+    if type(img) is nib.nifti1.Nifti1Image:
+        masked_img = nib.Nifti1Image(masked_img, img.affine, img.header)
+    return masked_img
 
 
 class Reliability():
     def __init__(self, args):
         self.process = 'Reliability'
-        self.n_subjects = 4
-        if args.s_num == 'all':
-            self.sid = args.s_num
-        else:
-            self.sid = str(int(args.s_num)).zfill(2)
+        self.sid = str(int(args.s_num)).zfill(2)
         self.set = args.set
+        self.space = args.space
+        self.step = args.step
         if self.set == 'test':
             self.threshold = 0.235
         else: #self.set == 'train'
@@ -29,155 +40,64 @@ class Reliability():
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        if not os.path.exists(f'{args.out_dir}/{self.process}'):
-            os.mkdir(f'{args.out_dir}/{self.process}')
-        if not os.path.exists(self.figure_dir):
-            os.mkdir(self.figure_dir)
-        self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
+        Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
+        Path(f'{args.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
 
-    def rm_EVC(self, mask):
-        if self.sid == 'all':
-            evc = nib.load(f'{self.data_dir}/ROI_masks/sub-01/sub-01_region-EVC_mask_nooverlap.nii.gz')
+    def load_betas(self, name):
+        im = nib.load(f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}-{name}_data.nii.gz')
+        return np.array(im.dataobj).reshape((-1, im.shape[-1])).T, im.shape[:-1], im.affine, im.header
+
+    def load_anatomy(self):
+        if self.space == 'T1w':
+            anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_desc-preproc_T1w.nii.gz')
+            brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_desc-brain_mask.nii.gz')
         else:
-            evc = nib.load(f'{self.data_dir}/ROI_masks/sub-{self.sid}/sub-{self.sid}_region-EVC_mask_nooverlap.nii.gz')
-        evc = np.array(evc.dataobj, dtype='bool')
-        evc = np.invert(evc)
-        mask = mask.reshape(evc.shape)
-
-        # remove EVC
-        inds = np.where(np.invert(evc))
-        mask[inds] = 0
-
-        return mask.flatten()
-
-    def brain_indices(self, affine, shape):
-        mask = datasets.load_mni152_brain_mask()
-        mask = image.resample_img(mask, target_affine=affine,
-                                  target_shape=shape,
-                                  interpolation='nearest')
-        mask = np.array(mask.dataobj, dtype='bool').flatten()
-        return np.invert(mask)
-
-    def load_test_betas(self, n_voxels, n_conds):
-        even = np.zeros((n_voxels, n_conds))
-        odd = np.zeros_like(even)
-        if self.sid == 'all':
-            for i in tqdm(range(1, self.n_subjects+1), total=self.n_subjects):
-                i = str(i).zfill(2)
-
-                # Load the data
-                arr = np.load(f'{self.out_dir}/GroupRuns/sub-{i}/sub-{i}_test-data.npy')
-                print(arr.shape)
-                even += arr[..., 1::2].mean(axis=-1)
-                odd += arr[..., ::2].mean(axis=-1)
-
-            # Get the average of the even and odd runs across subjects
-            even /= self.n_subjects
-            odd /= self.n_subjects
-        else:
-            arr = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_test-data.npy')
-            even += arr[..., 1::2].mean(axis=-1)
-            odd += arr[..., ::2].mean(axis=-1)
-        return even, odd
-
-    def load_betas(self):
-        if self.sid == 'all':
-            even = None
-            for si in tqdm(range(self.n_subjects), total=self.n_subjects):
-                sub = str(si+1).zfill(2)
-                # Load the data
-                seven = np.load(f'{self.out_dir}/GroupRuns/sub-{sub}/sub-{sub}_{self.set}-even-data.npy')
-                sodd = np.load(f'{self.out_dir}/GroupRuns/sub-{sub}/sub-{sub}_{self.set}-odd-data.npy')
-
-                if even is None:
-                    even = np.zeros((self.n_subjects, seven.shape[0], seven.shape[1]))
-                    odd = np.zeros_like(even)
-
-                even[si, ...] = seven
-                odd[si, ...] = sodd
-
-            # Get the average of the even and odd runs across subjects
-            even = even.mean(axis=0)
-            odd = odd.mean(axis=0)
-        else:
-            even = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_{self.set}-even-data.npy')
-            odd = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_{self.set}-odd-data.npy')
-        return even, odd
+            anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_space-{self.space}_desc-preproc_T1w.nii.gz')
+            brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_space-{self.space}_desc-brain_mask.nii.gz')
+        return mask_img(anat, brain_mask)
 
     def run(self):
-        videos = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
-        n_conds = len(videos)
-
-        # Load an ROI file to get meta data about the images
-        im = nib.load(f'{self.data_dir}/ROI_masks/sub-01/sub-01_region-EVC_mask.nii.gz')
-        vol = im.shape
-        n_voxels = np.prod(vol)
-        affine = im.affine
-
         print('loading betas...')
-        even, odd = self.load_betas()
-
-        # Remove signal coming from outside the brain
-        brain_mask = self.brain_indices(affine, vol)
-        even[:, brain_mask] = 0.
-        odd[:, brain_mask] = 0.
+        even, shape, affine, header = self.load_betas('even')
+        odd, _, _, _ = self.load_betas('odd')
         
         # Compute the correlation
         print('computing the correlation')
         r_map = tools.corr2d(even, odd)
+        r_map[r_map < 0] = 0 #Filter out the negative values
 
         # Make the array into a nifti image and save
         print('saving reliability nifti')
-        r_map = np.nan_to_num(r_map)
-        r_im = nib.Nifti1Image(np.array(r_map).reshape(vol), affine)
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_stat-rho_statmap.nii.gz'
-        nib.save(r_im, r_name)
-
-        #Save the numpy array
-        print('saving reliability numpy arr')
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_stat-rho_statmap.npy'
-        np.save(r_name, r_map)
+        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_stat-r_statmap'
+        r_im = nib.Nifti1Image(np.nan_to_num(r_map).reshape(shape), affine, header)
+        nib.save(r_im, f'{r_name}.nii.gz')
+        np.save(f'{r_name}.npy', r_map)
 
         #Save the mask
         print('saving reliability mask')
         r_mask = np.zeros_like(r_map, dtype='int')
         r_mask[(r_map >= self.threshold) & (~np.isnan(r_map))] = 1
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_reliability-mask.npy'
+        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask.npy'
         np.save(r_name, r_mask)
-
-        # remove the EVC and save
-        r_mask = self.rm_EVC(r_mask)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_set-{self.set}_reliability-mask_noEVC.npy', r_mask)
 
         # Plot in the volume
         print('saving figures')
-        cmap = sns.color_palette('magma', as_cmap=True)
-        # plotting.plot_stat_map(r_im, display_mode='ortho',
-        #                        threshold=self.threshold,
-        #                        symmetric_cbar=False,
-        #                        output_file=f'{self.figure_dir}/sub-{self.sid}_view-volume_set-{self.set}_stat-rho_statmap.pdf',
-        #                        cmap=cmap)
+        anatomy = self.load_anatomy()
+        figure_name = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability.png'
+        plotting.plot_stat_map(r_im, anatomy,
+                               symmetric_cbar=False,
+                               threshold=self.threshold,
+                               display_mode='mosaic',
+                               cmap=sns.color_palette('magma', as_cmap=True),
+                               output_file=figure_name)
 
-        # Plot on the surface
-        name = f'{self.figure_dir}/sub-{self.sid}_view-surface_set-{self.set}_stat-rho_statmap.pdf'
-        texture = {'left': surface.vol_to_surf(r_im, self.fsaverage['pial_left'],
-                                               interpolation='linear'),
-                   'right': surface.vol_to_surf(r_im, self.fsaverage['pial_right'],
-                                                interpolation='linear')}
-        # vmax = cm.get_vmax(texture)
-        # vmax = 0.8
-        cm.plot_surface_stats(self.fsaverage, texture,
-                              threshold=0.01,
-                              modes=['lateral', 'ventral'],
-                              cmap=cmap,
-                              output_file=name,
-                              vmax=1.0)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
     parser.add_argument('--set', type=str, default='test')
-    parser.add_argument('--mesh', type=str, default='fsaverage5')
+    parser.add_argument('--space', type=str, default='T1w')
+    parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

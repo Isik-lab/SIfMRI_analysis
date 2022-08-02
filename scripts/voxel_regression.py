@@ -2,15 +2,16 @@
 # coding: utf-8
 
 import argparse
+from pathlib import Path
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from pathlib import Path
+import nibabel as nib
 
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
-from tqdm import tqdm
 
 
 def pca(a, b=None, n_components=8):
@@ -53,14 +54,16 @@ class VoxelRegression:
     def __init__(self, args):
         self.process = 'VoxelRegression'
         self.sid = str(args.s_num).zfill(2)
+        self.step = args.step
+        self.space = args.space
         self.unique_model = args.unique_model
         self.single_model = args.single_model
-        assert (self.unique_model is not None or self.single_model is not None)
+        assert (self.unique_model is None or self.single_model is None) or (self.unique_model is None and self.single_model is None)
         if self.unique_model is not None:
             self.unique_model = self.unique_model.replace('_', ' ')
         if self.single_model is not None:
             self.single_model = self.single_model.replace('_', ' ')
-        self.cross_validation = args.cross_validation
+        self.cross_validation = args.CV
         self.n_PCs = args.n_PCs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
@@ -106,9 +109,11 @@ class VoxelRegression:
                 np.save(f'{name_base}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy', y_pred)
 
     def load_neural(self):
-        mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_set-test_reliability-mask.npy').astype('bool')
-        train = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_train-data.npy')
-        test = np.load(f'{self.out_dir}/GroupRuns/sub-{self.sid}/sub-{self.sid}_test-data.npy')
+        mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype('bool')
+        train = nib.load(f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
+        train = np.array(train.dataobj).reshape((-1, train.shape[-1])).T
+        test = nib.load(f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
+        test = np.array(test.dataobj).reshape((-1, test.shape[-1])).T
         return train[:, mask], test[:, mask]
 
     def load_nuissance_regressors(self, dataset):
@@ -194,9 +199,11 @@ class VoxelRegression:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
+    parser.add_argument('--step', type=str, default='fracridge')
+    parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--unique_model', type=str, default=None)
     parser.add_argument('--single_model', type=str, default=None)
-    parser.add_argument('--cross_validation', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_PCs', type=int, default=8)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
