@@ -26,12 +26,11 @@ def pca(a, b=None, n_components=8):
 
 def scale(train_, test_):
     n_features = test_.shape[-1]
-    scaler = StandardScaler()
-    train_ = scaler.fit_transform(train_)
-    mean = scaler.mean_[:n_features].squeeze()
-    var = scaler.var_[:n_features].squeeze()
+    mean = np.nanmean(train_, axis=0).squeeze()
+    var = np.nanstd(train_, axis=0).squeeze()
     var[np.isclose(var, 0.)] = np.nan
-    return train_, (test_ - mean) / var
+    train_ = (train_ - mean) / var
+    return train_, (test_ - mean[:n_features]) / var[:n_features]
 
 
 def zero_inds(arr, inds_, max_val):
