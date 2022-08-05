@@ -44,6 +44,7 @@ class VoxelPermutation:
             fnames_loo = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-None_method-CV_loop*.npy'
             fnames_all = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-CV_loop*.npy'
             full_files = sorted(glob.glob(fnames_all))
+            print(full_files)
             loo_files = sorted(glob.glob(fnames_loo))
             test_files = sorted(glob.glob(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop*.npy'))
             loo = None
