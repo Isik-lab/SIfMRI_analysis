@@ -3,27 +3,11 @@
 
 import argparse
 import numpy as np
-import pandas as pd
-from nilearn import plotting, image, datasets, surface
+from nilearn import plotting
 import nibabel as nib
-from src import tools
 import seaborn as sns
-import src.custom_plotting as cm
+import src.tools as tools
 from pathlib import Path
-
-
-def mask_img(img, mask, fill=0.):
-    if type(img) is nib.nifti1.Nifti1Image:
-        masked_img = np.array(img.dataobj)
-        mask = np.array(mask.dataobj)
-    else:
-        masked_img = img.copy()
-    mask = np.invert(mask.astype('bool'))
-    i, j, k = np.where(mask)
-    masked_img[i, j, k] = fill
-    if type(img) is nib.nifti1.Nifti1Image:
-        masked_img = nib.Nifti1Image(masked_img, img.affine, img.header)
-    return masked_img
 
 
 class Reliability():
@@ -49,12 +33,12 @@ class Reliability():
 
     def load_anatomy(self):
         if self.space == 'T1w':
-            anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_desc-preproc_T1w.nii.gz')
-            brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_desc-brain_mask.nii.gz')
+            anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_desc-preproc_T1w.nii.gz')
+            brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_desc-brain_mask.nii.gz')
         else:
-            anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_space-{self.space}_desc-preproc_T1w.nii.gz')
-            brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/anat/sub-{self.sid}_space-{self.space}_desc-brain_mask.nii.gz')
-        return mask_img(anat, brain_mask)
+            anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-preproc_T1w.nii.gz')
+            brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-brain_mask.nii.gz')
+        return tools.mask_img(anat, brain_mask)
 
     def run(self):
         print('loading betas...')

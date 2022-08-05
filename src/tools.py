@@ -3,8 +3,25 @@
 
 import numpy as np
 from tqdm import tqdm
-from scipy.stats import spearmanr, pearsonr
+from scipy.stats import spearmanr
 from scipy.spatial.distance import squareform
+from statsmodels.stats.multitest import multipletests
+import nibabel as nib
+
+
+def filter_r(rs, ps, p_crit=0.05, correct=True, threshold=True):
+    if correct and (ps is not None):
+        _, ps_corrected, _, _ = multipletests(ps, method='fdr_bh')
+    elif not correct and (ps is not None):
+        ps_corrected = ps.copy()
+    else:
+        ps_corrected = None
+
+    if threshold and (ps is not None):
+        rs[ps_corrected >= p_crit] = 0.
+    else:
+        rs[rs < 0.] = 0.
+    return rs, ps_corrected
 
 
 def corr2d(x, y):
@@ -23,53 +40,78 @@ def mantel_permutation(a, i):
     a_shuffle = a[inds][:, inds]
     return squareform(a_shuffle)
 
-def permutation_test(a, b, test_inds=None,
-                     n_perm=int(5e3), H0='greater',
-                     rsa=False):
-    r_true, _ = spearmanr(a, b)
-    r_null = np.zeros(n_perm)
-    for i in range(n_perm):
-        if not rsa:
-            inds = np.random.default_rng(i).permutation(test_inds.shape[0])
-            if len(test_inds.shape) > 1:
-                inds = test_inds[inds, :].flatten()
-            a_shuffle = a[inds]
-        else:
-            a_shuffle = mantel_permutation(a, i)
-        r_null[i], _ = spearmanr(a_shuffle, b)
-    #Get the p-value depending on the type of test
-    if H0 == 'greater':
-        p = 1 - (np.sum(r_true >= r_null) / n_perm)
-    elif H0 == 'less':
-        p = 1 - (np.sum(r_true <= r_null) / n_perm)
+
+def calculate_p(r_null_, r_true_, n_perm_, H0_):
+    # Get the p-value depending on the type of test
+    denominator = n_perm_ + 1
+    if H0_ == 'two_tailed':
+        numerator = np.sum(np.abs(r_null_) >= np.abs(r_true_), axis=0) + 1
+        p_ = numerator / denominator
+    elif H0_ == 'greater':
+        numerator = np.sum(r_true_ > r_null_, axis=0) + 1
+        p_ = 1 - (numerator / denominator)
+    else:  # H0 == 'less':
+        numerator = np.sum(r_true_ < r_null_, axis=0) + 1
+        p_ = 1 - (numerator / denominator)
+    return p_
+
+
+def perm(a, b, n_perm=int(5e3), H0='greater'):
+    if a.ndim == 3:
+        a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
+        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
+        r2 = corr2d(a_not_shuffle, b)**2
     else:
-        p = np.sum(np.abs(r_null) >= np.abs(r_true)) / n_perm
+        r2 = corr2d(a, b)**2
 
-    return r_true, p, r_null
-
-def permutation_test_2d(a, b,
-                        test_inds=None,
-                        n_perm=int(5e3),
-                        H0='greater'):
-    r_true = corr2d(a, b)
-    r_null = np.zeros((n_perm, a.shape[-1]))
+    r2_null = np.zeros((n_perm, a.shape[-1]))
     for i in tqdm(range(n_perm), total=n_perm):
-        if test_inds is not None:
-            inds = np.random.default_rng(i).permutation(test_inds.shape[1])
-            inds = test_inds[:, inds].flatten()
-        else:
-            inds = np.random.default_rng(i).permutation(a.shape[0])
-        a_shuffle = a[inds, :]
-        r_null[i, :] = corr2d(a_shuffle, b)
+        inds = np.random.default_rng(i).permutation(a.shape[0])
+        if a.ndim == 3:
+            a_shuffle = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+        else:  # a.ndim == 2:
+            a_shuffle = a[inds, :]
+        r2_null[i, :] = corr2d(a_shuffle, b)
 
-    #Get the p-value depending on the type of test
-    if H0 == 'two_tailed':
-        p = np.sum(np.abs(r_null) >= np.abs(r_true), axis=0) / n_perm
-    elif H0 == 'greater':
-        p = 1 - (np.sum(r_true > r_null, axis=0) / n_perm)
-    else:# H0 == 'less':
-        p = 1 - (np.sum(r_true < r_null, axis=0) / n_perm)
-    return r_true, p, r_null
+    # Get the p-value depending on the type of test
+    p = calculate_p(r2_null, r2, n_perm, H0)
+    return r2, p, r2_null
+
+
+def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
+    if a.ndim == 3:
+        a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
+        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
+        c = c.reshape(c.shape[0] * c.shape[1], c.shape[-1])
+        r2 = corr2d(a_not_shuffle, b)**2 - corr2d(a_not_shuffle, c)**2
+    else:
+        r2 = corr2d(a, b)**2 - corr2d(a, c)**2
+
+    # Shuffle a and recompute r^2 n_perm times
+    r2_null = np.zeros((n_perm, a.shape[-1]))
+    for i in tqdm(range(n_perm), total=n_perm):
+        inds = np.random.default_rng(i).permutation(a.shape[0])
+        if a.ndim == 3:
+            a_shuffle = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+        else:  # a.ndim == 2:
+            a_shuffle = a[inds, :]
+        r2_null[i, :] = corr2d(a_shuffle, b)**2 - corr2d(a_shuffle, c)**2
+
+    p = calculate_p(r2_null, r2, n_perm, H0)
+    return r2, p, r2_null
+
+def mask_img(img, mask, fill=0.):
+    if type(img) is nib.nifti1.Nifti1Image:
+        masked_img = np.array(img.dataobj)
+        mask = np.array(mask.dataobj)
+    else:
+        masked_img = img.copy()
+    mask = np.invert(mask.astype('bool'))
+    i, j, k = np.where(mask)
+    masked_img[i, j, k] = fill
+    if type(img) is nib.nifti1.Nifti1Image:
+        masked_img = nib.Nifti1Image(masked_img, img.affine, img.header)
+    return masked_img
 
 def bootstrap(a, b, test_inds, n_samples=int(5e3)):
     r_var = np.zeros(n_samples)
@@ -80,19 +122,3 @@ def bootstrap(a, b, test_inds, n_samples=int(5e3)):
         r_var[i], _ = spearmanr(a[inds], b)
     return r_var
 
-def mask(stat_map, path=None):
-    #activity in ROI
-    if path is not None:
-        from nilearn import image
-        m = image.load_img(path)
-        m = np.array(m.dataobj, dtype='bool').flatten()
-    else:
-        m = np.ones(stat_map.shape[0], dtype='bool')
-    roi_activation = stat_map[m, ...]
-
-    #Remove nan values (these are voxels that do not vary across the different videos)
-    if len(stat_map.shape) == 2:
-        inds = ~np.any(np.isnan(roi_activation), axis=1)
-    else:
-        inds = np.ones(roi_activation.shape[0], dtype='bool')
-    return roi_activation[inds, ...], inds

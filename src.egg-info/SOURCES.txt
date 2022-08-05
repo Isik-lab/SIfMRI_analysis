@@ -1,7 +1,6 @@
 LICENSE
 README.md
 setup.py
-src/__init__.py
 src/custom_plotting.py
 src/regress.py
 src/testing.py

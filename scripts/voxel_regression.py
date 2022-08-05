@@ -66,9 +66,7 @@ class VoxelRegression:
         self.n_PCs = args.n_PCs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         print(vars(self))
 
     def mk_models(self):
@@ -208,8 +206,6 @@ def main():
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     VoxelRegression(args).run()
 
