@@ -17,7 +17,6 @@ class VoxelPermutation:
         self.model = args.model.replace('_', ' ')
         self.unique_model = args.unique_model
         self.single_model = args.single_model
-        assert (self.unique_model is not None or self.single_model is not None)
         if self.unique_model is not None:
             self.unique_model = self.unique_model.replace('_', ' ')
         if self.single_model is not None:
@@ -128,6 +127,7 @@ class VoxelPermutation:
     def run(self):
         if self.unique_model is None:
             y_true, y_pred = self.load()
+            print(np.unique(y_true))
             r2, p, r2_null = tools.perm(y_true, y_pred, n_perm=self.n_perm)
         else:
             y_full_pred, y_loo_pred, y_true = self.load_unique()
@@ -141,8 +141,8 @@ class VoxelPermutation:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--unique_model', type=str, default='None')
-    parser.add_argument('--single_model', type=str, default='None')
+    parser.add_argument('--unique_model', type=str, default=None)
+    parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--model', type=str, default='all')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=5000)
