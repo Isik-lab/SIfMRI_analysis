@@ -100,42 +100,43 @@ class VoxelPermutation:
         r_unmasked[i] = r_
         return nib.Nifti1Image(r_unmasked.reshape(betas.shape[:-1]), betas.affine, betas.header)
 
-    def transform_and_plot(self, r_):
+    def plot_results(self, r_):
         print('plotting results')
         anatomy = self.load_anatomy()
-        r_nii = self.nib_transform(r_)
         figure_name = f'{self.figure_dir}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}.png'
-        plotting.plot_stat_map(r_nii, anatomy,
+        plotting.plot_stat_map(r_, anatomy,
                                symmetric_cbar=False,
                                threshold=1e-6,
                                display_mode='mosaic',
                                cmap=sns.color_palette('magma', as_cmap=True),
                                output_file=figure_name)
-        return r_nii
 
-    def save_perm_results(self, r_true, r_nii, p, pcorrected, r_null):
+    def save_perm_results(self, d):
         print('Saving output')
-        base = f'{self.out_dir}/{self.process}/raw/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
-        np.save(f'{base}_r2.npy', r_true)
-        np.save(f'{base}_ps.npy', p)
-        np.save(f'{base}_pscorrected.npy', pcorrected)
-        nib.save(r_nii,
-                 f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_r2.nii.gz')
-        np.save(f'{self.out_dir}/{self.process}/rnull/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_rnull.npy', r_null)
+        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
+        for key in d.keys():
+            nib.save(d[key], f'{base}_{key}.nii.gz')
         print('Completed successfully!')
 
     def run(self):
         if self.unique_model is None:
             y_true, y_pred = self.load()
             print(np.unique(y_true))
-            r2, p, r2_null = tools.perm(y_true, y_pred, n_perm=self.n_perm)
+            r2, p, _ = tools.perm(y_true, y_pred, n_perm=self.n_perm)
         else:
             y_full_pred, y_loo_pred, y_true = self.load_unique()
-            r2, p, r2_null = tools.perm_unique_variance(y_true, y_full_pred,
+            r2, p, _ = tools.perm_unique_variance(y_true, y_full_pred,
                                                            y_loo_pred, n_perm=self.n_perm)
+
+        #filter the rs based on the significant voxels
         r2_filtered, p_corrected = tools.filter_r(r2, p)
-        r2_filtered_nii = self.transform_and_plot(r2_filtered)
-        self.save_perm_results(r2, r2_filtered_nii, p, p_corrected, r2_null)
+
+        #transform arrays to nii
+        out_data = dict()
+        for name, i in zip(['r2', 'r2filtered', 'p', 'pcorrected'], [r2, r2_filtered, p, p_corrected]):
+            out_data[name] = self.nib_transform(i)
+        self.plot_results(out_data['r2filtered'])
+        self.save_perm_results(out_data)
 
 
 def main():

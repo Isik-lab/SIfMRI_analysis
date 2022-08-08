@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import seaborn as sns
 
-class class_name():
+class class_name:
     def __init__(self, args):
         self.process = 'class_name'
         self.data_dir = args.data_dir
