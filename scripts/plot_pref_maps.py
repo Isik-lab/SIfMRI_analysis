@@ -1,16 +1,16 @@
 import os
 import nibabel as nib
+import numpy as np
 from nilearn import plotting, surface
 from pathlib import Path
 import argparse
 import seaborn as sns
+from matplotlib.colors import LinearSegmentedColormap
 
-class SurfaceStats:
+class PrefMaps:
     def __init__(self, args):
-        self.process = 'SurfaceStats'
+        self.process = 'PrefMaps'
         self.sid = str(args.s_num).zfill(2)
-        self.unique_model = args.unique_model
-        self.single_model = args.single_model
         self.cross_validation = args.CV
         if self.cross_validation:
             self.method = 'CV'
@@ -18,44 +18,48 @@ class SurfaceStats:
             self.method = 'test'
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        if self.single_model is not None:
-            self.figure_dir = f'{args.figure_dir}/{self.process}/single'
-        elif self.unique_model is not None:
-            self.figure_dir = f'{args.figure_dir}/{self.process}/variance_partitioning'
-        else:
-            self.figure_dir = f'{args.figure_dir}/{self.process}/full_model'
-        self.file_name = f'sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_r2filtered'
+        self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
-        Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
-        self.cmap = sns.color_palette('magma', as_cmap=True)
+        # Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        self.models = ['indoor', 'expanse', 'transitivity', 'agent_distance', 'facingness', 'joint_action',
+                       'communication', 'valence', 'arousal']
+        myColors = ((0.8, 0.8, 0.8, 1.0), # gray - filler
+                    (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
+                    (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
+                    (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
+                    (0.31171875, 0.20625, 0.571875, 1.0), #purle - social primitives
+                    (0.31171875, 0.20625, 0.571875, 1.0), #purle - social primitives
+                    (0.44921875, 0.8203125, 0.87109375, 1.0),  # cyan - social
+                    (0.44921875, 0.8203125, 0.87109375, 1.0),  # cyan - social
+                    (0.8515625, 0.32421875, 0.35546875, 1.0), # red - affective
+                    (0.8515625, 0.32421875, 0.35546875, 1.0)) # red - affective
+        self.cmap = LinearSegmentedColormap.from_list('Custom', myColors, len(self.models)+1)
 
     def compute_surf_stats(self, hemi):
-        cmd = '/Applications/freesurfer/bin/mri_vol2surf '
-        cmd += f'--src {self.out_dir}/VoxelPermutation/{self.file_name}.nii.gz '
-        cmd += f'--out {self.out_dir}/{self.process}/{self.file_name}_hemi-{hemi}.mgz '
-        cmd += f'--regheader sub-{self.sid} '
-        cmd += f'--hemi {hemi} '
-        cmd += '--projfrac 1'
-        os.system(cmd)
-        return surface.load_surf_data(f'{self.out_dir}/{self.process}/{self.file_name}_hemi-{hemi}.mgz')
+        stats = None
+        for model in self.models:
+            file_name = f'{self.out_dir}/SurfaceStats/sub-{self.sid}_prediction-all_drop-None_single-{model}_method-{self.method}_r2filtered_hemi-{hemi}.mgz'
+            stat = surface.load_surf_data(file_name)
+            if stats is None:
+                stats = [np.zeros_like(stat)]
+            stats.append(stat)
+        stats = np.vstack(stats).argmax(axis=0)
+        return stats
 
     def load_surf_mesh(self, hemi):
         return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated',\
                f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
 
     def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
-        if self.unique_model is not None:
-            title = f'sub-{self.sid}_{self.unique_model}'
-        else:
-            title = f'sub-{self.sid}'
+
         view = plotting.view_surf(surf_mesh=surf_mesh,
                                   surf_map=surf_map,
                                   bg_map=bg_map,
-                                  threshold=1e-6,
+                                  threshold=1,
                                   cmap=self.cmap,
                                   symmetric_cmap=False,
-                                  title=title)
-        view.save_as_html(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.html')
+                                  title=f'sub-{self.sid}')
+        view.save_as_html(f'{self.figure_dir}/sub-{self.sid}_method-{self.method}_hemi-{hemi}.html')
 
     def plot_one_hemi(self, hemi):
         surface_data = self.compute_surf_stats(hemi)
@@ -70,8 +74,6 @@ class SurfaceStats:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str)
-    parser.add_argument('--unique_model', type=str, default=None)
-    parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
@@ -80,7 +82,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    SurfaceStats(args).run()
+    PrefMaps(args).run()
 
 if __name__ == '__main__':
     main()

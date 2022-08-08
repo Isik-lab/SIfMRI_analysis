@@ -70,7 +70,12 @@ class VoxelRegression:
         print(vars(self))
 
     def mk_models(self):
-        models = {'all': None}
+        if self.unique_model is not None:
+            models = {'all': None}
+        elif self.single_model is not None:
+            models = {'all': [0]}
+        else:
+            models = {'all': None}
         return models
 
     def preprocess(self, X_train_, X_test_,
