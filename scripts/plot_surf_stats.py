@@ -23,7 +23,7 @@ class SurfaceStats:
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        self.file_name = f'sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_r2'
+        self.file_name = f'sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_r2filtered'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.cmap = sns.color_palette('magma', as_cmap=True)
