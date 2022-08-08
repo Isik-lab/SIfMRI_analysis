@@ -129,7 +129,7 @@ class VoxelPermutation:
                                                            y_loo_pred, n_perm=self.n_perm)
 
         #filter the rs based on the significant voxels
-        r2_filtered, p_corrected = tools.filter_r(r2, p)
+        r2_filtered, p_corrected = tools.filter_r(r2.copy(), p)
 
         #transform arrays to nii
         out_data = dict()
