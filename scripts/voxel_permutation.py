@@ -32,8 +32,6 @@ class VoxelPermutation:
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        Path(f'{self.out_dir}/{self.process}/rnull').mkdir(parents=True, exist_ok=True)
-        Path(f'{self.out_dir}/{self.process}/raw').mkdir(parents=True, exist_ok=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         instance_variables = vars(self)
         print(instance_variables)
