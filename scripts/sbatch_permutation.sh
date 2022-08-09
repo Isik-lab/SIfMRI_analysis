@@ -5,7 +5,7 @@
 #SBATCH --time=45:00
 #SBATCH --partition=defq
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jhu.edu
 
