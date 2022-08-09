@@ -125,10 +125,7 @@ class VoxelPermutation:
         print('Saving output')
         base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
         for key in d.keys():
-            if key != 'r2null':
-                nib.save(d[key], f'{base}_{key}.nii.gz')
-            else:
-                np.save(f'{self.out_dir}/{self.process}/rnull/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_{key}.npy', d[key])
+            nib.save(d[key], f'{base}_{key}.nii.gz')
         print('Completed successfully!')
 
     def run(self):
