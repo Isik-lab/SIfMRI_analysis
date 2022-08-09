@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import argparse
 import numpy as np
-from nilearn import plotting
+from nilearn import plotting, surface
 import nibabel as nib
 import seaborn as sns
 import src.tools as tools
@@ -24,6 +25,7 @@ class Reliability():
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
+        self.cmap = sns.color_palette('magma', as_cmap=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
 
@@ -39,6 +41,35 @@ class Reliability():
             anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-preproc_T1w.nii.gz')
             brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-brain_mask.nii.gz')
         return tools.mask_img(anat, brain_mask)
+
+    def compute_surf_stats(self, filename, hemi):
+        cmd = '/Applications/freesurfer/bin/mri_vol2surf '
+        cmd += f'--src {filename}.nii.gz '
+        cmd += f'--out {filename}_hemi-{hemi}.mgz '
+        cmd += f'--regheader sub-{self.sid} '
+        cmd += f'--hemi {hemi} '
+        cmd += '--projfrac 1'
+        os.system(cmd)
+        return surface.load_surf_data(f'{filename}_hemi-{hemi}.mgz')
+
+    def load_surf_mesh(self, hemi):
+        return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated',\
+               f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
+
+    def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
+        view = plotting.view_surf(surf_mesh=surf_mesh,
+                                  surf_map=surf_map,
+                                  bg_map=bg_map,
+                                  threshold=self.threshold,
+                                  cmap=self.cmap,
+                                  symmetric_cmap=False,
+                                  title=f'sub-{self.sid}')
+        view.save_as_html(f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}.html')
+
+    def plot_one_hemi(self, filename, hemi):
+        surface_data = self.compute_surf_stats(filename, hemi)
+        inflated, sulcus = self.load_surf_mesh(hemi)
+        self.plot_stats(inflated, sulcus, surface_data, hemi)
 
     def run(self):
         print('loading betas...')
@@ -61,8 +92,8 @@ class Reliability():
         print('saving reliability mask')
         r_mask = np.zeros_like(r_map, dtype='int')
         r_mask[(r_map >= self.threshold) & (~np.isnan(r_map))] = 1
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask.npy'
-        np.save(r_name, r_mask)
+        mask_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask.npy'
+        np.save(mask_name, r_mask)
 
         # Plot in the volume
         print('saving figures')
@@ -74,6 +105,11 @@ class Reliability():
                                display_mode='mosaic',
                                cmap=sns.color_palette('magma', as_cmap=True),
                                output_file=figure_name)
+
+        # Plot on the surface
+        print('saving surface figures')
+        for hemi in ['lh', 'rh']:
+            self.plot_one_hemi(r_name, hemi)
 
 
 def main():

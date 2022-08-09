@@ -21,18 +21,19 @@ class PrefMaps:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         # Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
-        self.models = ['indoor', 'expanse', 'transitivity', 'agent_distance', 'facingness', 'joint_action',
-                       'communication', 'valence', 'arousal']
+        # self.models = ['indoor', 'expanse', 'transitivity', 'agent_distance', 'facingness', 'joint_action',
+        #                'communication', 'valence', 'arousal']
+        self.models = ['facingness', 'joint_action', 'communication']
         myColors = ((0.8, 0.8, 0.8, 1.0), # gray - filler
                     (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
-                    (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
-                    (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
+                    # (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
+                    # (0.57421875, 0.51796875, 0.15, 1.0), # mustard - visual
                     (0.31171875, 0.20625, 0.571875, 1.0), #purle - social primitives
-                    (0.31171875, 0.20625, 0.571875, 1.0), #purle - social primitives
-                    (0.44921875, 0.8203125, 0.87109375, 1.0),  # cyan - social
-                    (0.44921875, 0.8203125, 0.87109375, 1.0),  # cyan - social
-                    (0.8515625, 0.32421875, 0.35546875, 1.0), # red - affective
-                    (0.8515625, 0.32421875, 0.35546875, 1.0)) # red - affective
+                    # (0.31171875, 0.20625, 0.571875, 1.0), #purle - social primitives
+                    (0.44921875, 0.8203125, 0.87109375, 1.0))  # cyan - social
+                    # (0.44921875, 0.8203125, 0.87109375, 1.0),  # cyan - social
+                    # (0.8515625, 0.32421875, 0.35546875, 1.0), # red - affective
+                    # (0.8515625, 0.32421875, 0.35546875, 1.0)) # red - affective
         self.cmap = LinearSegmentedColormap.from_list('Custom', myColors, len(self.models)+1)
 
     def compute_surf_stats(self, hemi):
@@ -51,7 +52,6 @@ class PrefMaps:
                f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
 
     def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
-
         view = plotting.view_surf(surf_mesh=surf_mesh,
                                   surf_map=surf_map,
                                   bg_map=bg_map,
