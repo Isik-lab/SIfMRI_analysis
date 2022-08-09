@@ -39,7 +39,7 @@ class PrefMaps:
     def compute_surf_stats(self, hemi):
         stats = None
         for model in self.models:
-            file_name = f'{self.out_dir}/SurfaceStats/sub-{self.sid}_prediction-all_drop-None_single-{model}_method-{self.method}_r2filtered_hemi-{hemi}.mgz'
+            file_name = f'{self.out_dir}/SurfaceStats/sub-{self.sid}_prediction-all_drop-None_single-{model}_method-{self.method}_r2_hemi-{hemi}.mgz'
             stat = surface.load_surf_data(file_name)
             if stats is None:
                 stats = [np.zeros_like(stat)]
