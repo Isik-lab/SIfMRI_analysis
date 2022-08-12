@@ -56,6 +56,40 @@ def calculate_p(r_null_, r_true_, n_perm_, H0_):
     return p_
 
 
+def bootstrap(a, b, n_perm=int(5e3)):
+    if a.ndim == 3:
+        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
+
+    r2_var = np.zeros((n_perm, a.shape[-1]))
+    for i in tqdm(range(n_perm), total=n_perm):
+        inds = np.random.default_rng(i).choice(np.arange(a.shape[0]),
+                                               size=a.shape[0])
+        if a.ndim == 3:
+            a_sample = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+        else:  # a.ndim == 2:
+            a_sample = a[inds, :]
+        r2_var[i, :] = corr2d(a_sample, b)**2
+
+    return r2_var
+
+def bootstrap_unique_variance(a, b, c, n_perm=int(5e3)):
+    if a.ndim == 3:
+        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
+        c = c.reshape(c.shape[0] * c.shape[1], c.shape[-1])
+
+    # Shuffle a and recompute r^2 n_perm times
+    r2_var = np.zeros((n_perm, a.shape[-1]))
+    for i in tqdm(range(n_perm), total=n_perm):
+        inds = np.random.default_rng(i).choice(np.arange(a.shape[0]),
+                                               size=a.shape[0])
+        if a.ndim == 3:
+            a_sample = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+        else:  # a.ndim == 2:
+            a_sample = a[inds, :]
+        r2_var[i, :] = corr2d(a_sample, b)**2 - corr2d(a_sample, c)**2
+    return r2_var
+
+
 def perm(a, b, n_perm=int(5e3), H0='greater'):
     if a.ndim == 3:
         a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
@@ -112,13 +146,3 @@ def mask_img(img, mask, fill=0.):
     if type(img) is nib.nifti1.Nifti1Image:
         masked_img = nib.Nifti1Image(masked_img, img.affine, img.header)
     return masked_img
-
-def bootstrap(a, b, test_inds, n_samples=int(5e3)):
-    r_var = np.zeros(n_samples)
-    for i in range(n_samples):
-        inds = np.random.default_rng(i).choice(np.arange(test_inds.shape[0]),
-                                               size=test_inds.shape[0])
-        inds = test_inds[inds, :].flatten()
-        r_var[i], _ = spearmanr(a[inds], b)
-    return r_var
-

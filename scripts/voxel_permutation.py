@@ -32,7 +32,6 @@ class VoxelPermutation:
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        Path(f'{self.out_dir}/{self.process}/rnull').mkdir(parents=True, exist_ok=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         instance_variables = vars(self)
         print(instance_variables)
@@ -58,8 +57,10 @@ class VoxelPermutation:
                 full[:, i, :] = full_file
                 test[:, i, :] = test_file
         else:
-            full = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-test.npy')
-            loo = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}single-None_method-test.npy')
+            full = np.load(
+                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-test.npy')
+            loo = np.load(
+                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}single-None_method-test.npy')
             test = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
         return full, loo, test
 
@@ -80,7 +81,8 @@ class VoxelPermutation:
                 pred[:, i, :] = pred_file
                 test[:, i, :] = test_file
         else:
-            pred = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy')
+            pred = np.load(
+                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy')
             test = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
         return test, pred
 
@@ -90,7 +92,8 @@ class VoxelPermutation:
         return tools.mask_img(anat, brain_mask)
 
     def nib_transform(self, r_, nii=True):
-        betas = nib.load(f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-fracridge_data.nii.gz')
+        betas = nib.load(
+            f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-fracridge_data.nii.gz')
         unmask = np.load(
             f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.npy').astype(
             'bool')
@@ -126,28 +129,49 @@ class VoxelPermutation:
         base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
         for key in d.keys():
             nib.save(d[key], f'{base}_{key}.nii.gz')
-        print('Completed successfully!')
+            print(f'Saved {key} successfully')
 
     def run(self):
         if self.unique_model is None:
             y_true, y_pred = self.load()
             print(np.unique(y_true))
+
+            # Run permutation
             r2, p, r2_null = tools.perm(y_true, y_pred, n_perm=self.n_perm)
+            self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
+            del r2_null
+
+            # Run bootstrap
+            r2_var = tools.bootstrap(y_true, y_pred, n_perm=self.n_perm)
+            self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
+            del r2_var
+
         else:
             y_full_pred, y_loo_pred, y_true = self.load_unique()
-            r2, p, r2_null = tools.perm_unique_variance(y_true, y_full_pred,
-                                                           y_loo_pred, n_perm=self.n_perm)
 
-        #filter the rs based on the significant voxels
+            # Run permutation
+            r2, p, r2_null = tools.perm_unique_variance(y_true, y_full_pred,
+                                                        y_loo_pred, n_perm=self.n_perm)
+            self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
+            del r2_null
+
+            # Run bootstrap
+            r2_var = tools.bootstrap_unique_variance(y_true, y_full_pred,
+                                                     y_loo_pred, n_perm=self.n_perm)
+            self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
+            del r2_var
+
+        # filter the rs based on the significant voxels
         r2_filtered, p_corrected = tools.filter_r(r2.copy(), p)
 
-        #transform arrays to nii
+        # transform arrays to nii
         out_data = dict()
-        for name, i in zip(['r2', 'r2filtered', 'p', 'pcorrected', 'r2null'],
-                           [r2, r2_filtered, p, p_corrected, r2_null]):
+        for name, i in zip(['r2', 'r2filtered', 'p', 'pcorrected'],
+                           [r2, r2_filtered, p, p_corrected]):
             out_data[name] = self.nib_transform(i)
         self.plot_results(out_data['r2filtered'])
         self.save_perm_results(out_data)
+        print('Completed successfully!')
 
 
 def main():
@@ -166,6 +190,7 @@ def main():
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     VoxelPermutation(args).run()
+
 
 if __name__ == '__main__':
     main()
