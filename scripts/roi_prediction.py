@@ -75,11 +75,18 @@ class ROIPrediction:
         pickle.dump(d, f)
         f.close()
 
+    def add_info2data(self, d):
+        d['sid'] = self.sid
+        d['hemi'] = self.hemi
+        d['roi'] = self.roi
+        return d
+
     def run(self):
         data = self.load_files()
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
         data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
+        data = self.add_info2data(data)
         self.save_results(data)
         print(f"r2 = {data['r2']:4f}")
         print(f"p = {data['p']:4f}")

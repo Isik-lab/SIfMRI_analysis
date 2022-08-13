@@ -3,6 +3,7 @@
 
 import argparse
 import os
+from pathlib import Path
 import glob
 import numpy as np
 import pandas as pd
@@ -15,12 +16,10 @@ class class_name:
     def __init__(self, args):
         self.process = 'class_name'
         self.data_dir = args.data_dir
-        self.out_dir = f'{args.out_dir}/{self.process}'
+        self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        if not os.path.exists(self.out_dir):
-            os.mkdir(self.out_dir)
-        if not os.path.exists(self.figure_dir):
-            os.mkdir(self.figure_dir)
+        Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
 
     def run(self):
         #Do it
@@ -35,7 +34,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    times = class_name(args).run()
+    class_name(args).run()
 
 if __name__ == '__main__':
     main()
