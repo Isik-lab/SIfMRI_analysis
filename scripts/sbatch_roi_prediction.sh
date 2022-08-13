@@ -17,7 +17,7 @@ model=$4
 ml anaconda
 conda activate nibabel
 
-python voxel_permutation.py -s "$subj" --CV \
+python roi_prediction.py -s $subj --CV \
   --hemi $hemi --roi $roi --model $model \
   --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
   --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \

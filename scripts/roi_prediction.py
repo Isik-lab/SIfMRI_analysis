@@ -65,6 +65,7 @@ class ROIPrediction:
         for key in ['r2', 'r2var', 'r2null']:
             file = self.get_file_name(key)
             data[key] = mask_img(file, self.roi_mask).mean(axis=0)
+            print(f'loaded {key}')
         return data
 
     def run(self):
