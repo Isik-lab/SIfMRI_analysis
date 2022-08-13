@@ -53,6 +53,7 @@ class ROIPrediction:
         self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
+        print(vars(self))
 
     def get_file_name(self, var):
         top = f'{self.out_dir}/VoxelPermutation'
