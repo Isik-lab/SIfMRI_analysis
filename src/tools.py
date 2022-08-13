@@ -137,7 +137,7 @@ def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
 
 
 def compute_confidence_interval(distribution):
-    return distribution.min(), distribution.max()
+    return np.percentile(distribution, [2.5, 97.5])
 
 
 def mask_img(img, mask, fill=0.):
