@@ -71,8 +71,11 @@ class ROIPrediction:
         data = self.load_files()
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
+        data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
         print(data['r2'])
         print(data['p'])
+        print(data['low_ci'])
+        print(data['high_ci'])
 
 
 def main():

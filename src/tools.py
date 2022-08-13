@@ -72,6 +72,7 @@ def bootstrap(a, b, n_perm=int(5e3)):
 
     return r2_var
 
+
 def bootstrap_unique_variance(a, b, c, n_perm=int(5e3)):
     if a.ndim == 3:
         b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
@@ -133,6 +134,11 @@ def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
 
     p = calculate_p(r2_null, r2, n_perm, H0)
     return r2, p, r2_null
+
+
+def compute_confidence_interval(distribution):
+    return np.percentile(distribution, [0.025, 0.975])
+
 
 def mask_img(img, mask, fill=0.):
     if type(img) is nib.nifti1.Nifti1Image:
