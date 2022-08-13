@@ -18,7 +18,7 @@ def load_pkl(file):
     d = pickle.load(open(file, 'rb'))
     d.pop('r2var', None)
     d.pop('r2null', None)
-    return
+    return d
 
 
 class PlotROIPrediction:
@@ -33,14 +33,14 @@ class PlotROIPrediction:
 
     def load_data(self):
         data_list = []
-        files = glob.glob(f'{self.out_dir}/ROIPrediction/*hemi-{self.hemi}*pkl')
+        files = glob.glob(f'{self.out_dir}/ROIPrediction/sub-01*hemi-{self.hemi}*pkl')
         for f in files:
             data_list.append(load_pkl(f))
-        return pd.DataFrame(data_list, ignore_index=True)
+        return pd.DataFrame(data_list)
 
     def plot_results(self, df):
         rois = ['EVC', 'MT', 'EBA', 'face-pSTS', 'SI-pSTS', 'TPJ']
-        axes, _ = plt.subplots(2, 3)
+        _, axes = plt.subplots(2, 3)
         axes = axes.flatten()
         for ax, roi in zip(axes, rois):
             sns.catplot(x='model', y='r2', hue='sid',
@@ -51,6 +51,7 @@ class PlotROIPrediction:
 
     def run(self):
         data = self.load_data()
+        print(data.head())
         self.plot_results(data)
 
 
