@@ -73,10 +73,10 @@ class ROIPrediction:
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
         data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
-        print(data['r2'])
-        print(data['p'])
-        print(data['low_ci'])
-        print(data['high_ci'])
+        print(f"r2 = {data['r2']:4f}")
+        print(f"p = {data['p']:4f}")
+        print(f"low_ci = {data['low_ci']:4f}")
+        print(f"high_ci = {data['high_ci']:4f}")
 
 
 def main():
