@@ -57,37 +57,36 @@ def calculate_p(r_null_, r_true_, n_perm_, H0_):
 
 
 def bootstrap(a, b, n_perm=int(5e3)):
-    if a.ndim == 3:
-        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
-
+    # Randomly sample and recompute r^2 n_perm times
     r2_var = np.zeros((n_perm, a.shape[-1]))
     for i in tqdm(range(n_perm), total=n_perm):
         inds = np.random.default_rng(i).choice(np.arange(a.shape[0]),
                                                size=a.shape[0])
         if a.ndim == 3:
-            a_sample = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+            a_sample = a[inds, ...].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+            b_sample = b[inds, ...].reshape(b.shape[0] * b.shape[1], b.shape[-1])
         else:  # a.ndim == 2:
             a_sample = a[inds, :]
-        r2_var[i, :] = corr2d(a_sample, b)**2
-
+            b_sample = a[inds, :]
+        r2_var[i, :] = corr2d(a_sample, b_sample)**2
     return r2_var
 
 
 def bootstrap_unique_variance(a, b, c, n_perm=int(5e3)):
-    if a.ndim == 3:
-        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
-        c = c.reshape(c.shape[0] * c.shape[1], c.shape[-1])
-
-    # Shuffle a and recompute r^2 n_perm times
+    # Randomly sample and recompute r^2 n_perm times
     r2_var = np.zeros((n_perm, a.shape[-1]))
     for i in tqdm(range(n_perm), total=n_perm):
         inds = np.random.default_rng(i).choice(np.arange(a.shape[0]),
                                                size=a.shape[0])
         if a.ndim == 3:
-            a_sample = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+            a_sample = a[inds, ...].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+            b_sample = b[inds, ...].reshape(b.shape[0] * b.shape[1], b.shape[-1])
+            c_sample = c[inds, ...].reshape(c.shape[0] * c.shape[1], c.shape[-1])
         else:  # a.ndim == 2:
             a_sample = a[inds, :]
-        r2_var[i, :] = corr2d(a_sample, b)**2 - corr2d(a_sample, c)**2
+            b_sample = b[inds, :]
+            c_sample = c[inds, :]
+        r2_var[i, :] = corr2d(a_sample, b_sample)**2 - corr2d(a_sample, c_sample)**2
     return r2_var
 
 
