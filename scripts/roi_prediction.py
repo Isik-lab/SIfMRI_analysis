@@ -39,6 +39,7 @@ class ROIPrediction:
         self.sid = str(args.s_num).zfill(2)
         self.hemi = args.hemi
         self.model = args.model
+        print(self.model)
         self.roi = args.roi
         self.contrast = roi2contrast(self.roi)
         self.cross_validation = args.CV
@@ -83,7 +84,7 @@ class ROIPrediction:
         print(f"r2 = {data['r2']:4f}")
         print(f"p = {data['p']:4f}")
         print(f"low_ci = {data['low_ci']:4f}")
-        print(f"high_ci = {data['high_ci']:4f}")
+        print(f"high_ci = {data['high_ci']:4f} \n")
 
 
 def main():
