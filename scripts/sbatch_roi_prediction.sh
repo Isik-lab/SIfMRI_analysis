@@ -10,15 +10,16 @@
 #SBATCH --mail-user=emcmaho7@jhu.edu
 
 subj=$1
-hemi=$2
-roi=$3
-model=$4
+roi=$2
+hemi=$3
 
 ml anaconda
 conda activate nibabel
 
-python roi_prediction.py -s $subj --CV \
-  --hemi $hemi --roi $roi --model $model \
-  --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
-  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-  --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
+for model in indoor expanse transitivity agent_distance facingness joint_action communication valence arousal; do
+  python roi_prediction.py -s $subj --CV \
+    --hemi $hemi --roi $roi --model $model \
+    --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
+    --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
+    --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
+done

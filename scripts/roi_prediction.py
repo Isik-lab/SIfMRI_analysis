@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import nibabel as nib
 from src import tools
+import pickle
 
 
 def mask_img(img, mask):
@@ -50,7 +51,7 @@ class ROIPrediction:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
-        Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
+        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
 
     def get_file_name(self, var):
         top = f'{self.out_dir}/VoxelPermutation'
@@ -68,11 +69,17 @@ class ROIPrediction:
             print(f'loaded {key}')
         return data
 
+    def save_results(self, d):
+        f = open(self.out_file_name, "wb")
+        pickle.dump(d, f)
+        f.close()
+
     def run(self):
         data = self.load_files()
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
         data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
+        self.save_results(data)
         print(f"r2 = {data['r2']:4f}")
         print(f"p = {data['p']:4f}")
         print(f"low_ci = {data['low_ci']:4f}")
