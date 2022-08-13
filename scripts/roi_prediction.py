@@ -71,6 +71,7 @@ class ROIPrediction:
         data = self.load_files()
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
+        print(data['r2'])
         print(data['p'])
 
 
