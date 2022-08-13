@@ -65,13 +65,13 @@ class ROIPrediction:
         for key in ['r2', 'r2var', 'r2null']:
             file = self.get_file_name(key)
             data[key] = mask_img(file, self.roi_mask).mean(axis=0)
-            print(key)
-            print(data[key].shape)
-            print()
         return data
 
     def run(self):
-        self.load_files()
+        data = self.load_files()
+        data['p'] = tools.calculate_p(data['r2null'], data['r2'],
+                                      n_perm_=len(data['r2null']), H0_='greater')
+        print(data['p'])
 
 
 def main():
@@ -79,7 +79,7 @@ def main():
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--model', type=str, default='communication')
     parser.add_argument('--hemi', type=str, default='rh')
-    parser.add_argument('--roi', type=str, default='SI-pSTS')
+    parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
