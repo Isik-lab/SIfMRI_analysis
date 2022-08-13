@@ -79,7 +79,7 @@ def main():
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--model', type=str, default='communication')
     parser.add_argument('--hemi', type=str, default='rh')
-    parser.add_argument('--roi', type=str, default='SIpSTS')
+    parser.add_argument('--roi', type=str, default='SI-pSTS')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
