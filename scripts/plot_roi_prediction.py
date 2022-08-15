@@ -88,10 +88,22 @@ class PlotROIPrediction:
         self.rois = ['EVC', 'MT', 'EBA', 'face-pSTS', 'SI-pSTS', 'TPJ']
         self.hemis = ['lh', 'rh']
 
+    def load_reliability(self):
+        # Load the results in their own dictionaries and create a dataframe
+        data_list = []
+        files = glob.glob(f'{self.out_dir}/ROIPrediction/*reliability.pkl')
+        for f in files:
+            data_list.append(load_pkl(f))
+        df = pd.DataFrame(data_list)
+        df['sid'] = pd.Categorical(df['sid'], ordered=True,
+                                   categories=self.subjs)
+        df.rename(columns={'r2': 'reliability'}, inplace=True)
+        return df
+
     def load_data(self):
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
-        files = glob.glob(f'{self.out_dir}/ROIPrediction/*pkl')
+        files = glob.glob(f'{self.out_dir}/ROIPrediction/*model*pkl')
         for f in files:
             data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
@@ -137,7 +149,6 @@ class PlotROIPrediction:
                         hue='sid', palette='gray', saturation=0.8,
                         data=df.loc[(df.roi == roi) & (df.hemi == hemi)],
                         ax=ax).set(title=title)
-            ax.legend([], [], frameon=False)
             ax.set_xlabel('')
             y_max = df.loc[(df.roi == roi) & (df.hemi == hemi), 'high_ci'].max() + 0.01
             ax.set_ylim([0, y_max])
@@ -179,11 +190,22 @@ class PlotROIPrediction:
                 if sig != 'ns':
                     ax.scatter(x, y_max-0.005, marker='o', color=color)
                 bar.set_color(color)
+
+            # sns.barplot(x='model', y='reliability',
+            #             hue='sid', palette='gray',
+            #             data=df.loc[(df.roi == roi) & (df.hemi == hemi)],
+            #             ax=ax).set(title=title)
+            ax.legend([], [], frameon=False)
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/roi_results.pdf')
 
     def run(self):
         data = self.load_data()
+        reliability = self.load_reliability()
+        data = data.merge(reliability,
+                          left_on=['hemi', 'sid', 'roi'],
+                          right_on=['hemi', 'sid', 'roi'],
+                          how='left')
         print(data.head())
         self.plot_results(data)
 
