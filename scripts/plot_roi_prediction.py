@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from statsmodels.stats.multitest import multipletests
 import itertools
+import matplotlib.ticker as mticker
 
 
 def load_pkl(file):
@@ -37,6 +38,28 @@ def model2cat():
     d['valence'] = 'affective'
     d['arousal'] = 'affective'
     return d
+
+
+def subj2shade(key):
+    d = {'01': 1.0,
+         '02': 0.8,
+         '03': 0.6,
+         '04': 0.4}
+    return d[key]
+
+
+def model2color(key):
+    d = dict()
+    d['indoor'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
+    d['expanse'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
+    d['object'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
+    d['agent distance'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
+    d['facingness'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
+    d['joint action'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
+    d['communication'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
+    d['valence'] = np.array([0.8515625, 0.32421875, 0.35546875, 0.8])
+    d['arousal'] = np.array([0.8515625, 0.32421875, 0.35546875, 0.8])
+    return d[key]
 
 
 def mk_palette():
@@ -87,22 +110,22 @@ class PlotROIPrediction:
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
                                    categories=self.subjs)
 
-        # Perform FDR correction and make a column for the location that the marker should appear
+        # Perform FDR correction and make a column for how the marker should appear
         df['p_corrected'] = 1
         for roi in self.rois:
             for subj in self.subjs:
                 rows = (df.sid == subj) & (df.roi == roi)
                 df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
-        df['significant'] = np.nan
-        df.loc[df['p_corrected'] < 0.05, 'significant'] = 0.055
-
+        df['significant'] = 'ns'
+        df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
+        df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
+        df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
         return df
 
     def plot_results(self, df):
         _, axes = plt.subplots(2, 6, figsize=(30, 10))
         axes = axes.flatten()
-        sns.set_theme(font_scale=1.5)
-        palette = mk_palette()
+        sns.set_theme(font_scale=2)
         for i, (ax, (hemi, roi)) in enumerate(zip(axes,
                                                   itertools.product(self.hemis, self.rois))):
             if hemi == 'lh':
@@ -111,29 +134,51 @@ class PlotROIPrediction:
                 title = f'r{roi}'
 
             sns.barplot(x='model', y='r2',
-                        hue='sid', palette='gray',
+                        hue='sid', palette='gray', saturation=0.8,
                         data=df.loc[(df.roi == roi) & (df.hemi == hemi)],
                         ax=ax).set(title=title)
-            ax.set_ylim([0, 0.06])
-            sns.swarmplot(x='model', y='significant', hue='sid',
-                          palette='gray',
-                          data=df.loc[(df.roi == roi) & (df.hemi == hemi)],
-                          ax=ax)
             ax.legend([], [], frameon=False)
             ax.set_xlabel('')
+            y_max = df.loc[(df.roi == roi) & (df.hemi == hemi), 'high_ci'].max() + 0.01
+            ax.set_ylim([0, y_max])
+            # y_ticklabels = ax.get_yticklabels()
+
+            label_format = '{:,.2f}'
+            y_ticklocs = ax.get_yticks().tolist()
+            ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
+            ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=20)
+
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             if i < 6:
                 ax.set_xticklabels([])
             else:
                 ax.set_xticklabels(self.models,
-                                   fontsize=16,
+                                   fontsize=20,
                                    rotation=45, ha='right')
             if i == 0 or i == 6:
-                ax.set_ylabel('Unique variance (r^2)', fontsize=18)
+                ax.set_ylabel('Unique variance ($r^2$)', fontsize=22)
             else:
                 ax.set_ylabel('')
-                ax.set_yticklabels([])
+
+            for x in np.arange(0.5, 8.5):
+                ax.plot([x, x], [0, y_max-(y_max/20)], '0.8')
+
+            for bar, (subj, model) in zip(ax.patches,
+                                          itertools.product(self.subjs, self.models)):
+                color = model2color(model)
+                color[:-1] = color[:-1] * subj2shade(subj)
+                y1 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
+                            'low_ci'].item()
+                y2 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
+                            'high_ci'].item()
+                sig = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
+                            'significant'].item()
+                x = bar.get_x() + 0.1
+                ax.plot([x, x], [y1, y2], 'k')
+                if sig != 'ns':
+                    ax.scatter(x, y_max-0.005, marker='o', color=color)
+                bar.set_color(color)
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/roi_results.pdf')
 
