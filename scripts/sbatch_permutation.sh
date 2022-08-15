@@ -2,7 +2,7 @@
 
 #SBATCH
 #SBATCH --job-name=fmriprep
-#SBATCH --time=2:30:00
+#SBATCH --time=3:00:00
 #SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=12

@@ -4,7 +4,7 @@
 #SBATCH --job-name=fmriprep
 #SBATCH --time=25:0
 #SBATCH --partition=defq
-#SBATCH --nodes=6
+#SBATCH --nodes=12
 #SBATCH --cpus-per-task=1
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jhu.edu
