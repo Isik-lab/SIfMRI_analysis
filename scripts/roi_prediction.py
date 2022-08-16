@@ -99,7 +99,7 @@ class ROIPrediction:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--model', type=str, default='communication')
+    parser.add_argument('--model', type=str, default=None)
     parser.add_argument('--hemi', type=str, default='rh')
     parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
