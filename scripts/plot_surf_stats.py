@@ -21,6 +21,14 @@ def roi2contrast(roi):
     return d[roi]
 
 
+def model2vmax(model):
+    d = {'arousal': 0.15,
+         'communication': 0.1,
+         'agent_distance': 0.075,
+         'transitivity': 0.075}
+    return d[model]
+
+
 class SurfaceStats:
     def __init__(self, args):
         self.process = 'SurfaceStats'
@@ -108,7 +116,7 @@ class SurfaceStats:
             fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                          roi_map=surf_map,
                                          bg_map=bg_map,
-                                         vmax=0.15,
+                                         vmax=model2vmax(self.unique_model),
                                          vmin=0.,
                                          cmap=self.cmap,
                                          colorbar=False,
