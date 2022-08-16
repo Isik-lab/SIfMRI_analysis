@@ -1,9 +1,25 @@
+import glob
 import os
-import nibabel as nib
-from nilearn import plotting, surface
+import numpy as np
+from nilearn import plotting, surface, image
 from pathlib import Path
 import argparse
 import seaborn as sns
+import nibabel as nib
+from scipy import ndimage
+
+
+def roi2contrast(roi):
+    d = dict()
+    d['MT'] = 'motionVsStatic'
+    d['face-pSTS'] = 'facesVsObjects'
+    d['EBA'] = 'bodiesVsObjecs'
+    d['PPA'] = 'scenesVsObjects'
+    d['TPJ'] = 'beliefVsPhoto'
+    d['SI-pSTS'] = 'interactVsNoninteract'
+    d['EVC'] = 'EVC'
+    return d[roi]
+
 
 class SurfaceStats:
     def __init__(self, args):
@@ -16,6 +32,7 @@ class SurfaceStats:
             self.method = 'CV'
         else:
             self.method = 'test'
+        self.ROIs = args.ROIs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         if self.single_model is not None:
@@ -28,6 +45,7 @@ class SurfaceStats:
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.cmap = sns.color_palette('magma', as_cmap=True)
+        self.rois = ['MT', 'EBA', 'face-pSTS', 'SI-pSTS']
 
     def compute_surf_stats(self, hemi):
         cmd = '/Applications/freesurfer/bin/mri_vol2surf '
@@ -40,22 +58,83 @@ class SurfaceStats:
         return surface.load_surf_data(f'{self.out_dir}/{self.process}/{self.file_name}_hemi-{hemi}.mgz')
 
     def load_surf_mesh(self, hemi):
-        return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated',\
+        return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated', \
                f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
 
+    def load_rois(self, hemi):
+        vol_out_file = f'{self.out_dir}/Localizers/sub-{self.sid}_combined-roi_mask-vol_hemi-{hemi}.nii.gz'
+        surf_out_file = f'{self.out_dir}/Localizers/sub-{self.sid}_combined-roi_mask-surf_hemi-{hemi}.mgz'
+        print(vol_out_file + '\n \n')
+        if not os.path.exists(vol_out_file):
+            combined_mask = None
+            for i_roi, roi in enumerate(self.rois):
+                contrast = roi2contrast(roi)
+                file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/*{contrast}*{hemi}*.nii.gz')[0]
+                img = nib.load(file)
+                current_mask = np.array(img.dataobj).astype('bool')
+                print(f'{hemi} {roi} size: {np.sum(current_mask)}')
+
+                label, n = ndimage.label(current_mask)
+                for i in range(1, n + 1):
+                    if np.sum(label == i) < 15:
+                        current_mask[label == i] = False
+                current_mask = ndimage.binary_closing(current_mask, iterations=2)
+                print(f'revised {hemi} {roi} size: {np.sum(current_mask)}')
+
+                if combined_mask is None:
+                    combined_mask = np.zeros(current_mask.shape, dtype='float')
+                combined_mask[current_mask] = i_roi + 1
+
+            combined_mask = image.new_img_like(img, combined_mask)
+            nib.save(combined_mask, vol_out_file)
+
+            cmd = '/Applications/freesurfer/bin/mri_vol2surf '
+            cmd += f'--src {vol_out_file} '
+            cmd += f'--out {surf_out_file} '
+            cmd += f'--regheader sub-{self.sid} '
+            cmd += f'--hemi {hemi} '
+            cmd += '--projfrac 1'
+            os.system(cmd)
+        return surface.load_surf_data(surf_out_file), (np.arange(len(self.rois)) + 1).tolist()
+
     def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
-        if self.unique_model is not None:
-            title = f'sub-{self.sid}_{self.unique_model}'
+        if hemi == 'lh':
+            hemi_name = 'left'
         else:
-            title = f'sub-{self.sid}'
-        view = plotting.view_surf(surf_mesh=surf_mesh,
-                                  surf_map=surf_map,
-                                  bg_map=bg_map,
-                                  threshold=1e-6,
-                                  cmap=self.cmap,
-                                  symmetric_cmap=False,
-                                  title=title)
-        view.save_as_html(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.html')
+            hemi_name = 'right'
+
+        if self.ROIs:
+            roi_map, roi_indices = self.load_rois(hemi)
+            fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                         roi_map=surf_map,
+                                         bg_map=bg_map,
+                                         vmax=0.15,
+                                         vmin=0.,
+                                         cmap=self.cmap,
+                                         colorbar=False,
+                                         hemi=hemi_name,
+                                         view='lateral')
+            plotting.plot_surf_contours(surf_mesh=surf_mesh,
+                                        roi_map=roi_map,
+                                        legend=False,
+                                        labels=self.rois,
+                                        levels=roi_indices,
+                                        figure=fig,
+                                        axes=None,
+                                        colors=['white', 'springgreen', 'aqua', 'yellow'],
+                                        output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.pdf')
+        else:
+            plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                   roi_map=surf_map,
+                                   bg_map=bg_map,
+                                   vmax=0.4,
+                                   vmin=0.,
+                                   cmap=self.cmap,
+                                   hemi=hemi_name,
+                                   view='lateral',
+                                   output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.pdf')
+        # view.save_as_html(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.html')
+        print(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.pdf')
 
     def plot_one_hemi(self, hemi):
         surface_data = self.compute_surf_stats(hemi)
@@ -73,6 +152,7 @@ def main():
     parser.add_argument('--unique_model', type=str, default=None)
     parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--ROIs', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
@@ -81,6 +161,7 @@ def main():
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     SurfaceStats(args).run()
+
 
 if __name__ == '__main__':
     main()

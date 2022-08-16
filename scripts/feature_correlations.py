@@ -14,7 +14,7 @@ import seaborn as sns
 
 from scipy.stats import spearmanr
 from statsmodels.stats.multitest import multipletests
-from src.tools import permutation_test
+from src.tools import perm
 from src.custom_plotting import feature_colors, custom_palette
 
 
@@ -83,11 +83,11 @@ class FeatureCorrelations():
                 test_inds = None
             else:
                 test_inds = np.arange(mat[:, i].size)
-            r, p, r_dist = permutation_test(mat[:, i], mat[:, j],
-                                            n_perm=self.n_perm,
-                                            test_inds=test_inds,
-                                            H0=self.H0,
-                                            rsa=self.rsa)
+            r, p, r_dist = perm(mat[:, i], mat[:, j],
+                                n_perm=self.n_perm,
+                                test_inds=test_inds,
+                                H0=self.H0,
+                                rsa=self.rsa)
             if self.plot_dists:
                 count += 1
                 self.plotting_dists(r, p, r_dist, str(count).zfill(2))
@@ -108,13 +108,13 @@ class FeatureCorrelations():
 
     def plot(self, rs, ps, ticks, context='poster'):
         if context == 'talk' or context == 'paper':
-            r_size = 10
-            label_size = 12
+            r_size = 16
+            label_size = 18
         else:
             r_size = 20
 
         nqs = len(ticks)
-        sns.set(rc={'figure.figsize': (9, 7)}, context=context)
+        sns.set(rc={'figure.figsize': (11, 10)}, context=context)
         fig, ax = plt.subplots()
 
         vmax = 0.7#np.nanmax(np.abs(rs))

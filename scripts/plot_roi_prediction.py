@@ -48,7 +48,7 @@ def subj2shade(key):
     return d[key]
 
 
-def model2color(key):
+def model2color(key=None):
     d = dict()
     d['indoor'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
     d['expanse'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
@@ -59,17 +59,10 @@ def model2color(key):
     d['communication'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
     d['valence'] = np.array([0.8515625, 0.32421875, 0.35546875, 0.8])
     d['arousal'] = np.array([0.8515625, 0.32421875, 0.35546875, 0.8])
-    return d[key]
-
-
-def mk_palette():
-    pal = {
-        'visual': '#F5DD40',
-        'primitive': '#8558F4',
-        'social': '#73D2DF',
-        'affective': '#DA535B',
-    }
-    return pal
+    if key is not None:
+        return d[key]
+    else:
+        return d
 
 
 class PlotROIPrediction:
@@ -85,7 +78,7 @@ class PlotROIPrediction:
                        'joint action', 'communication',
                        'valence', 'arousal']
         self.subjs = ['01', '02', '03', '04']
-        self.rois = ['EVC', 'MT', 'EBA', 'face-pSTS', 'SI-pSTS', 'TPJ']
+        self.rois = ['EVC', 'MT', 'EBA', 'face-pSTS', 'SI-pSTS']
         self.hemis = ['lh', 'rh']
 
     def load_reliability(self):
@@ -132,10 +125,13 @@ class PlotROIPrediction:
         df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
         df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
         df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
+
+        # Remove TPJ
+        df = df[df.roi != 'TPJ']
         return df
 
     def plot_results(self, df):
-        _, axes = plt.subplots(2, 6, figsize=(30, 10))
+        _, axes = plt.subplots(2, len(self.rois), figsize=(30, 10))
         axes = axes.flatten()
         sns.set_theme(font_scale=2)
         for i, (ax, (hemi, roi)) in enumerate(zip(axes,
@@ -152,29 +148,41 @@ class PlotROIPrediction:
             ax.set_xlabel('')
             y_max = df.loc[(df.roi == roi) & (df.hemi == hemi), 'high_ci'].max() + 0.01
             ax.set_ylim([0, y_max])
-            # y_ticklabels = ax.get_yticklabels()
 
+            # Change the ytick font size
             label_format = '{:,.2f}'
             y_ticklocs = ax.get_yticks().tolist()
             ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
             ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=20)
 
+            # Remove lines on the top and left of the plot
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
-            if i < 6:
+
+            # Change the xaxis font size and colors
+            if i < len(self.rois):
                 ax.set_xticklabels([])
             else:
                 ax.set_xticklabels(self.models,
                                    fontsize=20,
                                    rotation=45, ha='right')
-            if i == 0 or i == 6:
+                for ticklabel, pointer in zip(self.models, ax.get_xticklabels()):
+                    color = model2color(ticklabel)
+                    color[-1] = 1.
+                    pointer.set_color(color)
+                    pointer.set_weight('bold')
+
+            # Remove the yaxis label from all plots except the two leftmost plots
+            if i == 0 or i == len(self.rois):
                 ax.set_ylabel('Unique variance ($r^2$)', fontsize=22)
             else:
                 ax.set_ylabel('')
 
+            # Plot vertical lines to separate the bars
             for x in np.arange(0.5, 8.5):
                 ax.plot([x, x], [0, y_max-(y_max/20)], '0.8')
 
+            # Manipulate the color and add error bars
             for bar, (subj, model) in zip(ax.patches,
                                           itertools.product(self.subjs, self.models)):
                 color = model2color(model)
@@ -191,10 +199,6 @@ class PlotROIPrediction:
                     ax.scatter(x, y_max-0.005, marker='o', color=color)
                 bar.set_color(color)
 
-            # sns.barplot(x='model', y='reliability',
-            #             hue='sid', palette='gray',
-            #             data=df.loc[(df.roi == roi) & (df.hemi == hemi)],
-            #             ax=ax).set(title=title)
             ax.legend([], [], frameon=False)
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/roi_results.pdf')

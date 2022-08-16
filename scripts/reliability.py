@@ -20,7 +20,7 @@ class Reliability():
         self.step = args.step
         if self.set == 'test':
             self.threshold = 0.235
-        else: #self.set == 'train'
+        else:  # self.set == 'train'
             self.threshold = 0.117
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
@@ -30,7 +30,8 @@ class Reliability():
         Path(f'{args.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
 
     def load_betas(self, name):
-        im = nib.load(f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}-{name}_data.nii.gz')
+        im = nib.load(
+            f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}-{name}_data.nii.gz')
         return np.array(im.dataobj).reshape((-1, im.shape[-1])).T, im.shape[:-1], im.affine, im.header
 
     def load_anatomy(self):
@@ -38,8 +39,10 @@ class Reliability():
             anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_desc-preproc_T1w.nii.gz')
             brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_desc-brain_mask.nii.gz')
         else:
-            anat = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-preproc_T1w.nii.gz')
-            brain_mask = nib.load(f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-brain_mask.nii.gz')
+            anat = nib.load(
+                f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-preproc_T1w.nii.gz')
+            brain_mask = nib.load(
+                f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-brain_mask.nii.gz')
         return tools.mask_img(anat, brain_mask)
 
     def compute_surf_stats(self, filename, hemi):
@@ -53,18 +56,24 @@ class Reliability():
         return surface.load_surf_data(f'{filename}_hemi-{hemi}.mgz')
 
     def load_surf_mesh(self, hemi):
-        return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated',\
+        return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated', \
                f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
 
     def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
-        view = plotting.view_surf(surf_mesh=surf_mesh,
-                                  surf_map=surf_map,
-                                  bg_map=bg_map,
-                                  threshold=self.threshold,
-                                  cmap=self.cmap,
-                                  symmetric_cmap=False,
-                                  title=f'sub-{self.sid}')
-        view.save_as_html(f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}.html')
+        file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}.pdf'
+        if hemi == 'rh':
+            hemi = 'right'
+        else:
+            hemi = 'left'
+        plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                               roi_map=surf_map,
+                               bg_map=bg_map,
+                               threshold=self.threshold,
+                               vmax=1.,
+                               cmap=self.cmap,
+                               hemi=hemi,
+                               view='lateral',
+                               output_file=file)
 
     def plot_one_hemi(self, filename, hemi):
         surface_data = self.compute_surf_stats(filename, hemi)
@@ -75,11 +84,11 @@ class Reliability():
         print('loading betas...')
         even, shape, affine, header = self.load_betas('even')
         odd, _, _, _ = self.load_betas('odd')
-        
+
         # Compute the correlation
         print('computing the correlation')
         r_map = tools.corr2d(even, odd)
-        r_map[r_map < 0] = 0 #Filter out the negative values
+        r_map[r_map < 0] = 0  # Filter out the negative values
 
         # Make the array into a nifti image and save
         print('saving reliability nifti')
@@ -88,7 +97,7 @@ class Reliability():
         nib.save(r_im, f'{r_name}.nii.gz')
         np.save(f'{r_name}.npy', r_map)
 
-        #Save the mask
+        # Save the mask
         print('saving reliability mask')
         r_mask = np.zeros_like(r_map, dtype='int')
         r_mask[(r_map >= self.threshold) & (~np.isnan(r_map))] = 1
@@ -127,6 +136,6 @@ def main():
     args = parser.parse_args()
     Reliability(args).run()
 
+
 if __name__ == '__main__':
     main()
-

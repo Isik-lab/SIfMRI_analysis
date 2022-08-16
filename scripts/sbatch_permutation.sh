@@ -2,7 +2,7 @@
 
 #SBATCH
 #SBATCH --job-name=fmriprep
-#SBATCH --time=3:00:00
+#SBATCH --time=1:30:00
 #SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=12
@@ -18,5 +18,4 @@ conda activate nibabel
 python voxel_permutation.py -s "$subj" --CV \
   --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
   --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-  --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures \
-  --unique_model $model
+  --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
