@@ -9,6 +9,7 @@ import nibabel as nib
 import seaborn as sns
 import src.tools as tools
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 
 class Reliability():
@@ -60,11 +61,13 @@ class Reliability():
                f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
 
     def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
-        file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}.pdf'
+        file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}.jpg'
         if hemi == 'rh':
             hemi = 'right'
         else:
             hemi = 'left'
+        _, ax = plt.subplots(1, figsize=(50, 50),
+                               subplot_kw={'projection': '3d'})
         plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                roi_map=surf_map,
                                bg_map=bg_map,
@@ -73,6 +76,7 @@ class Reliability():
                                cmap=self.cmap,
                                hemi=hemi,
                                view='lateral',
+                               axes=ax,
                                output_file=file)
 
     def plot_one_hemi(self, filename, hemi):

@@ -78,7 +78,7 @@ class PlotROIPrediction:
                        'joint action', 'communication',
                        'valence', 'arousal']
         self.subjs = ['01', '02', '03', '04']
-        self.rois = ['EVC', 'MT', 'EBA', 'face-pSTS', 'SI-pSTS']
+        self.rois = ['EVC', 'MT', 'EBA', 'STS-Face', 'STS-SI']
         self.hemis = ['lh', 'rh']
 
     def load_reliability(self):
@@ -90,6 +90,9 @@ class PlotROIPrediction:
         df = pd.DataFrame(data_list)
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
                                    categories=self.subjs)
+        df.replace({'face-pSTS': 'STS-Face',
+                    'SI-pSTS': 'STS-SI'},
+                   inplace=True)
         df.rename(columns={'r2': 'reliability'}, inplace=True)
         return df
 
@@ -98,7 +101,8 @@ class PlotROIPrediction:
         data_list = []
         files = glob.glob(f'{self.out_dir}/ROIPrediction/*model*pkl')
         for f in files:
-            data_list.append(load_pkl(f))
+            if not 'None' in f:
+                data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
 
         # Replace names with how I want them to show on axis
@@ -106,8 +110,12 @@ class PlotROIPrediction:
                     'agent_distance': 'agent distance',
                     'joint_action': 'joint action'},
                    inplace=True)
+        df.replace({'face-pSTS': 'STS-Face',
+                    'SI-pSTS': 'STS-SI'},
+                   inplace=True)
         # Using replacement make a column with the different categories
         df['model_cat'] = df.model.replace(model2cat())
+
 
         # Make model and sid categorical
         df['model'] = pd.Categorical(df['model'], ordered=True,
@@ -205,11 +213,11 @@ class PlotROIPrediction:
 
     def run(self):
         data = self.load_data()
-        reliability = self.load_reliability()
-        data = data.merge(reliability,
-                          left_on=['hemi', 'sid', 'roi'],
-                          right_on=['hemi', 'sid', 'roi'],
-                          how='left')
+        # reliability = self.load_reliability()
+        # data = data.merge(reliability,
+        #                   left_on=['hemi', 'sid', 'roi'],
+        #                   right_on=['hemi', 'sid', 'roi'],
+        #                   how='left')
         print(data.head())
         self.plot_results(data)
 

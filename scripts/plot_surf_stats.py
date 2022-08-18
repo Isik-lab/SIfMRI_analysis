@@ -7,6 +7,7 @@ import argparse
 import seaborn as sns
 import nibabel as nib
 from scipy import ndimage
+import matplotlib.pyplot as plt
 
 
 def roi2contrast(roi):
@@ -27,6 +28,15 @@ def model2vmax(model):
          'agent_distance': 0.075,
          'transitivity': 0.075}
     return d[model]
+
+
+def roi_cmap():
+    d = {
+        'MT': (0.10196078431372549, 0.788235294117647, 0.2196078431372549),
+        'EBA': (1.0, 1.0, 0.0),
+        'face-pSTS': (0.0, 0.8431372549019608, 1.0),
+        'SI-pSTS': (1.0, 0.7686274509803922, 0.0)}
+    return list(d.values())
 
 
 class SurfaceStats:
@@ -54,6 +64,7 @@ class SurfaceStats:
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.cmap = sns.color_palette('magma', as_cmap=True)
         self.rois = ['MT', 'EBA', 'face-pSTS', 'SI-pSTS']
+        self.roi_cmap = roi_cmap()
 
     def compute_surf_stats(self, hemi):
         cmd = '/Applications/freesurfer/bin/mri_vol2surf '
@@ -84,7 +95,7 @@ class SurfaceStats:
 
                 label, n = ndimage.label(current_mask)
                 for i in range(1, n + 1):
-                    if np.sum(label == i) < 15:
+                    if np.sum(label == i) < 10:
                         current_mask[label == i] = False
                 current_mask = ndimage.binary_closing(current_mask, iterations=2)
                 print(f'revised {hemi} {roi} size: {np.sum(current_mask)}')
@@ -113,15 +124,18 @@ class SurfaceStats:
 
         if self.ROIs:
             roi_map, roi_indices = self.load_rois(hemi)
-            fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                         roi_map=surf_map,
-                                         bg_map=bg_map,
-                                         vmax=model2vmax(self.unique_model),
-                                         vmin=0.,
-                                         cmap=self.cmap,
-                                         colorbar=False,
-                                         hemi=hemi_name,
-                                         view='lateral')
+            fig, ax = plt.subplots(1, figsize=(50, 50),
+                                   subplot_kw={'projection': '3d'})
+            plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                   roi_map=surf_map,
+                                   bg_map=bg_map,
+                                   vmax=model2vmax(self.unique_model),
+                                   vmin=0.,
+                                   cmap=self.cmap,
+                                   axes=ax,
+                                   colorbar=False,
+                                   hemi=hemi_name,
+                                   view='lateral')
             plotting.plot_surf_contours(surf_mesh=surf_mesh,
                                         roi_map=roi_map,
                                         legend=False,
@@ -129,20 +143,22 @@ class SurfaceStats:
                                         levels=roi_indices,
                                         figure=fig,
                                         axes=None,
-                                        colors=['white', 'springgreen', 'aqua', 'yellow'],
-                                        output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.pdf')
+                                        colors=self.roi_cmap,
+                                        output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.jpg')
         else:
+            _, ax = plt.subplots(1, figsize=(50, 50),
+                                 subplot_kw={'projection': '3d'})
             plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                    roi_map=surf_map,
                                    bg_map=bg_map,
                                    vmax=0.4,
                                    vmin=0.,
+                                   axes=ax,
                                    cmap=self.cmap,
                                    hemi=hemi_name,
                                    view='lateral',
-                                   output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.pdf')
-        # view.save_as_html(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.html')
-        print(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.pdf')
+                                   output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.jpg')
+        print(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.jpg')
 
     def plot_one_hemi(self, hemi):
         surface_data = self.compute_surf_stats(hemi)
