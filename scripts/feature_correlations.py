@@ -14,7 +14,7 @@ import seaborn as sns
 
 from scipy.stats import spearmanr
 from statsmodels.stats.multitest import multipletests
-from src.tools import perm
+from src.tools import spearmanr, calculate_p, mantel_permutation
 from src.custom_plotting import feature_colors, custom_palette
 
 
@@ -37,7 +37,27 @@ def pca(a, b=None, n_components=8):
     return a_out, b_out
 
 
-class FeatureCorrelations():
+def permutation_test(a, b, test_inds=None,
+                     n_perm=int(5e3), H0='greater',
+                     rsa=False):
+    r_true, _ = spearmanr(a, b)
+    r_null = np.zeros(n_perm)
+    for i in range(n_perm):
+        if not rsa:
+            inds = np.random.default_rng(i).permutation(test_inds.shape[0])
+            if len(test_inds.shape) > 1:
+                inds = test_inds[inds, :].flatten()
+            a_shuffle = a[inds]
+        else:
+            a_shuffle = mantel_permutation(a, i)
+        r_null[i], _ = spearmanr(a_shuffle, b)
+
+    # Get the p-value depending on the type of test
+    p = calculate_p(r_null, r_true, n_perm, H0)
+    return r_true, p, r_null
+
+
+class FeatureCorrelations:
     def __init__(self, args):
         self.process = 'FeatureCorrelations'
         self.data_dir = args.data_dir
@@ -72,7 +92,7 @@ class FeatureCorrelations():
         plt.savefig(f'{self.figure_dir}/dists_rsa-{self.rsa}_set-{self.set}/{name}.pdf')
         plt.close()
 
-    def pairwise_coor(self, mat, correct=True):
+    def pairwise_corr(self, mat, correct=True):
         ps = []
         d = mat.shape[-1]
         a = np.ones((d, d), dtype='bool')
@@ -83,11 +103,10 @@ class FeatureCorrelations():
                 test_inds = None
             else:
                 test_inds = np.arange(mat[:, i].size)
-            r, p, r_dist = perm(mat[:, i], mat[:, j],
-                                n_perm=self.n_perm,
-                                test_inds=test_inds,
-                                H0=self.H0,
-                                rsa=self.rsa)
+            r, p, r_dist = permutation_test(mat[:, i], mat[:, j],
+                                            n_perm=self.n_perm,
+                                            test_inds=test_inds,
+                                            H0=self.H0, rsa=self.rsa)
             if self.plot_dists:
                 count += 1
                 self.plotting_dists(r, p, r_dist, str(count).zfill(2))
@@ -99,7 +118,7 @@ class FeatureCorrelations():
 
     def compute_mat(self, ratings):
         rsm, _ = spearmanr(ratings)
-        ps = self.pairwise_coor(ratings)
+        ps = self.pairwise_corr(ratings)
         plotting_rsm = diag(rsm)
         p_bool = np.zeros_like(plotting_rsm, dtype='bool')
         i, j = np.where(~np.isnan(plotting_rsm))
@@ -117,7 +136,7 @@ class FeatureCorrelations():
         sns.set(rc={'figure.figsize': (11, 10)}, context=context)
         fig, ax = plt.subplots()
 
-        vmax = 0.7#np.nanmax(np.abs(rs))
+        vmax = 0.7  # np.nanmax(np.abs(rs))
         if self.rsa:
             vmin = 0
             cmap = cm.get_cmap(sns.color_palette("light:b", as_cmap=True))
@@ -139,7 +158,7 @@ class FeatureCorrelations():
         # ticks = np.linspace(vmin, vmax, num=12).round(decimals=1)
         cbar = plt.colorbar()
         cbar.ax.tick_params(size=0)
-        cbar.set_label(label=r"Correlation ($r$)", size=label_size+2)
+        cbar.set_label(label=r"Correlation ($r$)", size=label_size + 2)
         for t in cbar.ax.get_yticklabels():
             t.set_fontsize(label_size)
 

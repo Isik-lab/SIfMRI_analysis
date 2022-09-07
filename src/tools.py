@@ -94,9 +94,11 @@ def perm(a, b, n_perm=int(5e3), H0='greater'):
     if a.ndim == 3:
         a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
         b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
-        r2 = corr2d(a_not_shuffle, b)**2
+        r = corr2d(a_not_shuffle, b)
+        r2 = (r**2) * np.sign(r)
     else:
-        r2 = corr2d(a, b)**2
+        r = corr2d(a, b)
+        r2 = (r**2) * np.sign(r)
 
     r2_null = np.zeros((n_perm, a.shape[-1]))
     for i in tqdm(range(n_perm), total=n_perm):
@@ -105,7 +107,8 @@ def perm(a, b, n_perm=int(5e3), H0='greater'):
             a_shuffle = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
         else:  # a.ndim == 2:
             a_shuffle = a[inds, :]
-        r2_null[i, :] = corr2d(a_shuffle, b)**2
+        r = corr2d(a_shuffle, b)
+        r2_null[i, :] = (r**2) * np.sign(r)
 
     # Get the p-value depending on the type of test
     p = calculate_p(r2_null, r2, n_perm, H0)
