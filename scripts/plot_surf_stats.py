@@ -59,22 +59,22 @@ class SurfaceStats:
             self.figure_dir = f'{args.figure_dir}/{self.process}/variance_partitioning'
         else:
             self.figure_dir = f'{args.figure_dir}/{self.process}/full_model'
-        self.file_name = f'sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_r2filtered'
+        self.file_prefix = f'sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.cmap = sns.color_palette('magma', as_cmap=True)
         self.rois = ['MT', 'EBA', 'face-pSTS', 'SI-pSTS']
         self.roi_cmap = roi_cmap()
 
-    def compute_surf_stats(self, hemi):
+    def compute_surf_stats(self, hemi_, stat_):
         cmd = '/Applications/freesurfer/bin/mri_vol2surf '
-        cmd += f'--src {self.out_dir}/VoxelPermutation/{self.file_name}.nii.gz '
-        cmd += f'--out {self.out_dir}/{self.process}/{self.file_name}_hemi-{hemi}.mgz '
+        cmd += f'--src {self.out_dir}/VoxelPermutation/{self.file_prefix}_{stat_}.nii.gz '
+        cmd += f'--out {self.out_dir}/{self.process}/{self.file_prefix}_{stat_}_hemi-{hemi_}.mgz '
         cmd += f'--regheader sub-{self.sid} '
-        cmd += f'--hemi {hemi} '
+        cmd += f'--hemi {hemi_} '
         cmd += '--projfrac 1'
         os.system(cmd)
-        return surface.load_surf_data(f'{self.out_dir}/{self.process}/{self.file_name}_hemi-{hemi}.mgz')
+        return surface.load_surf_data(f'{self.out_dir}/{self.process}/{self.file_prefix}_{stat_}_hemi-{hemi_}.mgz')
 
     def load_surf_mesh(self, hemi):
         return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated', \
@@ -116,14 +116,14 @@ class SurfaceStats:
             os.system(cmd)
         return surface.load_surf_data(surf_out_file), (np.arange(len(self.rois)) + 1).tolist()
 
-    def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
-        if hemi == 'lh':
+    def plot_stats(self, surf_mesh, bg_map, surf_map, hemi_, stat_):
+        if hemi_ == 'lh':
             hemi_name = 'left'
         else:
             hemi_name = 'right'
 
         if self.ROIs:
-            roi_map, roi_indices = self.load_rois(hemi)
+            roi_map, roi_indices = self.load_rois(hemi_)
             fig, ax = plt.subplots(1, figsize=(50, 50),
                                    subplot_kw={'projection': '3d'})
             plotting.plot_surf_roi(surf_mesh=surf_mesh,
@@ -144,35 +144,37 @@ class SurfaceStats:
                                         figure=fig,
                                         axes=None,
                                         colors=self.roi_cmap,
-                                        output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.jpg')
+                                        output_file=f'{self.figure_dir}/{self.file_prefix}_{stat_}_hemi-{hemi_}.jpg')
         else:
-            _, ax = plt.subplots(1, figsize=(50, 50),
+            _, axes = plt.subplots(3, figsize=(50, 150),
                                  subplot_kw={'projection': '3d'})
-            plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                   roi_map=surf_map,
-                                   bg_map=bg_map,
-                                   vmax=0.4,
-                                   vmin=0.,
-                                   axes=ax,
-                                   cmap=self.cmap,
-                                   hemi=hemi_name,
-                                   view='lateral',
-                                   output_file=f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.jpg')
-        print(f'{self.figure_dir}/{self.file_name}_hemi-{hemi}.jpg')
+            for ax, view in zip(axes, ['lateral', 'ventral', 'medial']):
+                plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                       roi_map=surf_map,
+                                       bg_map=bg_map,
+                                       vmax=0.4,
+                                       vmin=0.,
+                                       axes=ax,
+                                       cmap=self.cmap,
+                                       hemi=hemi_name,
+                                       view=view)
+            plt.savefig(f'{self.figure_dir}/{self.file_prefix}_{stat_}_hemi-{hemi_}.jpg')
+        print(f'{self.figure_dir}/{self.file_prefix}_{stat_}_hemi-{hemi_}.jpg')
 
-    def plot_one_hemi(self, hemi):
-        surface_data = self.compute_surf_stats(hemi)
-        inflated, sulcus = self.load_surf_mesh(hemi)
-        self.plot_stats(inflated, sulcus, surface_data, hemi)
+    def plot_one_hemi(self, hemi_, stat_):
+        surface_data = self.compute_surf_stats(hemi_, stat_)
+        inflated, sulcus = self.load_surf_mesh(hemi_)
+        self.plot_stats(inflated, sulcus, surface_data, hemi_, stat_)
 
     def run(self):
         for hemi in ['lh', 'rh']:
-            self.plot_one_hemi(hemi)
+            for stat in ['r2', 'r2filtered']:
+                self.plot_one_hemi(hemi, stat)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--s_num', '-s', type=str, default=1)
     parser.add_argument('--unique_model', type=str, default=None)
     parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
