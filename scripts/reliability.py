@@ -127,7 +127,7 @@ class Reliability():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=str)
+    parser.add_argument('--s_num', '-s', type=str, default='1')
     parser.add_argument('--set', type=str, default='test')
     parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--step', type=str, default='fracridge')
