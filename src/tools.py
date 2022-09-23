@@ -10,18 +10,17 @@ import nibabel as nib
 
 
 def filter_r(rs, ps, p_crit=0.05, correct=True, threshold=True):
-    if correct and (ps is not None):
+    rs_out = rs.copy()
+    if correct:
         _, ps_corrected, _, _ = multipletests(ps, method='fdr_bh')
-    elif not correct and (ps is not None):
+    else:
         ps_corrected = ps.copy()
-    else:
-        ps_corrected = None
 
-    if threshold and (ps is not None):
-        rs[ps_corrected >= p_crit] = 0.
+    if threshold:
+        rs_out[ps_corrected >= p_crit] = 0.
     else:
-        rs[rs < 0.] = 0.
-    return rs, ps_corrected
+        rs_out[rs_out < 0.] = 0.
+    return rs_out, ps_corrected
 
 
 def corr2d(x, y):

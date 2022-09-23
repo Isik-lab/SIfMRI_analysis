@@ -11,9 +11,9 @@ import seaborn as sns
 from nilearn import plotting
 
 
-class VoxelPermutation:
+class VoxelPermutationControl:
     def __init__(self, args):
-        self.process = 'VoxelPermutation'
+        self.process = 'VoxelPermutationControl'
         self.model = args.model.replace('_', ' ')
         self.unique_model = args.unique_model
         self.single_model = args.single_model
@@ -38,12 +38,12 @@ class VoxelPermutation:
 
     def load_unique(self):
         if self.cross_validation:
-            fnames_loo = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-None_method-CV_loop*.npy'
-            fnames_all = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-CV_loop*.npy'
+            fnames_loo = f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-None_method-CV_loop*.npy'
+            fnames_all = f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_prediction-all_drop-None_single-None_method-CV_loop*.npy'
             full_files = sorted(glob.glob(fnames_all))
             print(full_files)
             loo_files = sorted(glob.glob(fnames_loo))
-            test_files = sorted(glob.glob(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop*.npy'))
+            test_files = sorted(glob.glob(f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_y-test_method-CV_loop*.npy'))
             loo = None
             for i, ((full_file, loo_file), test_file) in enumerate(zip(zip(full_files, loo_files), test_files)):
                 full_file = np.load(full_file)
@@ -58,19 +58,19 @@ class VoxelPermutation:
                 test[:, i, :] = test_file
         else:
             full = np.load(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-test.npy')
+                f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_prediction-all_drop-None_single-None_method-test.npy')
             loo = np.load(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}single-None_method-test.npy')
-            test = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
+                f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_prediction-all_drop-{self.unique_model}single-None_method-test.npy')
+            test = np.load(f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_y-test_method-test.npy')
         return full, loo, test
 
     def load(self):
         if self.cross_validation:
-            fnames = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-CV_loop*.npy'
+            fnames = f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-CV_loop*.npy'
             print(fnames)
             pred_files = sorted(glob.glob(fnames))
             test_files = sorted(
-                glob.glob(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop*.npy'))
+                glob.glob(f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_y-test_method-CV_loop*.npy'))
             pred = None
             for i, (pred_file, test_file) in enumerate(zip(pred_files, test_files)):
                 pred_file = np.load(pred_file)
@@ -82,8 +82,8 @@ class VoxelPermutation:
                 test[:, i, :] = test_file
         else:
             pred = np.load(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy')
-            test = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
+                f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy')
+            test = np.load(f'{self.out_dir}/VoxelRegressionControl/sub-{self.sid}_y-test_method-test.npy')
         return test, pred
 
     def load_anatomy(self):
@@ -162,8 +162,8 @@ class VoxelPermutation:
             del r2_null
 
         # filter the rs based on the significant voxels
-        r2_filtered, p_corrected = tools.filter_r(r2, p, correct=False)
-        print('correct = False')
+        r2_filtered, p_corrected = tools.filter_r(r2.copy(), p, correct=True)
+        print('correct = True')
 
         # transform arrays to nii
         out_data = dict()
@@ -190,7 +190,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    VoxelPermutation(args).run()
+    VoxelPermutationControl(args).run()
 
 
 if __name__ == '__main__':

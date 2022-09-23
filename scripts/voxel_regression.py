@@ -92,15 +92,15 @@ class VoxelRegression:
     def prediction(self, X_test_, betas_, y_test_, i=None):
         if (self.unique_model is None) and (self.single_model is None):
             if i is not None:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-CV_loop-{i}.npy', betas_)
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop-{i}.npy', y_test_)
+                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_betas_method-CV_loop-{i}.npy', betas_)
+                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-test_method-CV_loop-{i}.npy', y_test_)
             else:
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-test.npy', betas_)
-                np.save(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy', y_test_)
+                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_betas_method-test.npy', betas_)
+                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-test_method-test.npy', y_test_)
 
         models = self.mk_models()
         for key in models:
-            name_base = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{key}'
+            name_base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{key}'
             cur_betas_ = zero_inds(betas_, models[key], X_test_.shape[-1])
             y_pred = X_test_ @ cur_betas_
 

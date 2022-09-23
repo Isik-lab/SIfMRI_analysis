@@ -15,20 +15,22 @@ def corr(x, y):
 n_perm = 10000
 stds = [1, 10, 100]
 colors = ['r', 'g', 'b']
-n_sample = 200
+n_samples = [50, 200]
 r = 0.12
-for std, color in zip(stds, colors):
-    arr1 = np.random.randint(low=-1*std, high=std, size=n_sample)
-    arr2 = np.random.randint(low=-1*std, high=std, size=n_sample)
-    r_null = np.zeros(n_perm)
-    for i in range(n_perm):
-        inds = np.random.default_rng(i).permutation(n_sample)
-        r_null[i] = corr(arr1[inds], arr2)
-    plt.hist(r_null, color=color, label=std)
-    r_crit = np.percentile(r_null, 95)
-    print(f'color = {color}, critical r = {r_crit:.4f}')
-    print(f'r = {r}, r_crit < r = {r_crit < r}')
-    print(f'p = {calculate_p(r_null, r, n_perm, "greater"):.4f}')
-plt.title(f'n_sample = {n_sample}, std = {r_null.std():.2f}')
-plt.legend()
-plt.show()
+_, axes = plt.subplots(1, len(n_samples))
+for n_sample, ax in zip(n_samples, axes):
+    for std, color in zip(stds, colors):
+        arr1 = np.random.randint(low=-1*std, high=std, size=n_sample)
+        arr2 = np.random.randint(low=-1*std, high=std, size=n_sample)
+        r_null = np.zeros(n_perm)
+        for i in range(n_perm):
+            inds = np.random.default_rng(i).permutation(n_sample)
+            r_null[i] = corr(arr1[inds], arr2)
+        ax.hist(r_null, color=color, label=std)
+        r_crit = np.percentile(r_null, 95)
+        print(f'color = {color}, critical r = {r_crit:.4f}')
+        print(f'r = {r}, r_crit < r = {r_crit < r}')
+        print(f'p = {calculate_p(r_null, r, n_perm, "greater"):.4f}')
+    ax.set_title(f'n_sample = {n_sample}, std = {r_null.std():.2f}')
+    ax.legend()
+plt.savefig('../data/interim/test_dist.pdf')
