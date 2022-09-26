@@ -66,8 +66,8 @@ class Reliability():
             hemi = 'right'
         else:
             hemi = 'left'
-        _, ax = plt.subplots(1, figsize=(50, 50),
-                               subplot_kw={'projection': '3d'})
+        # _, ax = plt.subplots(1, figsize=(10, 10),
+        #                        subplot_kw={'projection': '3d'})
         plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                roi_map=surf_map,
                                bg_map=bg_map,
@@ -76,7 +76,8 @@ class Reliability():
                                cmap=self.cmap,
                                hemi=hemi,
                                view='lateral',
-                               axes=ax,
+                               colorbar=True,
+                               engine='plotly',
                                output_file=file)
 
     def plot_one_hemi(self, filename, hemi):
@@ -108,16 +109,16 @@ class Reliability():
         mask_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask.npy'
         np.save(mask_name, r_mask)
 
-        # Plot in the volume
-        print('saving figures')
-        anatomy = self.load_anatomy()
-        figure_name = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability.png'
-        plotting.plot_stat_map(r_im, anatomy,
-                               symmetric_cbar=False,
-                               threshold=self.threshold,
-                               display_mode='mosaic',
-                               cmap=sns.color_palette('magma', as_cmap=True),
-                               output_file=figure_name)
+        # # Plot in the volume
+        # print('saving figures')
+        # anatomy = self.load_anatomy()
+        # figure_name = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability.png'
+        # plotting.plot_stat_map(r_im, anatomy,
+        #                        symmetric_cbar=False,
+        #                        threshold=self.threshold,
+        #                        display_mode='mosaic',
+        #                        cmap=sns.color_palette('magma', as_cmap=True),
+        #                        output_file=figure_name)
 
         # Plot on the surface
         print('saving surface figures')
