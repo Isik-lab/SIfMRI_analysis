@@ -138,32 +138,31 @@ class VoxelPermutation:
 
             # Run permutation
             r2, p, r2_null = tools.perm(y_true, y_pred, n_perm=self.n_perm)
-            # self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
+            self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
             del r2_null
 
             # Run bootstrap
-            # r2_var = tools.bootstrap(y_true, y_pred, n_perm=self.n_perm)
-            # self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
-            # del r2_var
+            r2_var = tools.bootstrap(y_true, y_pred, n_perm=self.n_perm)
+            self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
+            del r2_var
 
         else:
             y_full_pred, y_loo_pred, y_true = self.load_unique()
 
             # Run bootstrap
-            # r2_var = tools.bootstrap_unique_variance(y_true, y_full_pred,
-            #                                          y_loo_pred, n_perm=self.n_perm)
-            # self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
-            # del r2_var
+            r2_var = tools.bootstrap_unique_variance(y_true, y_full_pred,
+                                                     y_loo_pred, n_perm=self.n_perm)
+            self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
+            del r2_var
 
             # Run permutation
             r2, p, r2_null = tools.perm_unique_variance(y_true, y_full_pred,
                                                         y_loo_pred, n_perm=self.n_perm)
-            # self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
+            self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
             del r2_null
 
         # filter the rs based on the significant voxels
-        r2_filtered, p_corrected = tools.filter_r(r2, p, correct=False)
-        print('correct = False')
+        r2_filtered, p_corrected = tools.filter_r(r2, p)
 
         # transform arrays to nii
         out_data = dict()
