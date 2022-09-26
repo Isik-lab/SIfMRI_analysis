@@ -122,7 +122,7 @@ class VoxelRegressionControl:
         return train[:, mask], test[:, mask]
 
     def load_nuissance_regressors(self, dataset):
-        alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv5_set-{dataset}_avgframe.npy').T
+        alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{dataset}_avgframe.npy').T
         # of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{dataset}.npy')
         return alexnet  # np.hstack([alexnet, of])
 
