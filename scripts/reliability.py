@@ -12,6 +12,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 
+def save_np_and_nib(np_arr, shape, affine, header, out):
+    np.save(f'{out}.npy', np_arr)
+    im = nib.Nifti1Image(np.nan_to_num(np_arr).reshape(shape), affine, header)
+    nib.save(im, f'{out}.nii.gz')
+
+
 class Reliability():
     def __init__(self, args):
         self.process = 'Reliability'
@@ -23,17 +29,26 @@ class Reliability():
             self.threshold = 0.235
         else:  # self.set == 'train'
             self.threshold = 0.117
+        self.precomputed = args.precomputed
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         self.cmap = sns.color_palette('magma', as_cmap=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
+        self.output_file = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_stat-r_statmap'
+        print(vars(self))
 
-    def load_betas(self, name):
+    def load_even_or_odd(self, name):
         im = nib.load(
             f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}-{name}_data.nii.gz')
         return np.array(im.dataobj).reshape((-1, im.shape[-1])).T, im.shape[:-1], im.affine, im.header
+
+    def load_betas(self):
+        print('loading betas...')
+        even, shape, affine, header = self.load_even_or_odd('even')
+        odd, _, _, _ = self.load_even_or_odd('odd')
+        return even, odd, shape, affine, header
 
     def load_anatomy(self):
         if self.space == 'T1w':
@@ -46,7 +61,7 @@ class Reliability():
                 f'{self.data_dir}/anatomy/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-brain_mask.nii.gz')
         return tools.mask_img(anat, brain_mask)
 
-    def compute_surf_stats(self, filename, hemi):
+    def vol2surf(self, filename, hemi):
         cmd = '/Applications/freesurfer/bin/mri_vol2surf '
         cmd += f'--src {filename}.nii.gz '
         cmd += f'--out {filename}_hemi-{hemi}.mgz '
@@ -54,6 +69,31 @@ class Reliability():
         cmd += f'--hemi {hemi} '
         cmd += '--projfrac 1'
         os.system(cmd)
+        return
+
+    def compute_reliability_mask(self, r_map, shape, affine, header, mask_name):
+        r_mask = np.zeros_like(r_map, dtype='int')
+        r_mask[(r_map >= self.threshold) & (~np.isnan(r_map))] = 1
+        save_np_and_nib(r_mask, shape, affine, header, mask_name)
+
+    def compute_reliability(self):
+        even, odd, shape, affine, header = self.load_betas()
+
+        # Compute the correlation
+        print('computing the correlation')
+        r_map = tools.corr2d(even, odd)
+        r_map[r_map < 0] = 0  # Filter out the negative values
+        save_np_and_nib(r_map, shape, affine, header, self.output_file)
+
+        # Reiliability mask
+        mask_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask.npy'
+        self.compute_reliability_mask(r_map, shape, affine, header, mask_name)
+
+        # Transform the volume to the surface
+        self.vol2surf(self.output_file, 'lh')
+        self.vol2surf(self.output_file, 'lh')
+
+    def load_surf_data(self, filename, hemi):
         return surface.load_surf_data(f'{filename}_hemi-{hemi}.mgz')
 
     def load_surf_mesh(self, hemi):
@@ -66,64 +106,31 @@ class Reliability():
             hemi = 'right'
         else:
             hemi = 'left'
-        # _, ax = plt.subplots(1, figsize=(10, 10),
-        #                        subplot_kw={'projection': '3d'})
+        _, ax = plt.subplots(1, figsize=(10, 10),
+                               subplot_kw={'projection': '3d'})
         plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                roi_map=surf_map,
                                bg_map=bg_map,
+                               ax=ax,
                                threshold=self.threshold,
                                vmax=1.,
                                cmap=self.cmap,
                                hemi=hemi,
                                view='lateral',
                                colorbar=True,
-                               engine='plotly',
                                output_file=file)
 
-    def plot_one_hemi(self, filename, hemi):
-        surface_data = self.compute_surf_stats(filename, hemi)
-        inflated, sulcus = self.load_surf_mesh(hemi)
-        self.plot_stats(inflated, sulcus, surface_data, hemi)
+    def plot_each_hemi(self, filename):
+        for hemi in ['lh', 'rh']:
+            surface_data = self.load_surf_data(filename, hemi)
+            inflated, sulcus = self.load_surf_mesh(hemi)
+            self.plot_stats(inflated, sulcus, surface_data, hemi)
 
     def run(self):
-        print('loading betas...')
-        even, shape, affine, header = self.load_betas('even')
-        odd, _, _, _ = self.load_betas('odd')
-
-        # Compute the correlation
-        print('computing the correlation')
-        r_map = tools.corr2d(even, odd)
-        r_map[r_map < 0] = 0  # Filter out the negative values
-
-        # Make the array into a nifti image and save
-        print('saving reliability nifti')
-        r_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_stat-r_statmap'
-        r_im = nib.Nifti1Image(np.nan_to_num(r_map).reshape(shape), affine, header)
-        nib.save(r_im, f'{r_name}.nii.gz')
-        np.save(f'{r_name}.npy', r_map)
-
-        # Save the mask
-        print('saving reliability mask')
-        r_mask = np.zeros_like(r_map, dtype='int')
-        r_mask[(r_map >= self.threshold) & (~np.isnan(r_map))] = 1
-        mask_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask.npy'
-        np.save(mask_name, r_mask)
-
-        # # Plot in the volume
-        # print('saving figures')
-        # anatomy = self.load_anatomy()
-        # figure_name = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability.png'
-        # plotting.plot_stat_map(r_im, anatomy,
-        #                        symmetric_cbar=False,
-        #                        threshold=self.threshold,
-        #                        display_mode='mosaic',
-        #                        cmap=sns.color_palette('magma', as_cmap=True),
-        #                        output_file=figure_name)
-
-        # Plot on the surface
-        print('saving surface figures')
-        for hemi in ['lh', 'rh']:
-            self.plot_one_hemi(r_name, hemi)
+        if not self.precomputed:
+            print('computing correlation')
+            self.compute_reliability()
+        self.plot_each_hemi(self.output_file)
 
 
 def main():
@@ -132,6 +139,7 @@ def main():
     parser.add_argument('--set', type=str, default='test')
     parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--step', type=str, default='fracridge')
+    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
