@@ -66,7 +66,7 @@ def bootstrap(a, b, n_perm=int(5e3)):
             b_sample = b[inds, ...].reshape(b.shape[0] * b.shape[1], b.shape[-1])
         else:  # a.ndim == 2:
             a_sample = a[inds, :]
-            b_sample = a[inds, :]
+            b_sample = b[inds, :]
         r2_var[i, :] = corr2d(a_sample, b_sample)**2
     return r2_var
 

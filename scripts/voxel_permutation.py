@@ -15,6 +15,7 @@ class VoxelPermutation:
     def __init__(self, args):
         self.process = 'VoxelPermutation'
         self.model = args.model.replace('_', ' ')
+        self.step = args.step
         self.unique_model = args.unique_model
         self.single_model = args.single_model
         if self.unique_model is not None:
@@ -93,9 +94,9 @@ class VoxelPermutation:
 
     def nib_transform(self, r_, nii=True):
         betas = nib.load(
-            f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-fracridge_data.nii.gz')
+            f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-{self.step}_data.nii.gz')
         unmask = np.load(
-            f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.npy').astype(
+            f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-{self.step}_reliability-mask.npy').astype(
             'bool')
         i = np.where(unmask)
         if r_.ndim < 2:
@@ -182,6 +183,7 @@ def main():
     parser.add_argument('--model', type=str, default='all')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=5000)
+    parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
