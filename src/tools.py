@@ -23,13 +23,24 @@ def filter_r(rs, ps, p_crit=0.05, correct=True, threshold=True):
     return rs_out, ps_corrected
 
 
-def corr2d(x, y):
-    x_m = x - x.mean(axis=0)
-    y_m = y - y.mean(axis=0)
+def corr(x, y):
+    x_m = x - np.nanmean(x)
+    y_m = y - np.nanmean(y)
+    numer = np.nansum(x_m * y_m)
+    denom = np.sqrt(np.nansum(x_m * x_m) * np.nansum(y_m * y_m))
+    if denom != 0:
+        return numer / denom
+    else:
+        return np.nan
 
-    numer = np.sum((x_m * y_m), axis=0)
-    denom = np.sqrt(np.sum((x_m * x_m), axis=0) * np.sum((y_m * y_m), axis=0))
-    denom[denom == 0] = np.NaN
+
+def corr2d(x, y):
+    x_m = x - np.nanmean(x, axis=0)
+    y_m = y - np.nanmean(y, axis=0)
+
+    numer = np.nansum((x_m * y_m), axis=0)
+    denom = np.sqrt(np.nansum((x_m * x_m), axis=0) * np.nansum((y_m * y_m), axis=0))
+    denom[denom == 0] = np.nan
     return numer / denom
 
 

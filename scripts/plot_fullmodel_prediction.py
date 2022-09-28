@@ -146,7 +146,7 @@ class PlotROIPrediction:
                         hue='sid', palette='gray',
                         ax=ax, data=df[df.hemi == hemi])
 
-            y_max = 0.82
+            y_max = 0.7
             ax.set_ylim([0, y_max])
 
             ax.set_xlabel('')

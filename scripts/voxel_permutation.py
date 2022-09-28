@@ -181,7 +181,7 @@ def main():
     parser.add_argument('--unique_model', type=str, default=None)
     parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--model', type=str, default='all')
-    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--n_perm', type=int, default=5000)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,
