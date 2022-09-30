@@ -136,9 +136,12 @@ def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
         a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
         b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
         c = c.reshape(c.shape[0] * c.shape[1], c.shape[-1])
-        r2 = corr2d(a_not_shuffle, b)**2 - corr2d(a_not_shuffle, c)**2
+        r_ab = corr2d(a_not_shuffle, b)
+        r_ac = corr2d(a_not_shuffle, c)
     else:
-        r2 = corr2d(a, b)**2 - corr2d(a, c)**2
+        r_ab = corr2d(a, b)
+        r_ac = corr2d(a, c)
+    r2 = r_ab ** 2 - r_ac ** 2
 
     # Shuffle a and recompute r^2 n_perm times
     r2_null = np.zeros((n_perm, a.shape[-1]))
@@ -148,7 +151,9 @@ def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
             a_shuffle = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
         else:  # a.ndim == 2:
             a_shuffle = a[inds, :]
-        r2_null[i, :] = corr2d(a_shuffle, b)**2 - corr2d(a_shuffle, c)**2
+        r_ab = corr2d(a_shuffle, b)
+        r_ac = corr2d(a_shuffle, c)
+        r2_null[i, :] = np.sign(r_ab)*(r_ab ** 2) - np.sign(r_ac)*(r_ab ** 2)
 
     p = calculate_p(r2_null, r2, n_perm, H0)
     return r2, p, r2_null
