@@ -25,6 +25,18 @@ class Reliability():
         self.set = args.set
         self.space = args.space
         self.step = args.step
+        self.zscore_ses = args.zscore_ses
+        self.smooth = args.smooth
+        if self.smooth:
+            if self.zscore_ses:
+                self.beta_path = 'betas_3mm_zscore'
+            else: #self.smoothing and not self.zscore_ses:
+                self.beta_path  = 'betas_3mm_nozscore'
+        else:
+            if self.zscore_ses:
+                self.beta_path  = 'betas_0mm_zscore'
+            else: #not self.smoothing and not self.zscore_ses
+                self.beta_path  = 'betas_0mm_nozscore'
         if self.set == 'test':
             self.threshold = 0.235
         else:  # self.set == 'train'
@@ -41,7 +53,7 @@ class Reliability():
 
     def load_even_or_odd(self, name):
         im = nib.load(
-            f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}-{name}_data.nii.gz')
+            f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}-{name}_data.nii.gz')
         return np.array(im.dataobj).reshape((-1, im.shape[-1])).T, im.shape[:-1], im.affine, im.header
 
     def load_betas(self):
@@ -86,12 +98,12 @@ class Reliability():
         save_np_and_nib(r_map, shape, affine, header, self.output_file)
 
         # Reiliability mask
-        mask_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask.npy'
+        mask_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask'
         self.compute_reliability_mask(r_map, shape, affine, header, mask_name)
 
         # Transform the volume to the surface
         self.vol2surf(self.output_file, 'lh')
-        self.vol2surf(self.output_file, 'lh')
+        self.vol2surf(self.output_file, 'rh')
 
     def load_surf_data(self, filename, hemi):
         return surface.load_surf_data(f'{filename}_hemi-{hemi}.mgz')
@@ -140,6 +152,8 @@ def main():
     parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

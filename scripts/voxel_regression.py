@@ -26,10 +26,10 @@ def pca(a, b=None, n_components=8):
 def scale(train_, test_):
     n_features = test_.shape[-1]
     mean = np.nanmean(train_, axis=0).squeeze()
-    var = np.nanstd(train_, axis=0).squeeze()
-    var[np.isclose(var, 0.)] = np.nan
-    train_ = (train_ - mean) / var
-    return train_, (test_ - mean[:n_features]) / var[:n_features]
+    variance = np.nanstd(train_, axis=0).squeeze()
+    variance[np.isclose(variance, 0.)] = np.nan
+    train_ = (train_ - mean) / variance
+    return train_, (test_ - mean[:n_features]) / variance[:n_features]
 
 
 def zero_inds(arr, inds_, max_val):
@@ -54,7 +54,18 @@ class VoxelRegression:
         self.sid = str(args.s_num).zfill(2)
         self.step = args.step
         self.space = args.space
-        self.zscored_betas = args.zscored_betas
+        self.zscore_ses = args.zscore_ses
+        self.smooth = args.smooth
+        if self.smooth:
+            if self.zscore_ses:
+                self.beta_path = 'betas_3mm_zscore'
+            else: #self.smoothing and not self.zscore_ses:
+                self.beta_path  = 'betas_3mm_nozscore'
+        else:
+            if self.zscore_ses:
+                self.beta_path  = 'betas_0mm_zscore'
+            else: #not self.smoothing and not self.zscore_ses
+                self.beta_path  = 'betas_0mm_nozscore'
         self.unique_model = args.unique_model
         self.single_model = args.single_model
         assert (self.unique_model is None or self.single_model is None) or (self.unique_model is None and self.single_model is None)
@@ -112,12 +123,8 @@ class VoxelRegression:
 
     def load_neural(self):
         mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype('bool')
-        if self.zscored_betas:
-            train = nib.load(f'{self.data_dir}/betas_zscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
-            test = nib.load(f'{self.data_dir}/betas_zscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
-        else:
-            train = nib.load(f'{self.data_dir}/betas_nozscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
-            test = nib.load(f'{self.data_dir}/betas_nozscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
+        train = nib.load(f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
+        test = nib.load(f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
         train = np.array(train.dataobj).reshape((-1, train.shape[-1])).T
         test = np.array(test.dataobj).reshape((-1, test.shape[-1])).T
         return train[:, mask], test[:, mask]
@@ -210,7 +217,8 @@ def main():
     parser.add_argument('--unique_model', type=str, default=None)
     parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--zscored_betas', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_PCs', type=int, default=8)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

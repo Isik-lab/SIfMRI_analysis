@@ -34,8 +34,13 @@ class VoxelPermutation:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
-        instance_variables = vars(self)
-        print(instance_variables)
+        print(vars(self))
+        im = nib.load(
+            f'{self.data_dir}/betas_3mm_zscore/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-{self.step}_data.nii.gz')
+        self.im_shape = im.shape[:-1]
+        self.affine = im.affine
+        self.header = im.header
+        del im
 
     def load_unique(self):
         if self.cross_validation:
@@ -93,8 +98,6 @@ class VoxelPermutation:
         return tools.mask_img(anat, brain_mask)
 
     def nib_transform(self, r_, nii=True):
-        betas = nib.load(
-            f'{self.data_dir}/betas_zscore/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-{self.step}_data.nii.gz')
         unmask = np.load(
             f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-{self.step}_reliability-mask.npy').astype(
             'bool')
@@ -102,16 +105,16 @@ class VoxelPermutation:
         if r_.ndim < 2:
             r_unmasked = np.zeros(unmask.shape)
             r_unmasked[i] = r_
-            r_unmasked = r_unmasked.reshape(betas.shape[:-1])
+            r_unmasked = r_unmasked.reshape(self.im_shape)
         else:
             r_ = r_.T
             r_unmasked = np.zeros((unmask.shape + (r_.shape[-1],)))
             r_unmasked[i, ...] = r_
-            r_unmasked = r_unmasked.reshape((betas.shape[:-1] + (r_.shape[-1],)))
+            r_unmasked = r_unmasked.reshape((self.im_shape + (r_.shape[-1],)))
             print(r_unmasked.shape)
 
         if nii:
-            r_unmaksed = nib.Nifti1Image(r_unmasked, betas.affine, betas.header)
+            r_unmaksed = nib.Nifti1Image(r_unmasked, self.affine, self.header)
         return r_unmaksed
 
     def plot_results(self, r_):
