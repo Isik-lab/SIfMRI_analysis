@@ -11,7 +11,6 @@ import nibabel as nib
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
-from sklearn.preprocessing import StandardScaler
 
 
 def pca(a, b=None, n_components=8):
@@ -55,6 +54,7 @@ class VoxelRegression:
         self.sid = str(args.s_num).zfill(2)
         self.step = args.step
         self.space = args.space
+        self.zscored_betas = args.zscored_betas
         self.unique_model = args.unique_model
         self.single_model = args.single_model
         assert (self.unique_model is None or self.single_model is None) or (self.unique_model is None and self.single_model is None)
@@ -112,9 +112,13 @@ class VoxelRegression:
 
     def load_neural(self):
         mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype('bool')
-        train = nib.load(f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
+        if self.zscored_betas:
+            train = nib.load(f'{self.data_dir}/betas_zscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
+            test = nib.load(f'{self.data_dir}/betas_zscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
+        else:
+            train = nib.load(f'{self.data_dir}/betas_nozscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
+            test = nib.load(f'{self.data_dir}/betas_nozscore/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
         train = np.array(train.dataobj).reshape((-1, train.shape[-1])).T
-        test = nib.load(f'{self.data_dir}/betas/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
         test = np.array(test.dataobj).reshape((-1, test.shape[-1])).T
         return train[:, mask], test[:, mask]
 
@@ -206,6 +210,7 @@ def main():
     parser.add_argument('--unique_model', type=str, default=None)
     parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--zscored_betas', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_PCs', type=int, default=8)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
