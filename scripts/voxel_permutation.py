@@ -155,17 +155,18 @@ class VoxelPermutation:
         else:
             y_full_pred, y_loo_pred, y_true = self.load_unique()
 
-            # Run bootstrap
-            r2_var = tools.bootstrap_unique_variance(y_true, y_full_pred,
-                                                     y_loo_pred, n_perm=self.n_perm)
-            self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
-            del r2_var
-
             # Run permutation
             r2, p, r2_null = tools.perm_unique_variance(y_true, y_full_pred,
                                                         y_loo_pred, n_perm=self.n_perm)
-            self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
+            base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
+            np.save(f'{base}_r2null.npy', self.nib_transform(r2_null, nii=False))
             del r2_null
+
+            # Run bootstrap
+            r2_var = tools.bootstrap_unique_variance(y_true, y_full_pred,
+                                                     y_loo_pred, n_perm=self.n_perm)
+            np.save(f'{base}_r2var.npy', self.nib_transform(r2_var, nii=False))
+            del r2_var
 
         # filter the rs based on the significant voxels
         r2_filtered, p_corrected = tools.filter_r(r2, p)
