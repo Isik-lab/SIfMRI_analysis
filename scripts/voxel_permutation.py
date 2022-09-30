@@ -33,6 +33,7 @@ class VoxelPermutation:
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
+        Path(f'{self.out_dir}/{self.process}/dist').mkdir(parents=True, exist_ok=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         print(vars(self))
         im = nib.load(
@@ -130,8 +131,11 @@ class VoxelPermutation:
 
     def save_perm_results(self, d):
         print('Saving output')
-        base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
         for key in d.keys():
+            if key == 'r2var' or key == 'r2null':
+                base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
+            else:
+                base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
             nib.save(d[key], f'{base}_{key}.nii.gz')
             print(f'Saved {key} successfully')
 
