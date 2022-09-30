@@ -5,7 +5,7 @@
 #SBATCH --time=25:0
 #SBATCH --partition=defq
 #SBATCH --mem=192M
-#SBATCH --cpus-per-task=1
+#SBATCH --nodes=1
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jhu.edu
 
