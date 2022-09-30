@@ -14,12 +14,13 @@ from sys import getsizeof
 def mask_img(img, mask):
     if type(img) is str:
         img = nib.load(img)
+        img = np.array(img.dataobj)
+
     if type(mask) is str:
         mask = nib.load(mask)
 
-    arr = np.array(img.dataobj)
     mask = np.array(mask.dataobj, dtype=bool)
-    return arr[mask]
+    return img[mask]
 
 
 def roi2contrast(roi):
@@ -56,16 +57,18 @@ class ROIPrediction:
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
         print(vars(self))
 
-    def get_file_name(self, var):
+    def get_file_name(self, name):
         top = f'{self.out_dir}/VoxelPermutation'
-        if 'null' not in var and 'var' not in var:
-            file_name = f'{top}/sub-{self.sid}_prediction-all_drop-{self.model}_single-None_method-{self.method}_{var}.nii.gz'
+        if 'null' not in name and 'var' not in name:
+            file_name = f'{top}/sub-{self.sid}_prediction-all_drop-{self.model}_single-None_method-{self.method}_{name}.nii.gz'
         else:
-            file_name = f'{top}/dist/sub-{self.sid}_prediction-all_drop-{self.model}_single-None_method-{self.method}_{var}.nii.gz'
+            file_name = f'{top}/dist/sub-{self.sid}_prediction-all_drop-{self.model}_single-None_method-{self.method}_{name}.npy'
         return file_name
 
     def load_files(self, data, key):
         file = self.get_file_name(key)
+        if 'npy' in file:
+            file = np.load(file)
         data[key] = mask_img(file, self.roi_mask).mean(axis=0)
         print(f'loaded {key}')
         return data
