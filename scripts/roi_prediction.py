@@ -8,6 +8,7 @@ import numpy as np
 import nibabel as nib
 from src import tools
 import pickle
+from sys import getsizeof
 
 
 def mask_img(img, mask):
@@ -63,12 +64,10 @@ class ROIPrediction:
             file_name = f'{top}/dist/sub-{self.sid}_prediction-all_drop-{self.model}_single-None_method-{self.method}_{var}.nii.gz'
         return file_name
 
-    def load_files(self):
-        data = dict()
-        for key in ['r2', 'r2var', 'r2null']:
-            file = self.get_file_name(key)
-            data[key] = mask_img(file, self.roi_mask).mean(axis=0)
-            print(f'loaded {key}')
+    def load_files(self, data, key):
+        file = self.get_file_name(key)
+        data[key] = mask_img(file, self.roi_mask).mean(axis=0)
+        print(f'loaded {key}')
         return data
 
     def save_results(self, d):
@@ -84,10 +83,23 @@ class ROIPrediction:
         return d
 
     def run(self):
-        data = self.load_files()
+        data = dict()
+
+        # Variance of ROI
+        data = self.load_files(data, 'r2var')
+        print(getsizeof(data['r2var']))
+        data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
+        del data['r2var']  # Save memory
+
+        # Significance of ROI
+        data = self.load_files(data, 'r2')
+        data = self.load_files(data, 'r2null')
+        print(getsizeof(data['r2null']))
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
-        data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
+        del data['r2null'] #Save memory
+
+        # Add all the necessary info and save
         data = self.add_info2data(data)
         self.save_results(data)
         print(f"r2 = {data['r2']:4f}")
