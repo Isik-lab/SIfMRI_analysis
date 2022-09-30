@@ -41,7 +41,6 @@ class ROIPrediction:
         self.sid = str(args.s_num).zfill(2)
         self.hemi = args.hemi
         self.model = args.model
-        print(self.model)
         self.roi = args.roi
         self.contrast = roi2contrast(self.roi)
         self.cross_validation = args.CV
