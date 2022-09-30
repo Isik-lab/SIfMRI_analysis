@@ -67,7 +67,7 @@ class VoxelPermutation:
             full = np.load(
                 f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-test.npy')
             loo = np.load(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}single-None_method-test.npy')
+                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-None_method-test.npy')
             test = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
         return full, loo, test
 
