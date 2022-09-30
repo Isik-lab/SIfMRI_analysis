@@ -87,14 +87,14 @@ class ROIPrediction:
 
         # Variance of ROI
         data = self.load_files(data, 'r2var')
-        print(getsizeof(data['r2var']))
+        print(f'{getsizeof(data) / (1024 * 1024):.2f} MB')
         data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
         del data['r2var']  # Save memory
 
         # Significance of ROI
         data = self.load_files(data, 'r2')
         data = self.load_files(data, 'r2null')
-        print(getsizeof(data['r2null']))
+        print(f'{getsizeof(data)/(1024*1024):.2f} MB')
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
         del data['r2null'] #Save memory
