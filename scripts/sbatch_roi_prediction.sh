@@ -4,7 +4,7 @@
 #SBATCH --job-name=fmriprep
 #SBATCH --time=25:0
 #SBATCH --partition=defq
-#SBATCH --cpus-per-node=6
+#SBATCH --cpus-per-task=6
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --mail-type=end
