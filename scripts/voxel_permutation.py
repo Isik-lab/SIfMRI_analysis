@@ -115,8 +115,8 @@ class VoxelPermutation:
             print(r_unmasked.shape)
 
         if nii:
-            r_unmaksed = nib.Nifti1Image(r_unmasked, self.affine, self.header)
-        return r_unmaksed
+            r_unmasked = nib.Nifti1Image(r_unmasked, self.affine, self.header)
+        return r_unmasked
 
     def plot_results(self, r_):
         print('plotting results')
@@ -132,10 +132,7 @@ class VoxelPermutation:
     def save_perm_results(self, d):
         print('Saving output')
         for key in d.keys():
-            if key == 'r2var' or key == 'r2null':
-                base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
-            else:
-                base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
+            base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
             nib.save(d[key], f'{base}_{key}.nii.gz')
             print(f'Saved {key} successfully')
 
@@ -146,12 +143,13 @@ class VoxelPermutation:
 
             # Run permutation
             r2, p, r2_null = tools.perm(y_true, y_pred, n_perm=self.n_perm)
-            self.save_perm_results({'r2null': self.nib_transform(r2_null)}) #save and delete from memory
+            base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
+            np.save(f'{base}_r2null.npy', self.nib_transform(r2_null, nii=False))
             del r2_null
 
             # Run bootstrap
             r2_var = tools.bootstrap(y_true, y_pred, n_perm=self.n_perm)
-            self.save_perm_results({'r2var': self.nib_transform(r2_var)}) # save and delete from memory
+            np.save(f'{base}_r2var.npy', self.nib_transform(r2_var, nii=False))
             del r2_var
 
         else:
