@@ -153,7 +153,7 @@ def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
             a_shuffle = a[inds, :]
         r_ab = corr2d(a_shuffle, b)
         r_ac = corr2d(a_shuffle, c)
-        r2_null[i, :] = np.sign(r_ab)*(r_ab ** 2) - np.sign(r_ac)*(r_ab ** 2)
+        r2_null[i, :] = r_ab ** 2 - r_ac ** 2
 
     p = calculate_p(r2_null, r2, n_perm, H0)
     return r2, p, r2_null
