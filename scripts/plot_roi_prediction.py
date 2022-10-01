@@ -71,7 +71,7 @@ class PlotROIPrediction:
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        # Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         self.models = ['indoor', 'expanse', 'object',
                        'agent distance', 'facingness',
@@ -104,6 +104,7 @@ class PlotROIPrediction:
             if not 'None' in f:
                 data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
+        df.to_csv(f'{self.out_dir}/{self.process}/roi_prediction.csv', index=False)
 
         # Replace names with how I want them to show on axis
         df.replace({'transitivity': 'object',
@@ -136,6 +137,7 @@ class PlotROIPrediction:
 
         # Remove TPJ
         df = df[df.roi != 'TPJ']
+        # df.to_csv(f'{self.out_dir}/{self.process}/ro i_prediction.csv', index=False)
         return df
 
     def plot_results(self, df):
@@ -195,6 +197,7 @@ class PlotROIPrediction:
                                           itertools.product(self.subjs, self.models)):
                 color = model2color(model)
                 color[:-1] = color[:-1] * subj2shade(subj)
+                print(subj, model, hemi, roi)
                 y1 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
                             'low_ci'].item()
                 y2 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
