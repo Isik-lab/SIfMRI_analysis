@@ -67,14 +67,16 @@ class SurfaceStats:
         self.roi_cmap = roi_cmap()
 
     def compute_surf_stats(self, hemi_, stat_):
-        cmd = '/Applications/freesurfer/bin/mri_vol2surf '
-        cmd += f'--src {self.out_dir}/VoxelPermutation/{self.file_prefix}_{stat_}.nii.gz '
-        cmd += f'--out {self.out_dir}/{self.process}/{self.file_prefix}_{stat_}_hemi-{hemi_}.mgz '
-        cmd += f'--regheader sub-{self.sid} '
-        cmd += f'--hemi {hemi_} '
-        cmd += '--projfrac 1'
-        os.system(cmd)
-        return surface.load_surf_data(f'{self.out_dir}/{self.process}/{self.file_prefix}_{stat_}_hemi-{hemi_}.mgz')
+        file = f'{self.out_dir}/{self.process}/{self.file_prefix}_{stat_}_hemi-{hemi_}.mgz'
+        if not os.path.exists(file):
+            cmd = '/Applications/freesurfer/bin/mri_vol2surf '
+            cmd += f'--src {self.out_dir}/VoxelPermutation/{self.file_prefix}_{stat_}.nii.gz '
+            cmd += f'--out {file} '
+            cmd += f'--regheader sub-{self.sid} '
+            cmd += f'--hemi {hemi_} '
+            cmd += '--projfrac 1'
+            os.system(cmd)
+        return surface.load_surf_data(file)
 
     def load_surf_mesh(self, hemi):
         return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated', \
@@ -146,17 +148,18 @@ class SurfaceStats:
                                         colors=self.roi_cmap,
                                         output_file=f'{self.figure_dir}/{self.file_prefix}_{stat_}_hemi-{hemi_}.jpg')
         else:
-            _, axes = plt.subplots(3, figsize=(50, 150),
+            _, axes = plt.subplots(3, figsize=(5, 15),
                                  subplot_kw={'projection': '3d'})
             for ax, view in zip(axes, ['lateral', 'ventral', 'medial']):
                 plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                        roi_map=surf_map,
                                        bg_map=bg_map,
-                                       vmax=0.4,
+                                       vmax=0.2,
                                        vmin=0.,
                                        axes=ax,
                                        cmap=self.cmap,
                                        hemi=hemi_name,
+                                       colorbar=True,
                                        view=view)
             plt.savefig(f'{self.figure_dir}/{self.file_prefix}_{stat_}_hemi-{hemi_}.jpg')
         print(f'{self.figure_dir}/{self.file_prefix}_{stat_}_hemi-{hemi_}.jpg')
@@ -168,8 +171,7 @@ class SurfaceStats:
 
     def run(self):
         for hemi in ['lh', 'rh']:
-            for stat in ['r2', 'r2filtered']:
-                self.plot_one_hemi(hemi, stat)
+            self.plot_one_hemi(hemi, 'r2filtered')
 
 
 def main():

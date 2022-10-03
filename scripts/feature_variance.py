@@ -35,14 +35,15 @@ class FeatureVariance():
         train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df = df.merge(train)
         df.sort_values(by=['video_name'], inplace=True)
-        return df.drop('video_name', axis=1)
+        df.rename(columns={'transitivity': 'object'}, inplace=True)
+        return df.drop(columns=['video_name', 'dominance', 'cooperation', 'intimacy'])
 
     def run(self):
         palette = custom_palette(rgb=False)
         colors = feature_colors()
         df = self.load_annotations()
         sns.set(style='white', context='poster', rc={'figure.figsize': (15, 20)})
-        fig, ax = plt.subplots(nrows=4, ncols=3, sharex=True, sharey=True)
+        fig, ax = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True)
         ax = ax.flatten()
         for i, feature in enumerate(df.columns):
             print(feature)

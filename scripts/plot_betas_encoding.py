@@ -1,233 +1,174 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import argparse
 import glob
-
-import seaborn as sns
+import os
 import numpy as np
 import pandas as pd
-import nibabel as nib
-from nilearn import datasets, plotting
-from statsmodels.stats.multitest import multipletests
-from src import custom_plotting as cp
-from nilearn import surface
+from nilearn import plotting, surface, image
 from pathlib import Path
+import argparse
+import seaborn as sns
+import nibabel as nib
+import matplotlib.pyplot as plt
 
 
-def save(arr, out_name, mode='npy'):
-    if mode == 'npy':
-        np.save(out_name, arr)
-    elif mode == 'nii':
-        nib.save(arr, out_name)
+def roi2contrast(roi):
+    d = dict()
+    d['MT'] = 'motionVsStatic'
+    d['face-pSTS'] = 'facesVsObjects'
+    d['EBA'] = 'bodiesVsObjecs'
+    d['PPA'] = 'scenesVsObjects'
+    d['TPJ'] = 'beliefVsPhoto'
+    d['SI-pSTS'] = 'interactVsNoninteract'
+    d['EVC'] = 'EVC'
+    return d[roi]
 
 
-def correct(ps_, rs_, p_crit=5e-2):
-    sig_bool, ps_corrected, _, _ = multipletests(ps_, alpha=p_crit, method='fdr_bh')
-    indices = np.where(sig_bool)[0]
-    return sig_bool, rs_[indices].min()
+def model2vmax(model):
+    d = {'arousal': 0.15,
+         'communication': 0.1,
+         'agent_distance': 0.075,
+         'transitivity': 0.075}
+    return d[model]
 
 
-def filter_r(rs, ps):
-    # remove nan
-    indices = np.isnan(rs)
-    rs[indices] = 0
-    ps[indices] = 1
-
-    # correct
-    ps, threshold = correct(ps, rs)
-    ps = np.invert(ps)
-    indices = np.where(ps)[0]
-    rs[indices] = 0.
-    rs_mask = np.copy(rs)
-    rs_mask[rs != 0.] = 1.
-    return rs, rs_mask, threshold
+def roi_cmap():
+    d = {
+        'MT': (0.10196078431372549, 0.788235294117647, 0.2196078431372549),
+        'EBA': (1.0, 1.0, 0.0),
+        'face-pSTS': (0.0, 0.8431372549019608, 1.0),
+        'SI-pSTS': (1.0, 0.7686274509803922, 0.0)}
+    return list(d.values())
 
 
-class PlotVoxelEncoding():
+class PlotBetas:
     def __init__(self, args):
-        self.process = 'PlotVoxelEncoding'
-        if args.s_num == 'all':
-            self.sid = args.s_num
+        self.process = 'PlotBetas'
+        self.sid = str(args.s_num).zfill(2)
+        self.feature = args.feature
+        self.ROIs = args.ROIs
+        self.overwrite = args.overwrite
+        self.data_dir = args.data_dir
+        self.out_dir = args.out_dir
+        self.figure_dir = f'{args.figure_dir}/{self.process}'
+        Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
+        Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        self.cmap = sns.color_palette('icefire', as_cmap=True)
+        self.rois = ['MT', 'EBA', 'face-pSTS', 'SI-pSTS']
+        self.roi_cmap = roi_cmap()
+        im = nib.load(
+            f'{self.data_dir}/betas_3mm_zscore/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-test-fracridge_data.nii.gz')
+        self.im_shape = im.shape[:-1]
+        self.affine = im.affine
+        self.header = im.header
+        del im
+
+    def get_feature_ind(self):
+        df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
+        # Remove the high-level social dimensions -- 06/21/2022
+        cols_drop = ['video_name', 'cooperation', 'dominance', 'intimacy']
+        rename_dict = {c: c.replace(' ', '_') for c in df.columns if ' ' in c}
+        df.rename(columns=rename_dict, inplace=True)
+        features = df.drop(columns=cols_drop).columns.to_numpy()
+        return np.where(features == self.feature)[0]
+
+    def compute_surf_stats(self, hemi_):
+        if self.overwrite or not os.path.exists(
+                f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}_hemi-{hemi_}.mgz'):
+            cmd = '/Applications/freesurfer/bin/mri_vol2surf '
+            cmd += f'--src {self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}.nii.gz '
+            cmd += f'--out {self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}_hemi-{hemi_}.mgz '
+            cmd += f'--regheader sub-{self.sid} '
+            cmd += f'--hemi {hemi_} '
+            cmd += '--projfrac 1'
+            os.system(cmd)
+        return surface.load_surf_data(
+            f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}_hemi-{hemi_}.mgz')
+
+    def load_surf_mesh(self, hemi):
+        return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated', \
+               f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
+
+    def plot_stats(self, surf_mesh, bg_map, surf_map, hemi_):
+        if hemi_ == 'lh':
+            hemi_name = 'left'
         else:
-            self.sid = str(int(args.s_num)).zfill(2)
-        self.roi_parcel = args.roi_parcel
-        self.noise_ceiling_set = args.noise_ceiling_set
-        self.stat_dir = args.stat_dir
-        self.mask_dir = args.mask_dir
-        self.annotation_dir = args.annotation_dir
-        self.fsaverage = datasets.fetch_surf_fsaverage(mesh=args.mesh)
-        if len(args.feature) == 1:
-            self.feature = args.feature[0]
+            hemi_name = 'right'
+
+        _, axes = plt.subplots(3, figsize=(5, 15), subplot_kw={'projection': '3d'})
+        for ax, view in zip(axes, ['lateral', 'ventral', 'medial']):
+            plotting.plot_surf_stat_map(surf_mesh=surf_mesh,
+                                        stat_map=surf_map,
+                                        bg_map=bg_map,
+                                        threshold=0.01,
+                                        axes=ax,
+                                        cmap=self.cmap,
+                                        hemi=hemi_name,
+                                        colorbar=True,
+                                        view=view)
+        plt.savefig(f'{self.figure_dir}/sub-{self.sid}_feature-{self.feature}_hemi-{hemi_}.jpg')
+
+    def plot_one_hemi(self, hemi_, stat_):
+        surface_data = self.compute_surf_stats(hemi_)
+        inflated, sulcus = self.load_surf_mesh(hemi_)
+        self.plot_stats(inflated, sulcus, surface_data, hemi_)
+
+    def nib_transform(self, r_, nii=True):
+        unmask = np.load(
+            f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.npy').astype(
+            'bool')
+        i = np.where(unmask)
+        if r_.ndim < 2:
+            r_unmasked = np.zeros(unmask.shape)
+            r_unmasked[i] = r_
+            r_unmasked = r_unmasked.reshape(self.im_shape)
         else:
-            self.feature = ''
-            for feature in args.feature:
-                self.feature += feature.replace(' ', '').capitalize()
-        self.predict_individual_features = args.predict_individual_features
-        self.model_individual_features = args.model_individual_features
-        self.group_features = args.group_features
-        self.overall = args.overall
-        self.control = args.control
-        self.pca_before_regression = False
-        if self.overall:
-            self.cmap = sns.color_palette('magma', as_cmap=True)
-            self.out_name = 'overall'
-            self.threshold = None
-        elif self.group_features:
-            self.cmap = sns.color_palette('magma', as_cmap=True)
-            self.out_name = f'grouped_prediction/{self.feature}'
-            self.threshold = None
-        elif self.predict_individual_features:
-            assert self.feature is not None, "Must define an input feature"
-            self.cmap = sns.color_palette('magma', as_cmap=True)
-            self.out_name = f'predict_individual_features/{self.feature}'
-            self.threshold = None
-        else: #self.model_individual_features:
-            assert self.feature is not None, "Must define an input feature"
-            self.cmap = sns.color_palette('magma', as_cmap=True)
-            self.out_name = f'model_individual_features/{self.feature}'
-            self.threshold = None
-        self.figure_dir = f'{args.figure_dir}/{self.process}/{self.control}/{self.out_name}'
-        Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
+            r_ = r_.T
+            r_unmasked = np.zeros((unmask.shape + (r_.shape[-1],)))
+            r_unmasked[i, ...] = r_
+            r_unmasked = r_unmasked.reshape((self.im_shape + (r_.shape[-1],)))
+            print(r_unmasked.shape)
 
-    def load_features(self):
-        df = pd.read_csv(f'{self.annotation_dir}/annotations.csv')
-        df.drop(columns=['video_name'], inplace=True)
-        features = np.array(df.columns)
-        self.features = np.array([feature.replace(' ', '_') for feature in features])
+        if nii:
+            r_unmasked = nib.Nifti1Image(r_unmasked, self.affine, self.header)
+        return r_unmasked
 
-    def load_noise_ceiling(self, mask):
-        noise_ceiling = np.load(f'{self.mask_dir}/sub-{self.sid}_set-{self.noise_ceiling_set}_stat-rho_statmap.npy')
-        inds = np.where(noise_ceiling < 0.)[0]
-        noise_ceiling[inds] = np.nan
-        inds = np.where(mask)[0]
-        noise_ceiling = noise_ceiling[inds]
-        print(np.nanmin(noise_ceiling))
-        return noise_ceiling
-
-    # def preference_maps(self, mask, mask_im):
-    #     # name = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca-{self.pca_before_regression}_rs-mask.npy'
-    #     # rs = np.load(name).astype('bool')
-    #
-    #     base = f'{self.stat_dir}/sub-{self.sid}_model-*_predict-all_control-{self.control}_pca-{self.pca_before_regression}_rs.npy'
-    #     files = glob.glob(base)
-    #     pred = []
-    #     for file in files:
-    #         arr = np.load(file)
-    #         arr = np.expand_dims(arr, axis=1)
-    #         if type(pred) is list:
-    #             pred = arr
-    #         else:
-    #             pred = np.hstack([pred, arr])
-    #     preference = np.argmax(pred, axis=1)
-    #     # Make the argmax indexed at 1
-    #     preference += 1
-    #
-    #     # Make the preference values into a volume mask
-    #     preference[~rs] = 0
-    #     volume = cp.mkNifti(preference, mask, mask_im, nii=False)
-    #     volume = volume.astype('float')
-    #     return nib.Nifti1Image(volume.reshape(mask_im.shape), affine=mask_im.affine)
-
-    def grouped_prediction(self, mask, mask_im):
-        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca-{self.pca_before_regression}'
-        rs = np.load(f'{base}_rs.npy')
-        ps = np.load(f'{base}_ps.npy')
-
-        # Normalize by noise ceiling
-        rs = rs / self.load_noise_ceiling(mask)
-        rs, rs_mask, threshold = filter_r(rs, ps)
-        self.threshold = threshold
-        np.save(f'{base}_rs-filtered.npy', rs)
-        np.save(f'{base}_rs-mask.npy', rs_mask)
-        return cp.mkNifti(rs, mask, mask_im)
-
-    def overall_prediction(self, mask, mask_im):
-        base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-all_control-{self.control}_pca-{self.pca_before_regression}'
-        rs = np.load(f'{base}_rs.npy')
-        ps = np.load(f'{base}_ps.npy')
-
-        # Normalize by noise ceiling
-        rs = rs / self.load_noise_ceiling(mask)
-        rs, rs_mask, threshold = filter_r(rs, ps)
-        self.threshold = threshold
-        np.save(f'{base}_rs-filtered.npy', rs)
-        np.save(f'{base}_rs-mask.npy', rs_mask)
-        return cp.mkNifti(rs, mask, mask_im)
-
-    def individual_features(self, mask, mask_im):
-        if self.predict_individual_features:
-            base = f'{self.stat_dir}/sub-{self.sid}_model-full_predict-{self.feature}_control-{self.control}_pca-{self.pca_before_regression}'
-        else: #self.model_individual_features
-            base = f'{self.stat_dir}/sub-{self.sid}_model-{self.feature}_predict-all_control-{self.control}_pca-{self.pca_before_regression}'
-
-        rs = np.load(f'{base}_rs.npy')
-        ps = np.load(f'{base}_ps.npy')
-
-        # Filter the r-values, set threshold, and save output
-        rs = rs / self.load_noise_ceiling(mask)
-        rs, rs_mask, threshold = filter_r(rs, ps)
-        self.threshold = threshold
-        return cp.mkNifti(rs, mask, mask_im)
-
-    def load(self):
-        mask_im = nib.load(f'{self.mask_dir}/sub-{self.sid}_set-test_stat-rho_statmap.nii.gz')
-        mask = np.load(f'{self.mask_dir}/sub-{self.sid}_set-test_reliability-mask.npy')
-        if self.overall:
-            volume = self.overall_prediction(mask, mask_im)
-        elif self.group_features:
-            volume = self.grouped_prediction(mask, mask_im)
-        else:
-            volume = self.individual_features(mask, mask_im)
-        print(np.nanmax(volume.dataobj))
-        # view = plotting.view_img(volume, threshold=0)
-        # view.open_in_browser()
-        texture = {'left': surface.vol_to_surf(volume, self.fsaverage['pial_left'],
-                                               interpolation='nearest'),
-                   'right': surface.vol_to_surf(volume, self.fsaverage['pial_right'],
-                                                interpolation='nearest')}
-        print(np.nanmax(texture['right']))
-        return volume, texture
+    def filter_betas(self):
+        if self.overwrite or not os.path.exists(
+                f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}.nii.gz'):
+            betas = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_betas_method-test.npy')
+            ind = self.get_feature_ind()
+            betas = betas[ind].squeeze()
+            betas = self.nib_transform(betas, nii=False)
+            sig_model = nib.load(
+                f'{self.out_dir}/VoxelPermutation/sub-{self.sid}_prediction-all_drop-None_single-None_method-test_pcorrected.nii.gz')
+            sig_model = np.array(sig_model.dataobj)
+            betas[sig_model >= 0.05] = 0
+            betas = nib.Nifti1Image(betas, self.affine, self.header)
+            nib.save(betas, f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}.nii.gz')
 
     def run(self):
-        # load reliability files
-        self.load_features()
-        volume, texture = self.load()
-        if self.threshold >= 1.:
-            vmax = self.threshold + 0.1
-        else:
-            vmax = 1.
-        cp.plot_surface_stats(self.fsaverage, texture,
-                              roi=self.roi_parcel,
-                              cmap=self.cmap,
-                              modes=['lateral', 'ventral'],
-                              output_file=f'{self.figure_dir}/sub-{self.sid}.png',
-                              threshold=self.threshold,
-                              vmax=vmax)
+        self.filter_betas()
+        for hemi in ['lh', 'rh']:
+            for stat in ['r2', 'r2filtered']:
+                self.plot_one_hemi(hemi, stat)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=str)
-    parser.add_argument('--roi_parcel', action='append', default=[])
-    parser.add_argument('--control', type=str, default='conv2')
-    parser.add_argument('--mesh', type=str, default='fsaverage5')
-    parser.add_argument('--noise_ceiling_set', type=str, default='train')
-    parser.add_argument('--feature', '-p', action='append', default=[])
-    parser.add_argument('--group_features', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--overall', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--predict_individual_features', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--model_individual_features', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--mask_dir', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/Reliability')
-    parser.add_argument('--annotation_dir', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw/annotations')
-    parser.add_argument('--stat_dir', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim/VoxelPermutation')
-    parser.add_argument('--figure_dir', '-figure', type=str,
+    parser.add_argument('--s_num', '-s', type=str, default=1)
+    parser.add_argument('--feature', type=str, default='indoor')
+    parser.add_argument('--ROIs', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--data_dir', '-data', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
+    parser.add_argument('--out_dir', '-output', type=str,
+                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
+    parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    PlotVoxelEncoding(args).run()
+    PlotBetas(args).run()
 
 
 if __name__ == '__main__':
