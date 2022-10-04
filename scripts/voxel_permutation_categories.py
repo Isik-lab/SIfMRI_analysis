@@ -31,8 +31,8 @@ class CategoryVoxelPermutation:
 
     def load(self):
         in_dir = f'{self.out_dir}/CategoryVoxelRegression/'
-        pred = np.load(f'{in_dir}/sub-{self.sid}_y-pred_method-test.npy')
-        test = np.load(f'{in_dir}/sub-{self.sid}_y-test_method-test.npy')
+        pred = np.load(f'{in_dir}/sub-{self.sid}_category-{self.category}_y-pred.npy')
+        test = np.load(f'{in_dir}/sub-{self.sid}_category-{self.category}_y-test.npy')
         return test, pred
 
     def load_anatomy(self):

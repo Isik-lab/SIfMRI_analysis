@@ -13,13 +13,10 @@ from src import tools
 def category_map(category=None):
     d = dict()
     d['scene_object'] = ['indoor', 'expanse', 'transitivity']
-    d['social_primitives'] = ['agent distance', 'facigness']
+    d['social_primitive'] = ['agent distance', 'facingness']
     d['social'] = ['joint action', 'communication']
     d['affective'] = ['valence', 'arousal']
-    if category is None:
-        return d
-    else:
-        return d[category]
+    return d[category]
 
 
 def scale(train_, test_):
@@ -98,9 +95,9 @@ class CategoryVoxelRegression:
         return X_train_, X_test_, y_train_, y_test_
 
     def save_results(self, betas_, y_test_, y_pred_):
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_betas_method-test.npy', betas_)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-test_method-test.npy', y_test_)
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-pred_method-test.npy', y_pred_)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_betas.npy', betas_)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_y-test.npy', y_test_)
+        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_y-pred.npy', y_pred_)
 
     def train_test_regression(self, X_train_, X_test_, y_train_, y_test_):
         X_train_, X_test_, y_train, y_test = preprocess(X_train_, X_test_, y_train_, y_test_)
