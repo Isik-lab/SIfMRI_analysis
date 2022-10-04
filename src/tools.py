@@ -5,14 +5,14 @@ import numpy as np
 from tqdm import tqdm
 from scipy.stats import spearmanr
 from scipy.spatial.distance import squareform
-from statsmodels.stats.multitest import multipletests
+from statsmodels.stats.multitest import fdrcorrection
 import nibabel as nib
 
 
 def filter_r(rs, ps, p_crit=0.05, correct=True, threshold=True):
     rs_out = rs.copy()
     if correct:
-        _, ps_corrected, _, _ = multipletests(ps, method='fdr_bh')
+        _, ps_corrected = fdrcorrection(ps, method='p', alpha=0.05, is_sorted=False)
     else:
         ps_corrected = ps.copy()
 
