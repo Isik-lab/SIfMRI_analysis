@@ -39,9 +39,9 @@ def roi2contrast(roi):
     return d[roi]
 
 
-class ROIPrediction:
+class ROICategory:
     def __init__(self, args):
-        self.process = 'ROIPrediction'
+        self.process = 'ROICategory'
         self.sid = str(args.s_num).zfill(2)
         self.hemi = args.hemi
         self.category = args.category
@@ -126,7 +126,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    ROIPrediction(args).run()
+    ROICategory(args).run()
 
 if __name__ == '__main__':
     main()
