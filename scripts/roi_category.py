@@ -11,7 +11,7 @@ import pickle
 from sys import getsizeof
 
 
-def mask_img(img, mask, fill=False):
+def mask_img(img, mask):
     if type(img) is str:
         img = nib.load(img)
         img = np.array(img.dataobj)
@@ -20,11 +20,11 @@ def mask_img(img, mask, fill=False):
         mask = nib.load(mask)
 
     mask = np.array(mask.dataobj, dtype=bool)
-    if fill:
-        img[np.invert(mask)] = np.nan
-        return img
+    if img.ndim > 3:
+        img[np.invert(mask), ...] = np.nan
     else:
-        return img[mask]
+        img[np.invert(mask)] = np.nan
+    return img
 
 
 def roi2contrast(roi):
