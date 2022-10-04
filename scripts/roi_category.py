@@ -61,7 +61,7 @@ class ROICategory:
         if 'null' not in name and 'var' not in name:
             file_name = f'{top}/sub-{self.sid}_category-{self.category}_{name}.nii.gz'
         else:
-            file_name = f'{top}/dist/sub-{self.sid}_category-{self.category}_{name}.nii.gz'
+            file_name = f'{top}/dist/sub-{self.sid}_category-{self.category}_{name}.npy'
         return file_name
 
     def load_files(self, data, key):
