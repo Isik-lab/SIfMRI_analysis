@@ -18,7 +18,6 @@ conda activate nibabel
 python voxel_permutation_categories.py -s "$subj" \
   --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
   --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-  --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures \
   --feature $model
 
 #for roi in EVC MT EBA face-pSTS SI-pSTS TPJ; do
