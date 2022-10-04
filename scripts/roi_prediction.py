@@ -11,7 +11,7 @@ import pickle
 from sys import getsizeof
 
 
-def mask_img(img, mask):
+def mask_img(img, mask, fill=False):
     if type(img) is str:
         img = nib.load(img)
         img = np.array(img.dataobj)
@@ -20,7 +20,11 @@ def mask_img(img, mask):
         mask = nib.load(mask)
 
     mask = np.array(mask.dataobj, dtype=bool)
-    return img[mask]
+    if fill:
+        img[np.invert(mask)] = np.nan
+        return img
+    else:
+        return img[mask]
 
 
 def roi2contrast(roi):
@@ -54,6 +58,7 @@ class ROIPrediction:
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
+        self.reliability_mask = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
         print(vars(self))
@@ -70,7 +75,9 @@ class ROIPrediction:
         file = self.get_file_name(key)
         if 'npy' in file:
             file = np.load(file)
-        data[key] = mask_img(file, self.roi_mask).mean(axis=0)
+        file = mask_img(file, self.roi_mask)
+        file = mask_img(file, self.reliability_mask)
+        data[key] = np.nanmean(file)
         print(f'loaded {key}')
         return data
 

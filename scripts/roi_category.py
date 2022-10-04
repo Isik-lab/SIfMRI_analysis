@@ -6,7 +6,9 @@ import argparse
 from pathlib import Path
 import numpy as np
 import nibabel as nib
+from src import tools
 import pickle
+from sys import getsizeof
 
 
 def mask_img(img, mask, fill=False):
@@ -37,32 +39,37 @@ def roi2contrast(roi):
     return d[roi]
 
 
-class ROIBetas:
+class ROIPrediction:
     def __init__(self, args):
-        self.process = 'ROIBetas'
+        self.process = 'ROIPrediction'
         self.sid = str(args.s_num).zfill(2)
         self.hemi = args.hemi
-        self.model = args.model
+        self.category = args.category
         self.roi = args.roi
         self.contrast = roi2contrast(self.roi)
-        self.cross_validation = args.CV
-        if self.cross_validation:
-            self.method = 'CV'
-        else:
-            self.method = 'test'
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
         self.reliability_mask = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
-        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
+        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_roi-{self.roi}_hemi-{self.hemi}.pkl'
         print(vars(self))
 
+    def get_file_name(self, name):
+        top = f'{self.out_dir}/CategoryVoxelPermutation'
+        if 'null' not in name and 'var' not in name:
+            file_name = f'{top}/sub-{self.sid}_category-{self.category}_{name}.nii.gz'
+        else:
+            file_name = f'{top}/dist/sub-{self.sid}_category-{self.category}_{name}.nii.gz'
+        return file_name
+
     def load_files(self, data, key):
-        file = f'{self.out_dir}/PlotBetas/sub-{self.sid}_feature-{self.model}.nii.gz'
-        file = mask_img(file, self.roi_mask, fill=True)
-        file = mask_img(file, self.reliability_mask, fill=True)
+        file = self.get_file_name(key)
+        if 'npy' in file:
+            file = np.load(file)
+        file = mask_img(file, self.roi_mask)
+        file = mask_img(file, self.reliability_mask)
         data[key] = np.nanmean(file)
         print(f'loaded {key}')
         return data
@@ -82,17 +89,33 @@ class ROIBetas:
     def run(self):
         data = dict()
 
-        data = self.load_files(data, 'betas')
+        # Variance of ROI
+        data = self.load_files(data, 'r2var')
+        print(f'{getsizeof(data) / (1024 * 1024):.2f} MB')
+        data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
+        del data['r2var']  # Save memory
+
+        # Significance of ROI
+        data = self.load_files(data, 'r2')
+        data = self.load_files(data, 'r2null')
+        print(f'{getsizeof(data)/(1024*1024):.2f} MB')
+        data['p'] = tools.calculate_p(data['r2null'], data['r2'],
+                                      n_perm_=len(data['r2null']), H0_='greater')
+        del data['r2null'] #Save memory
 
         # Add all the necessary info and save
         data = self.add_info2data(data)
         self.save_results(data)
+        print(f"r2 = {data['r2']:4f}")
+        print(f"p = {data['p']:4f}")
+        print(f"low_ci = {data['low_ci']:4f}")
+        print(f"high_ci = {data['high_ci']:4f} \n")
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--model', type=str, default=None)
+    parser.add_argument('--category', type=str, default=None)
     parser.add_argument('--hemi', type=str, default='rh')
     parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
@@ -103,7 +126,7 @@ def main():
     parser.add_argument('--figure_dir', '-figures', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
-    ROIBetas(args).run()
+    ROIPrediction(args).run()
 
 if __name__ == '__main__':
     main()
