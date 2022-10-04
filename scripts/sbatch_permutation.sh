@@ -15,18 +15,18 @@ model=$2
 ml anaconda
 conda activate nibabel
 
-python voxel_permutation.py -s "$subj" \
+python voxel_permutation_categories.py -s "$subj" \
   --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
   --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
   --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures \
-  --unique_model $model
+  --feature $model
 
-for roi in EVC MT EBA face-pSTS SI-pSTS TPJ; do
-for hemi in lh rh; do
-  time python roi_prediction.py -s $subj \
-    --hemi $hemi --roi $roi \
-    --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
-    --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-    --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures \
-    --model $model
-done; done
+#for roi in EVC MT EBA face-pSTS SI-pSTS TPJ; do
+#for hemi in lh rh; do
+#  time python roi_prediction.py -s $subj \
+#    --hemi $hemi --roi $roi \
+#    --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
+#    --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
+#    --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures \
+#    --model $model
+#done; done
