@@ -55,13 +55,13 @@ def calculate_p(r_null_, r_true_, n_perm_, H0_):
     # Get the p-value depending on the type of test
     denominator = n_perm_ + 1
     if H0_ == 'two_tailed':
-        numerator = np.sum(np.abs(r_null_) >= np.abs(r_true_), axis=0) + 1
+        numerator = np.sum(np.abs(r_null_) >= np.abs(r_true_), axis=0)
         p_ = numerator / denominator
     elif H0_ == 'greater':
-        numerator = np.sum(r_true_ > r_null_, axis=0) + 1
+        numerator = np.sum(r_true_ > r_null_, axis=0)
         p_ = 1 - (numerator / denominator)
     else:  # H0 == 'less':
-        numerator = np.sum(r_true_ < r_null_, axis=0) + 1
+        numerator = np.sum(r_true_ < r_null_, axis=0)
         p_ = 1 - (numerator / denominator)
     return p_
 
@@ -120,11 +120,13 @@ def perm(a, b, n_perm=int(5e3), H0='greater', square=True):
             a_shuffle = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
         else:  # a.ndim == 2:
             a_shuffle = a[inds, :]
+
+        r = corr2d(a_shuffle, b)
+
         if square:
-            r = corr2d(a_shuffle, b)
             r2_null[i, :] = (r**2) * np.sign(r)
         else:
-            r2_null[i, :] = corr2d(a_shuffle, b)
+            r2_null[i, :] = r
 
     # Get the p-value depending on the type of test
     p = calculate_p(r2_null, r2, n_perm, H0)

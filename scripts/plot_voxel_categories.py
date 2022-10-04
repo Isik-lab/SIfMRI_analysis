@@ -64,12 +64,12 @@ class PlotVoxelCategory:
         self.header = im.header
         del im
 
-    def compute_surf_stats(self, hemi_):
-        file = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_hemi-{hemi_}.mgz'
+    def compute_surf_stats(self, hemi_, stat_):
+        file = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}-stat-{stat_}_hemi-{hemi_}.mgz'
         if self.overwrite or not os.path.exists(file):
             cmd = '/Applications/freesurfer/bin/mri_vol2surf '
-            cmd += f'--src {self.out_dir}/CategoryVoxelPermutation/sub-{self.sid}_category-{self.category}_r2filtered.nii.gz '
-            cmd += f'--out {self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_hemi-{hemi_}.mgz '
+            cmd += f'--src {self.out_dir}/CategoryVoxelPermutation/sub-{self.sid}_category-{self.category}_{stat_}.nii.gz '
+            cmd += f'--out {file} '
             cmd += f'--regheader sub-{self.sid} '
             cmd += f'--hemi {hemi_} '
             cmd += '--projfrac 1'
@@ -80,30 +80,31 @@ class PlotVoxelCategory:
         return f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.inflated', \
                f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
 
-    def plot_stats(self, surf_mesh, bg_map, surf_map, hemi_):
+    def plot_stats(self, surf_mesh, bg_map, surf_map, hemi_, stat_):
         if hemi_ == 'lh':
             hemi_name = 'left'
         else:
             hemi_name = 'right'
 
+        vmax = np.nanmax(surf_map)-0.05
         _, axes = plt.subplots(3, figsize=(5, 15), subplot_kw={'projection': '3d'})
         for ax, view in zip(axes, ['lateral', 'ventral', 'medial']):
             plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                    roi_map=surf_map,
                                    bg_map=bg_map,
-                                   vmax=0.5,
+                                   vmax=vmax,
                                    vmin=0.,
                                    axes=ax,
                                    cmap=self.cmap,
                                    hemi=hemi_name,
                                    colorbar=True,
                                    view=view)
-        plt.savefig(f'{self.figure_dir}/sub-{self.sid}_category-{self.category}_hemi-{hemi_}.jpg')
+        plt.savefig(f'{self.figure_dir}/sub-{self.sid}_category-{self.category}_stat-{stat_}_hemi-{hemi_}.jpg')
 
     def plot_one_hemi(self, hemi_, stat_):
-        surface_data = self.compute_surf_stats(hemi_)
+        surface_data = self.compute_surf_stats(hemi_, stat_)
         inflated, sulcus = self.load_surf_mesh(hemi_)
-        self.plot_stats(inflated, sulcus, surface_data, hemi_)
+        self.plot_stats(inflated, sulcus, surface_data, hemi_, stat_)
 
     def nib_transform(self, r_, nii=True):
         unmask = np.load(
@@ -127,14 +128,14 @@ class PlotVoxelCategory:
 
     def run(self):
         for hemi in ['lh', 'rh']:
-            # for stat in ['r2', 'r2filtered']:
-            self.plot_one_hemi(hemi, 'r2filtered')
+            for stat in ['r2', 'r2filtered']:
+                self.plot_one_hemi(hemi, stat)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str, default=1)
-    parser.add_argument('--category', type=str, default='scene_object')
+    parser.add_argument('--category', type=str, default='affective')
     parser.add_argument('--ROIs', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,

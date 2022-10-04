@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
-from src import tools
 
 
 def category_map(category=None):
@@ -27,15 +26,11 @@ def scale(train_, test_):
     return train_, (test_ - mean) / variance
 
 
-def regress(X_train_, y_train_):
+def regress(X_train_, y_train_, X_test_):
     # ols
     lr = LinearRegression(fit_intercept=False)
     lr.fit(X_train_, y_train_)
-    return lr.coef_.T
-
-
-def predict(X_test_, betas_):
-    return X_test_ @ betas_
+    return lr.predict(X_test_)
 
 
 def preprocess(X_train_, X_test_,
@@ -58,14 +53,12 @@ class CategoryVoxelRegression:
             if self.zscore_ses:
                 self.beta_path = 'betas_3mm_zscore'
             else: #self.smoothing and not self.zscore_ses:
-                self.beta_path  = 'betas_3mm_nozscore'
+                self.beta_path = 'betas_3mm_nozscore'
         else:
             if self.zscore_ses:
-                self.beta_path  = 'betas_0mm_zscore'
+                self.beta_path = 'betas_0mm_zscore'
             else: #not self.smoothing and not self.zscore_ses
-                self.beta_path  = 'betas_0mm_nozscore'
-        self.cross_validation = args.CV
-        assert not self.cross_validation, "CV not yet implemented"
+                self.beta_path = 'betas_0mm_nozscore'
         self.n_PCs = args.n_PCs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
@@ -85,6 +78,7 @@ class CategoryVoxelRegression:
         df.sort_values(by=['video_name'], inplace=True)
         columns = category_map(self.category)
         df = df[columns]
+        print(df.head())
         return df.to_numpy()
 
     def load(self):
@@ -94,16 +88,14 @@ class CategoryVoxelRegression:
         y_test_ = self.load_neural('test')
         return X_train_, X_test_, y_train_, y_test_
 
-    def save_results(self, betas_, y_test_, y_pred_):
-        np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_betas.npy', betas_)
+    def save_results(self, y_test_, y_pred_):
         np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_y-test.npy', y_test_)
         np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_y-pred.npy', y_pred_)
 
     def train_test_regression(self, X_train_, X_test_, y_train_, y_test_):
         X_train_, X_test_, y_train, y_test = preprocess(X_train_, X_test_, y_train_, y_test_)
-        betas = regress(X_train_, y_train_)
-        y_pred = predict(X_test_, betas)
-        self.save_results(betas, y_pred, y_test)
+        y_pred = regress(X_train_, y_train_, X_test_)
+        self.save_results(y_pred, y_test)
 
     def run(self):
         X_train, X_test, y_train, y_test = self.load()
@@ -115,10 +107,9 @@ def main():
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--space', type=str, default='T1w')
-    parser.add_argument('--category', type=str, default='scene_object')
-    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--category', type=str, default='affective')
+    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_PCs', type=int, default=8)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

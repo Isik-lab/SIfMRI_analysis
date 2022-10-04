@@ -17,10 +17,8 @@ class CategoryVoxelPermutation:
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
         Path(f'{self.out_dir}/{self.process}/dist').mkdir(parents=True, exist_ok=True)
-        Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         print(vars(self))
         im = nib.load(
             f'{self.data_dir}/betas_3mm_zscore/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-{self.step}_data.nii.gz')
@@ -97,8 +95,8 @@ class CategoryVoxelPermutation:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--category', type=str, default='scene_object')
-    parser.add_argument('--n_perm', type=int, default=5000)
+    parser.add_argument('--category', type=str, default='affective')
+    parser.add_argument('--n_perm', type=int, default=10000)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
