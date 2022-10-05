@@ -20,6 +20,15 @@ python voxel_permutation_categories.py -s "$subj" \
   --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
   --category $model
 
+for roi in PPA EVC MT EBA face-pSTS SI-pSTS TPJ; do
+for hemi in lh rh; do
+  time python roi_category.py -s $subj \
+    --hemi $hemi --roi $roi --category $category \
+    --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
+    --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
+    --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
+done; done
+
 #for roi in EVC MT EBA face-pSTS SI-pSTS TPJ; do
 #for hemi in lh rh; do
 #  time python roi_prediction.py -s $subj \
