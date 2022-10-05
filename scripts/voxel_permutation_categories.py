@@ -70,14 +70,16 @@ class CategoryVoxelPermutation:
         print(np.unique(y_true))
 
         # Run permutation
-        r2, p, r2_null = tools.perm(y_true, y_pred, n_perm=self.n_perm)
+        r2, p, r2_null = tools.perm(y_true, y_pred,
+                                    n_perm=self.n_perm, square=False)
         base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_category-{self.category}'
         print(f'r2_null shape: {r2_null.shape}')
         np.save(f'{base}_r2null.npy', r2_null)
         del r2_null
 
         # Run bootstrap
-        r2_var = tools.bootstrap(y_true, y_pred, n_perm=self.n_perm)
+        r2_var = tools.bootstrap(y_true, y_pred,
+                                 n_perm=self.n_perm, square=False)
         np.save(f'{base}_r2var.npy', r2_var)
         del r2_var
 

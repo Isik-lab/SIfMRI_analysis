@@ -72,9 +72,6 @@ class ROICategory:
             reliable_data = mask_img(file, self.reliability_file)
             roi_data = reliable_data[self.roi_mask]
             roi_mean_data = np.nanmean(roi_data)
-        print(reliable_data.shape)
-        print(roi_data.shape)
-        print(roi_mean_data.shape)
         data[key] = roi_mean_data
         print(f'loaded {key}')
         return data
@@ -96,12 +93,15 @@ class ROICategory:
 
         # Variance of ROI
         data = self.load_files(data, 'r2var')
-        data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
+        print(data['r2var'].shape)
+        data['low_ci'], data['high_ci'] = np.percentile(data['r2var'], [2.5, 97.5])
         del data['r2var']  # Save memory
 
         # Significance of ROI
         data = self.load_files(data, 'r2')
         data = self.load_files(data, 'r2null')
+        print(data['r2'].shape)
+        print(data['r2null'].shape)
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
         del data['r2null'] #Save memory

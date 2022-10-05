@@ -86,13 +86,13 @@ class PlotVoxelCategory:
         else:
             hemi_name = 'right'
 
-        vmax = np.nanmax(surf_map)-0.05
+        # vmax = np.nanmax(surf_map)-0.05
         _, axes = plt.subplots(3, figsize=(5, 15), subplot_kw={'projection': '3d'})
         for ax, view in zip(axes, ['lateral', 'ventral', 'medial']):
             plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                    roi_map=surf_map,
                                    bg_map=bg_map,
-                                   vmax=vmax,
+                                   vmax=0.1,
                                    vmin=0.,
                                    axes=ax,
                                    cmap=self.cmap,

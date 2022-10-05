@@ -66,7 +66,7 @@ def calculate_p(r_null_, r_true_, n_perm_, H0_):
     return p_
 
 
-def bootstrap(a, b, n_perm=int(5e3)):
+def bootstrap(a, b, n_perm=int(5e3), square=True):
     # Randomly sample and recompute r^2 n_perm times
     r2_var = np.zeros((n_perm, a.shape[-1]))
     for i in tqdm(range(n_perm), total=n_perm):
@@ -78,7 +78,11 @@ def bootstrap(a, b, n_perm=int(5e3)):
         else:  # a.ndim == 2:
             a_sample = a[inds, :]
             b_sample = b[inds, :]
-        r2_var[i, :] = corr2d(a_sample, b_sample)**2
+        r = corr2d(a_sample, b_sample)
+        if square:
+            r2_var[i, :] = r**2
+        else:
+            r2_var[i, :] = r
     return r2_var
 
 
@@ -159,10 +163,6 @@ def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
 
     p = calculate_p(r2_null, r2, n_perm, H0)
     return r2, p, r2_null
-
-
-def compute_confidence_interval(distribution):
-    return np.percentile(distribution, [2.5, 97.5])
 
 
 def mask_img(img, mask, fill=0.):
