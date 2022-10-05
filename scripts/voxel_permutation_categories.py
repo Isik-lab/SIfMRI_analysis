@@ -72,14 +72,13 @@ class CategoryVoxelPermutation:
         # Run permutation
         r2, p, r2_null = tools.perm(y_true, y_pred, n_perm=self.n_perm)
         base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_category-{self.category}'
-        r2_null = self.nib_transform(r2_null, nii=False)
         print(f'r2_null shape: {r2_null.shape}')
         np.save(f'{base}_r2null.npy', r2_null)
         del r2_null
 
         # Run bootstrap
         r2_var = tools.bootstrap(y_true, y_pred, n_perm=self.n_perm)
-        np.save(f'{base}_r2var.npy', self.nib_transform(r2_var, nii=False))
+        np.save(f'{base}_r2var.npy', r2_var)
         del r2_var
 
         # filter the rs based on the significant voxels

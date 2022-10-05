@@ -20,11 +20,7 @@ def mask_img(img, mask):
         mask = nib.load(mask)
 
     mask = np.array(mask.dataobj, dtype=bool)
-    if img.ndim > 3:
-        img[np.invert(mask), ...] = np.nan
-    else:
-        img[np.invert(mask)] = np.nan
-    return img
+    return img[mask].squeeze()
 
 
 def roi2contrast(roi):
@@ -50,8 +46,10 @@ class ROICategory:
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
-        self.reliability_mask = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
+        self.roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
+        self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
+        self.roi_mask = mask_img(self.roi_file, self.reliability_file).astype('bool')
+        print(self.roi_mask.shape)
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_roi-{self.roi}_hemi-{self.hemi}.pkl'
         print(vars(self))
@@ -67,10 +65,12 @@ class ROICategory:
     def load_files(self, data, key):
         file = self.get_file_name(key)
         if 'npy' in file:
-            file = np.load(file)
-        file = mask_img(file, self.roi_mask)
-        file = mask_img(file, self.reliability_mask)
-        data[key] = np.nanmean(file)
+            reliable_data = np.load(file)
+            roi_data = reliable_data[:, self.roi_mask].mean(axis=1)
+        else:
+            reliable_data = mask_img(file, self.reliability_file)
+            roi_data = reliable_data[self.roi_mask].mean()
+        data[key] = roi_data
         print(f'loaded {key}')
         return data
 
@@ -83,7 +83,7 @@ class ROICategory:
         d['sid'] = self.sid
         d['hemi'] = self.hemi
         d['roi'] = self.roi
-        d['model'] = self.model
+        d['category'] = self.category
         return d
 
     def run(self):
@@ -91,14 +91,12 @@ class ROICategory:
 
         # Variance of ROI
         data = self.load_files(data, 'r2var')
-        print(f'{getsizeof(data) / (1024 * 1024):.2f} MB')
         data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
         del data['r2var']  # Save memory
 
         # Significance of ROI
         data = self.load_files(data, 'r2')
         data = self.load_files(data, 'r2null')
-        print(f'{getsizeof(data)/(1024*1024):.2f} MB')
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
         del data['r2null'] #Save memory
@@ -115,7 +113,7 @@ class ROICategory:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--category', type=str, default=None)
+    parser.add_argument('--category', type=str, default='scene_object')
     parser.add_argument('--hemi', type=str, default='rh')
     parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
