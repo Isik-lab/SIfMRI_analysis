@@ -66,11 +66,16 @@ class ROICategory:
         file = self.get_file_name(key)
         if 'npy' in file:
             reliable_data = np.load(file)
-            roi_data = reliable_data[:, self.roi_mask].mean(axis=1)
+            roi_data = reliable_data[:, self.roi_mask]
+            roi_mean_data = np.nanmean(roi_data, axis=1)
         else:
             reliable_data = mask_img(file, self.reliability_file)
-            roi_data = reliable_data[self.roi_mask].mean()
-        data[key] = roi_data
+            roi_data = reliable_data[self.roi_mask]
+            roi_mean_data = np.nanmean(roi_data)
+        print(reliable_data.shape)
+        print(roi_data.shape)
+        print(roi_mean_data.shape)
+        data[key] = roi_mean_data
         print(f'loaded {key}')
         return data
 
@@ -113,7 +118,7 @@ class ROICategory:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--category', type=str, default='scene_object')
+    parser.add_argument('--category', type=str, default='affective')
     parser.add_argument('--hemi', type=str, default='rh')
     parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
