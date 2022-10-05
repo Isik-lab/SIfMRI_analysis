@@ -2,7 +2,7 @@
 
 #SBATCH
 #SBATCH --job-name=fmriprep
-#SBATCH --time=5:00
+#SBATCH --time=45:00
 #SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=12
@@ -15,26 +15,17 @@ category=$2
 ml anaconda
 conda activate nibabel
 
-#python voxel_permutation_categories.py -s "$subj" \
-#  --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
-#  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-#  --category category
+python voxel_permutation.py -s "$subj" \
+#  --model $category \
+  --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
+  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw
 
 for roi in PPA EVC MT EBA face-pSTS SI-pSTS TPJ; do
 for hemi in lh rh; do
-  time python roi_category.py -s $subj \
-    --hemi $hemi --roi $roi --category $category \
+  time python roi_prediction.py -s $subj \
+    --hemi $hemi --roi $roi \
+#    --model $category \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
     --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
     --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
 done; done
-
-#for roi in EVC MT EBA face-pSTS SI-pSTS TPJ; do
-#for hemi in lh rh; do
-#  time python roi_prediction.py -s $subj \
-#    --hemi $hemi --roi $roi \
-#    --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
-#    --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-#    --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures \
-#    --model $model
-#done; done

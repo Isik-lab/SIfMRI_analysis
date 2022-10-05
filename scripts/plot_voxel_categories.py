@@ -92,7 +92,7 @@ class PlotVoxelCategory:
             plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                    roi_map=surf_map,
                                    bg_map=bg_map,
-                                   vmax=0.1,
+                                   vmax=0.4,
                                    vmin=0.,
                                    axes=ax,
                                    cmap=self.cmap,

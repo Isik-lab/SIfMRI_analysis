@@ -217,8 +217,8 @@ def main():
     parser.add_argument('--unique_model', type=str, default=None)
     parser.add_argument('--single_model', type=str, default=None)
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--n_PCs', type=int, default=8)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

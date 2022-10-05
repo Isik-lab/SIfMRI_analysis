@@ -74,10 +74,14 @@ class ROIPrediction:
     def load_files(self, data, key):
         file = self.get_file_name(key)
         if 'npy' in file:
-            file = np.load(file)
-        file = mask_img(file, self.roi_mask)
-        file = mask_img(file, self.reliability_mask)
-        data[key] = np.nanmean(file)
+            reliable_data = np.load(file)
+            roi_data = reliable_data[:, self.roi_mask]
+            roi_mean_data = np.nanmean(roi_data, axis=1)
+        else:
+            reliable_data = mask_img(file, self.reliability_file)
+            roi_data = reliable_data[self.roi_mask]
+            roi_mean_data = np.nanmean(roi_data)
+        data[key] = roi_mean_data
         print(f'loaded {key}')
         return data
 
@@ -98,14 +102,15 @@ class ROIPrediction:
 
         # Variance of ROI
         data = self.load_files(data, 'r2var')
-        print(f'{getsizeof(data) / (1024 * 1024):.2f} MB')
-        data['low_ci'], data['high_ci'] = tools.compute_confidence_interval(data['r2var'])
+        print(data['r2var'].shape)
+        data['low_ci'], data['high_ci'] = np.percentile(data['r2var'], [2.5, 97.5])
         del data['r2var']  # Save memory
 
         # Significance of ROI
         data = self.load_files(data, 'r2')
         data = self.load_files(data, 'r2null')
-        print(f'{getsizeof(data)/(1024*1024):.2f} MB')
+        print(data['r2'].shape)
+        print(data['r2null'].shape)
         data['p'] = tools.calculate_p(data['r2null'], data['r2'],
                                       n_perm_=len(data['r2null']), H0_='greater')
         del data['r2null'] #Save memory
