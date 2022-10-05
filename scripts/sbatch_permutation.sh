@@ -17,8 +17,8 @@ conda activate nibabel
 
 python voxel_permutation.py -s "$subj" \
   --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
-  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw
-#  --category category
+  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
+  --unique_model $category
 
 for roi in PPA EVC MT EBA face-pSTS SI-pSTS TPJ; do
 for hemi in lh rh; do
@@ -26,6 +26,6 @@ for hemi in lh rh; do
     --hemi $hemi --roi $roi \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
     --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-    --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
-#    --model $category \
+    --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures \
+    --model $category
 done; done
