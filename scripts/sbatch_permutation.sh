@@ -16,16 +16,16 @@ ml anaconda
 conda activate nibabel
 
 python voxel_permutation.py -s "$subj" \
-#  --model $category \
   --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
   --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw
+#  --category category
 
 for roi in PPA EVC MT EBA face-pSTS SI-pSTS TPJ; do
 for hemi in lh rh; do
   time python roi_prediction.py -s $subj \
     --hemi $hemi --roi $roi \
-#    --model $category \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
     --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
     --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
+#    --model $category \
 done; done
