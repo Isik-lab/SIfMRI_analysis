@@ -10,7 +10,7 @@
 #SBATCH --mail-user=emcmaho7@jhu.edu
 
 subj=$1
-model=$2
+category=$2
 
 ml anaconda
 conda activate nibabel
@@ -18,12 +18,12 @@ conda activate nibabel
 #python voxel_permutation_categories.py -s "$subj" \
 #  --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
 #  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-#  --category $model
+#  --category category
 
 for roi in PPA EVC MT EBA face-pSTS SI-pSTS TPJ; do
 for hemi in lh rh; do
   time python roi_category.py -s $subj \
-    --hemi $hemi --roi $roi --category model \
+    --hemi $hemi --roi $roi --category $category \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
     --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
     --figure_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/reports/figures
