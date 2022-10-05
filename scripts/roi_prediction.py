@@ -57,9 +57,10 @@ class ROIPrediction:
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
-        self.reliability_mask = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
-        Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        self.roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
+        self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
+        self.roi_mask = mask_img(self.roi_file, self.reliability_file).astype('bool')
+        print(self.roi_mask.shape)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
         print(vars(self))
 
