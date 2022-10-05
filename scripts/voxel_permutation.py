@@ -7,8 +7,6 @@ from pathlib import Path
 import glob
 from src import tools
 import nibabel as nib
-import seaborn as sns
-from nilearn import plotting
 
 
 class VoxelPermutation:
@@ -34,7 +32,6 @@ class VoxelPermutation:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
         Path(f'{self.out_dir}/{self.process}/dist').mkdir(parents=True, exist_ok=True)
-        Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         print(vars(self))
         im = nib.load(
             f'{self.data_dir}/betas_3mm_zscore/sub-{self.sid}/sub-{self.sid}_space-T1w_desc-train-{self.step}_data.nii.gz')
@@ -118,17 +115,6 @@ class VoxelPermutation:
             r_unmasked = nib.Nifti1Image(r_unmasked, self.affine, self.header)
         return r_unmasked
 
-    def plot_results(self, r_):
-        print('plotting results')
-        anatomy = self.load_anatomy()
-        figure_name = f'{self.figure_dir}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}.png'
-        plotting.plot_stat_map(r_, anatomy,
-                               symmetric_cbar=False,
-                               threshold=1e-6,
-                               display_mode='mosaic',
-                               cmap=sns.color_palette('magma', as_cmap=True),
-                               output_file=figure_name)
-
     def save_perm_results(self, d):
         print('Saving output')
         for key in d.keys():
@@ -178,7 +164,6 @@ class VoxelPermutation:
         for name, i in zip(['r2', 'r2filtered', 'p', 'pcorrected'],
                            [r2, r2_filtered, p, p_corrected]):
             out_data[name] = self.nib_transform(i)
-        self.plot_results(out_data['r2filtered'])
         self.save_perm_results(out_data)
         print('Completed successfully!')
 
