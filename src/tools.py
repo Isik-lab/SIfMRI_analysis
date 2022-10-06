@@ -80,7 +80,7 @@ def bootstrap(a, b, n_perm=int(5e3), square=True):
             b_sample = b[inds, :]
         r = corr2d(a_sample, b_sample)
         if square:
-            r2_var[i, :] = r**2
+            r2_var[i, :] = np.sign(r)*(r**2)
         else:
             r2_var[i, :] = r
     return r2_var
