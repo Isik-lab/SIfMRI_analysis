@@ -67,11 +67,11 @@ class ROICategory:
         if 'npy' in file:
             reliable_data = np.load(file)
             roi_data = reliable_data[:, self.roi_mask]
-            roi_mean_data = np.nanmean(roi_data, axis=1)
+            roi_mean_data = np.nanmean(np.sign(roi_data)*(roi_data**2), axis=1)
         else:
             reliable_data = mask_img(file, self.reliability_file)
             roi_data = reliable_data[self.roi_mask]
-            roi_mean_data = np.nanmean(roi_data)
+            roi_mean_data = np.nanmean(np.sign(roi_data)*(roi_data**2))
         data[key] = roi_mean_data
         print(f'loaded {key}')
         return data
