@@ -130,7 +130,7 @@ class PlotROIPrediction:
                         data=df.loc[(df.roi == roi) & (df.hemi == hemi)],
                         ax=ax).set(title=title)
             ax.set_xlabel('')
-            y_max = df.loc[(df.roi == roi) & (df.hemi == hemi), 'high_ci'].max() + 0.01
+            y_max = df.loc[(df.roi == roi) & (df.hemi == hemi), 'high_ci'].max() + 0.04
             ax.set_ylim([0, y_max])
 
             # Change the ytick font size
@@ -158,7 +158,7 @@ class PlotROIPrediction:
 
             # Remove the yaxis label from all plots except the two leftmost plots
             if i == 0 or i == len(self.rois):
-                ax.set_ylabel('Unique variance ($r^2$)', fontsize=22)
+                ax.set_ylabel('Correlation ($r$)', fontsize=22)
             else:
                 ax.set_ylabel('')
 
@@ -172,7 +172,6 @@ class PlotROIPrediction:
                                           itertools.product(self.subjs, self.categories)):
                 color = cat2color(category)
                 color[:-1] = color[:-1] * subj2shade(subj)
-                print(subj, category, hemi, roi)
                 y1 = df.loc[(df.sid == subj) & (df.category == category) & (df.hemi == hemi) & (df.roi == roi),
                             'low_ci'].item()
                 y2 = df.loc[(df.sid == subj) & (df.category == category) & (df.hemi == hemi) & (df.roi == roi),
@@ -182,7 +181,7 @@ class PlotROIPrediction:
                 x = bar.get_x() + 0.1
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':
-                    ax.scatter(x, y_max-0.005, marker='o', color=color)
+                    ax.scatter(x, y_max-0.02, marker='o', color=color)
                 bar.set_color(color)
 
             ax.legend([], [], frameon=False)

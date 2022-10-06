@@ -147,13 +147,13 @@ class VoxelPermutation:
             r2, p, r2_null = tools.perm_unique_variance(y_true, y_full_pred,
                                                         y_loo_pred, n_perm=self.n_perm)
             base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
-            np.save(f'{base}_r2null.npy', self.nib_transform(r2_null, nii=False))
+            np.save(f'{base}_r2null.npy', r2_null)
             del r2_null
 
             # Run bootstrap
             r2_var = tools.bootstrap_unique_variance(y_true, y_full_pred,
                                                      y_loo_pred, n_perm=self.n_perm)
-            np.save(f'{base}_r2var.npy', self.nib_transform(r2_var, nii=False))
+            np.save(f'{base}_r2var.npy', r2_var)
             del r2_var
 
         # filter the rs based on the significant voxels
