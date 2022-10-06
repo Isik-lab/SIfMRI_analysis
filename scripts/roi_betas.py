@@ -49,24 +49,25 @@ class ROIBetas:
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
+        print(vars(self))
         self.roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
         self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
         self.roi_mask = mask_img(self.roi_file, self.reliability_file).astype('bool')
-        print(self.roi_mask.shape)
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
-        print(vars(self))
 
     def load_files(self, data, key):
         file = f'{self.out_dir}/PlotBetas/sub-{self.sid}_feature-{self.model}.nii.gz'
         reliable_data = mask_img(file, self.reliability_file)
         roi_data = reliable_data[self.roi_mask]
-        print(np.sum(self.roi_mask))
+        print(f'{np.sum(self.roi_mask)} voxels in {self.sid} {self.hemi} {self.roi}')
         data['betas'] = roi_data.mean()
-        data['betas_std'] = roi_data.mean()
-        data['low_ci'] = data['betas'] - data['betas_std']
-        data['high_ci'] = data['betas'] + data['betas_std']
-        print(f'loaded {key}')
+        data['betas_std'] = roi_data.std()
+        data['betas_sem'] = data['betas_std']/np.sqrt(roi_data.shape[-1])
+        data['low_ci'] = np.percentile(roi_data, 0.025)
+        data['high_ci'] = np.percentile(roi_data, 0.975)
+        data['low_sem'] = data['betas'] - data['betas_sem']
+        data['high_sem'] = data['betas'] + data['betas_sem']
         return data
 
     def save_results(self, d):

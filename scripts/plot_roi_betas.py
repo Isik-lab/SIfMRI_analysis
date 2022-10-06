@@ -154,8 +154,8 @@ class PlotROIBetas:
                         data=df.loc[(df.roi == roi) & (df.hemi == hemi)],
                         ax=ax).set(title=title)
             ax.set_xlabel('')
-            y_max = df.loc[(df.roi == roi) & (df.hemi == hemi), 'betas'].max() + 0.01
-            y_min = df.loc[(df.roi == roi) & (df.hemi == hemi), 'betas'].min() - 0.01
+            y_max = df.loc[(df.roi == roi) & (df.hemi == hemi), 'high_sem'].max() + 0.01
+            y_min = df.loc[(df.roi == roi) & (df.hemi == hemi), 'low_sem'].min() - 0.01
             ax.set_ylim([y_min, y_max])
 
             # Change the ytick font size
@@ -196,14 +196,14 @@ class PlotROIBetas:
                                           itertools.product(self.subjs, self.models)):
                 color = model2color(model)
                 color[:-1] = color[:-1] * subj2shade(subj)
-                # y1 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
-                #             'low_ci'].item()
-                # y2 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
-                #             'high_ci'].item()
+                y1 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
+                            'low_sem'].item()
+                y2 = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
+                            'high_sem'].item()
                 # sig = df.loc[(df.sid == subj) & (df.model == model) & (df.hemi == hemi) & (df.roi == roi),
                 #             'significant'].item()
-                # x = bar.get_x() + 0.1
-                # ax.plot([x, x], [y1, y2], 'k')
+                x = bar.get_x() + 0.1
+                ax.plot([x, x], [y1, y2], 'k')
                 # if sig != 'ns':
                 #     ax.scatter(x, y_max-0.005, marker='o', color=color)
                 bar.set_color(color)

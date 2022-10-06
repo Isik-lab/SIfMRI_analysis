@@ -85,6 +85,7 @@ class PlotROIPrediction:
         for f in files:
             data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
+        print(df.head())
         df.replace({'face-pSTS': 'STS-Face',
                     'SI-pSTS': 'STS-SI'},
                    inplace=True)

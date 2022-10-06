@@ -54,6 +54,7 @@ class PlotBetas:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        print(vars(self))
         self.cmap = sns.color_palette('icefire', as_cmap=True)
         self.rois = ['MT', 'EBA', 'face-pSTS', 'SI-pSTS']
         self.roi_cmap = roi_cmap()
@@ -150,9 +151,9 @@ class PlotBetas:
 
     def run(self):
         self.filter_betas()
-        for hemi in ['lh', 'rh']:
-            for stat in ['r2', 'r2filtered']:
-                self.plot_one_hemi(hemi, stat)
+        # for hemi in ['lh', 'rh']:
+        #     for stat in ['r2', 'r2filtered']:
+        #         self.plot_one_hemi(hemi, stat)
 
 
 def main():

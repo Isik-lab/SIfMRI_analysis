@@ -184,7 +184,7 @@ class PlotROIPrediction:
 
             # Remove the yaxis label from all plots except the two leftmost plots
             if i == 0 or i == len(self.rois):
-                ax.set_ylabel('Correlation ($r$)', fontsize=22)
+                ax.set_ylabel('Unique variance ($r^2$)', fontsize=22)
             else:
                 ax.set_ylabel('')
 
