@@ -122,6 +122,14 @@ class VoxelPermutation:
             nib.save(d[key], f'{base}_{key}.nii.gz')
             print(f'Saved {key} successfully')
 
+    def write_prop_predicted(self, p_corrected):
+        file = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_summary.txt'
+        content = f'Number of reliable voxels: {len(p_corrected)}. \n'
+        content += f'Number of significantly predicted voxels: {np.sum(p_corrected < 0.05)}. \n'
+        content += f'Proportion of significantly predicted voxels: {np.sum(p_corrected < 0.05)/len(p_corrected):0.3f}.'
+        with open(file, 'w') as f:
+            f.write(content)
+
     def run(self):
         if self.unique_model is None:
             y_true, y_pred = self.load()
@@ -158,6 +166,7 @@ class VoxelPermutation:
 
         # filter the rs based on the significant voxels
         r2_filtered, p_corrected = tools.filter_r(r2, p)
+        self.write_prop_predicted(p_corrected)
 
         # transform arrays to nii
         out_data = dict()
