@@ -9,13 +9,8 @@ for src in files:
     dst = src.replace(' ', '_')
     shutil.move(src, dst)
 
-dist_dir = f'{path}/dist'
-Path(dist_dir).mkdir(exist_ok=True, parents=True)
-files = glob.glob(f'{path}/*r2var*')
-for src in files:
-    shutil.move(src, dist_dir)
 
-files = glob.glob(f'{path}/*r2null*')
+files = glob.glob(f'{path}/dist/* *')
 for src in files:
-    shutil.move(src, dist_dir)
-
+    dst = src.replace(' ', '_')
+    shutil.move(src, dst)
