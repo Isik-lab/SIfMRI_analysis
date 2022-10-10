@@ -33,8 +33,6 @@ class ROIPrediction:
         self.sid = str(args.s_num).zfill(2)
         self.hemi = args.hemi
         self.model = args.model
-        if self.model is not None:
-            self.model = self.model.replace(' ', '_')
         self.roi = args.roi
         self.cross_validation = args.CV
         if self.cross_validation:
