@@ -47,6 +47,7 @@ class ROIPrediction:
         self.roi_mask = mask_img(self.roi_file, self.reliability_file).astype('bool')
         print(self.roi_mask.shape)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
+        Path(f'{self.out_dir}/{self.process}/').mkdir(parents=True, exist_ok=True)
         print(vars(self))
 
     def get_file_name(self, name):
