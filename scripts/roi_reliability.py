@@ -21,34 +21,21 @@ def mask_img(img, mask):
     return arr[mask]
 
 
-def roi2contrast(roi):
-    d = dict()
-    d['MT'] = 'motionVsStatic'
-    d['face-pSTS'] = 'facesVsObjects'
-    d['EBA'] = 'bodiesVsObjecs'
-    d['PPA'] = 'scenesVsObjects'
-    d['TPJ'] = 'beliefVsPhoto'
-    d['SI-pSTS'] = 'interactVsNoninteract'
-    d['EVC'] = 'EVC'
-    return d[roi]
-
-
 class ROIPrediction:
     def __init__(self, args):
         self.process = 'ROIPrediction'
         self.sid = str(args.s_num).zfill(2)
         self.hemi = args.hemi
         self.roi = args.roi
-        self.contrast = roi2contrast(self.roi)
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
+        self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{self.hemi}*mask.nii.gz')[0]
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_roi-{self.roi}_hemi-{self.hemi}_reliability.pkl'
         print(vars(self))
 
-    def get_file_name(self, var):
+    def get_file_name(self):
         top = f'{self.out_dir}/Reliability'
         file_name = f'{top}/sub-{self.sid}_space-T1w_desc-test-fracridge_stat-r_statmap.nii.gz'
         return file_name

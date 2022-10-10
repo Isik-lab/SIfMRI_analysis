@@ -13,18 +13,6 @@ import nibabel as nib
 import matplotlib.pyplot as plt
 
 
-def roi2contrast(roi):
-    d = dict()
-    d['MT'] = 'motionVsStatic'
-    d['face-pSTS'] = 'facesVsObjects'
-    d['EBA'] = 'bodiesVsObjecs'
-    d['PPA'] = 'scenesVsObjects'
-    d['TPJ'] = 'beliefVsPhoto'
-    d['SI-pSTS'] = 'interactVsNoninteract'
-    d['EVC'] = 'EVC'
-    return d[roi]
-
-
 def model2vmax(model):
     d = {'arousal': 0.15,
          'communication': 0.1,
@@ -38,7 +26,8 @@ def roi_cmap():
         'MT': (0.10196078431372549, 0.788235294117647, 0.2196078431372549),
         'EBA': (1.0, 1.0, 0.0),
         'face-pSTS': (0.0, 0.8431372549019608, 1.0),
-        'SI-pSTS': (1.0, 0.7686274509803922, 0.0)}
+        'aSTS': (1.0, 0.7686274509803922, 0.0),
+        'aSTS': (1.0, 0.7686274509803922, 0.0)}
     return list(d.values())
 
 

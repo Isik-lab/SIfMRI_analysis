@@ -21,7 +21,7 @@ conda activate nibabel
 #  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
 #  --category $category
 
-for roi in PPA EVC MT EBA face-pSTS SI-pSTS TPJ; do
+for roi in EVC MT EBA PPA FFA LOC pSTS face-pSTS aSTS TPJ; do
 for hemi in lh rh; do
   time python roi_category.py -s $subj \
     --hemi $hemi --roi $roi \

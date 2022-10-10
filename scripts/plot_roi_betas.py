@@ -78,7 +78,7 @@ class PlotROIBetas:
                        'joint action', 'communication',
                        'valence', 'arousal']
         self.subjs = ['01', '02', '03', '04']
-        self.rois = ['EVC', 'MT', 'EBA', 'STS-Face', 'STS-SI']
+        self.rois = ['EVC', 'MT', 'FFA', 'PPA', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
         self.hemis = ['lh', 'rh']
 
     def load_reliability(self):
@@ -91,7 +91,8 @@ class PlotROIBetas:
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
                                    categories=self.subjs)
         df.replace({'face-pSTS': 'STS-Face',
-                    'SI-pSTS': 'STS-SI'},
+                    'aSTS': 'aSTS-SI',
+                    'pSTS': 'pSTS-SI'},
                    inplace=True)
         return df
 
@@ -103,7 +104,6 @@ class PlotROIBetas:
             if not 'None' in f:
                 data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
-        df.to_csv(f'{self.out_dir}/{self.process}/roi_betas.csv', index=False)
 
         # Replace names with how I want them to show on axis
         df.replace({'transitivity': 'object',
@@ -111,11 +111,11 @@ class PlotROIBetas:
                     'joint_action': 'joint action'},
                    inplace=True)
         df.replace({'face-pSTS': 'STS-Face',
-                    'SI-pSTS': 'STS-SI'},
+                    'aSTS': 'aSTS-SI',
+                    'pSTS': 'pSTS-SI'},
                    inplace=True)
         # Using replacement make a column with the different categories
         df['model_cat'] = df.model.replace(model2cat())
-
 
         # Make model and sid categorical
         df['model'] = pd.Categorical(df['model'], ordered=True,
@@ -123,31 +123,23 @@ class PlotROIBetas:
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
                                    categories=self.subjs)
 
-        # # Perform FDR correction and make a column for how the marker should appear
-        # df['p_corrected'] = 1
-        # for roi in self.rois:
-        #     for subj in self.subjs:
-        #         rows = (df.sid == subj) & (df.roi == roi)
-        #         df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
-        # df['significant'] = 'ns'
-        # df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
-        # df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
-        # df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
-
         # Remove TPJ
-        df = df[df.roi != 'TPJ']
+        df = df[(df.roi != 'TPJ')]
         return df
 
     def plot_results(self, df):
-        _, axes = plt.subplots(2, len(self.rois), figsize=(30, 10))
+        _, axes = plt.subplots(2, len(self.rois), figsize=(40, 10))
         axes = axes.flatten()
         sns.set_theme(font_scale=2)
+        print(df.roi.unique())
         for i, (ax, (hemi, roi)) in enumerate(zip(axes,
                                                   itertools.product(self.hemis, self.rois))):
             if hemi == 'lh':
                 title = f'l{roi}'
             else:
                 title = f'r{roi}'
+            print(roi, hemi)
+            print(df.loc[(df.roi == roi) & (df.hemi == hemi)])
 
             sns.barplot(x='model', y='betas',
                         hue='sid', palette='gray', saturation=0.8,
@@ -214,6 +206,7 @@ class PlotROIBetas:
 
     def run(self):
         data = self.load_data()
+        data.to_csv(f'{self.out_dir}/{self.process}/roi_betas.csv', index=False)
         print(data.head())
         self.plot_results(data)
 

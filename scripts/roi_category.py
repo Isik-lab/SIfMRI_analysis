@@ -23,18 +23,6 @@ def mask_img(img, mask):
     return img[mask].squeeze()
 
 
-def roi2contrast(roi):
-    d = dict()
-    d['MT'] = 'motionVsStatic'
-    d['face-pSTS'] = 'facesVsObjects'
-    d['EBA'] = 'bodiesVsObjecs'
-    d['PPA'] = 'scenesVsObjects'
-    d['TPJ'] = 'beliefVsPhoto'
-    d['SI-pSTS'] = 'interactVsNoninteract'
-    d['EVC'] = 'EVC'
-    return d[roi]
-
-
 class ROICategory:
     def __init__(self, args):
         self.process = 'ROICategory'
@@ -42,11 +30,10 @@ class ROICategory:
         self.hemi = args.hemi
         self.category = args.category
         self.roi = args.roi
-        self.contrast = roi2contrast(self.roi)
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        self.roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.contrast}*{self.hemi}*mask.nii.gz')[0]
+        self.roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{self.hemi}*mask.nii.gz')[0]
         self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
         self.roi_mask = mask_img(self.roi_file, self.reliability_file).astype('bool')
         print(self.roi_mask.shape)
