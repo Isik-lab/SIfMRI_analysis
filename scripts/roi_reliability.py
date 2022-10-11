@@ -25,14 +25,13 @@ class ROIPrediction:
     def __init__(self, args):
         self.process = 'ROIPrediction'
         self.sid = str(args.s_num).zfill(2)
-        self.hemi = args.hemi
         self.roi = args.roi
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{self.hemi}*mask.nii.gz')[0]
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
-        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_roi-{self.roi}_hemi-{self.hemi}_reliability.pkl'
+        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_roi-{self.roi}_reliability.pkl'
         print(vars(self))
 
     def get_file_name(self):
@@ -55,11 +54,12 @@ class ROIPrediction:
         pickle.dump(d, f)
         f.close()
 
-    def add_info2data(self, d):
-        d['sid'] = self.sid
-        d['hemi'] = self.hemi
-        d['roi'] = self.roi
-        return d
+    def add_info2data(self, data):
+        data['sid'] = self.sid
+        data['roi'] = self.roi
+        data['category'] = None
+        data['feature'] = None
+        data['unique_variance'] = False
 
     def run(self):
         data = self.load_files()

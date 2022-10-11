@@ -71,7 +71,7 @@ class PlotROIPrediction:
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        # Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         # self.models = ['indoor', 'expanse', 'object',
         #                'agent distance', 'facingness',
@@ -79,7 +79,6 @@ class PlotROIPrediction:
         #                'valence', 'arousal']
         self.subjs = ['01', '02', '03', '04']
         self.rois = ['EVC', 'MT', 'FFA', 'PPA', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
-        self.hemis = ['lh', 'rh']
         self.roi_cmap = sns.color_palette("hls")[2:7]
 
     def load_reliability(self):
@@ -105,7 +104,7 @@ class PlotROIPrediction:
     def load_data(self):
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
-        files = glob.glob(f'{self.out_dir}/ROIPrediction/*model-None*pkl')
+        files = glob.glob(f'{self.out_dir}/ROIPrediction/*pkl')
         for f in files:
             data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
@@ -139,70 +138,61 @@ class PlotROIPrediction:
     def plot_results(self, df):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
         sns.set_theme(context='poster', style='white', rc=custom_params)
-        _, axes = plt.subplots(1, 2, figsize=(20, 5))
-        for i, (hemi, ax) in enumerate(zip(self.hemis, axes)):
-            if hemi == 'lh':
-                title = 'Left hemisphere'
-            else:
-                title = 'Right hemisphere'
+        _, ax = plt.subplots(1, figsize=(10, 5))
 
-            sns.barplot(x='roi', y='reliability',
-                        hue='sid', color=[0.7, 0.7, 0.7],
-                        edgecolor=".2",
-                        ax=ax, data=df[df.hemi == hemi])
-            sns.barplot(x='roi', y='r2',
-                        hue='sid', palette='gray',
-                        ax=ax, data=df[df.hemi == hemi])
+        df['reliability'] = 0
+        print(df.head())
+        sns.barplot(x='roi', y='reliability',
+                    hue='sid', color=[0.7, 0.7, 0.7],
+                    edgecolor=".2",
+                    ax=ax, data=df)
+        sns.barplot(x='roi', y='r2',
+                    hue='sid', palette='gray',
+                    ax=ax, data=df)
 
-            y_max = 0.7
-            ax.set_ylim([0, y_max])
+        y_max = 0.7
+        ax.set_ylim([0, y_max])
 
-            ax.set_xlabel('')
-            ax.set_xticklabels(self.rois,
-                               fontsize=20,
-                               rotation=45, ha='right')
-            # for ticklabel, pointer in zip(self.rois, ax.get_xticklabels()):
-            #     color = roi2color(ticklabel)
-            #     color[-1] = 1.
-            #     pointer.set_color(color)
-            #     pointer.set_weight('bold')
+        ax.set_xlabel('')
+        ax.set_xticklabels(self.rois,
+                           fontsize=20,
+                           rotation=45, ha='right')
+        for ticklabel, pointer in zip(self.rois, ax.get_xticklabels()):
+            color = roi2color(ticklabel)
+            color[-1] = 1.
+            pointer.set_color(color)
+            pointer.set_weight('bold')
 
-            if i == 0:
-                ax.set_ylabel('Explained variance ($r^2$)', fontsize=22)
-            else:
-                ax.set_ylabel('')
-                ax.set_yticklabels([])
+        # Plot vertical lines to separate the bars
+        for x in np.arange(0.5, len(self.rois) - 0.5):
+            ax.plot([x, x], [0, y_max - (y_max / 20)], '0.8')
 
-            # Plot vertical lines to separate the bars
-            for x in np.arange(0.5, len(self.rois) - 0.5):
-                ax.plot([x, x], [0, y_max - (y_max / 20)], '0.8')
-
-            # Manipulate the color and add error bars
-            for bar, (subj, roi) in zip(ax.patches[int(len(ax.patches) / 2):],
-                                        itertools.product(self.subjs, self.rois)):
-                color = roi2color(roi)
-                color[:-1] = color[:-1] * subj2shade(subj)
-                y1 = df.loc[(df.sid == subj) & (df.hemi == hemi) & (df.roi == roi),
-                            'low_ci'].item()
-                y2 = df.loc[(df.sid == subj) & (df.hemi == hemi) & (df.roi == roi),
-                            'high_ci'].item()
-                sig = df.loc[(df.sid == subj) & (df.hemi == hemi) & (df.roi == roi),
-                             'significant'].item()
-                x = bar.get_x() + 0.1
-                ax.plot([x, x], [y1, y2], 'k')
-                bar.set_color(color)
-            ax.set_title(title)
-            ax.legend([], [], frameon=False)
+        # Manipulate the color and add error bars
+        for bar, (subj, roi) in zip(ax.patches[int(len(ax.patches) / 2):],
+                                    itertools.product(self.subjs, self.rois)):
+            color = roi2color(roi)
+            color[:-1] = color[:-1] * subj2shade(subj)
+            y1 = df.loc[(df.sid == subj) & (df.roi == roi),
+                        'low_ci'].item()
+            y2 = df.loc[(df.sid == subj) & (df.roi == roi),
+                        'high_ci'].item()
+            sig = df.loc[(df.sid == subj) & (df.roi == roi),
+                         'significant'].item()
+            x = bar.get_x() + 0.1
+            ax.plot([x, x], [y1, y2], 'k')
+            bar.set_color(color)
+        ax.legend([], [], frameon=False)
+        ax.set_ylabel('Explained variance ($r^2$)', fontsize=22)
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/fullmodel_results.pdf')
 
-    def run(self):
+    def run(self):        # data = data.merge(reliability,
+        #                   left_on=['hemi', 'sid', 'roi'],
+        #                   right_on=['hemi', 'sid', 'roi'],
+        #                   how='left')
         data = self.load_data()
-        reliability = self.load_reliability()
-        data = data.merge(reliability,
-                          left_on=['hemi', 'sid', 'roi'],
-                          right_on=['hemi', 'sid', 'roi'],
-                          how='left')
+        # reliability = self.load_reliability()
+        data.to_csv(f'{self.out_dir}/{self.process}/roi_prediction.csv', index=False)
         print(data.head())
         self.plot_results(data)
 

@@ -113,6 +113,7 @@ class ROIPrediction:
         data['category'] = self.category
         data['feature'] = self.feature
         data['unique_variance'] = self.unique_variance
+        data['reliability'] = None
 
     def save_results(self, d):
         f = open(self.out_file_name, "wb")
