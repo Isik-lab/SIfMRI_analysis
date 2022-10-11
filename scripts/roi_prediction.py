@@ -11,7 +11,7 @@ import pickle
 from sys import getsizeof
 
 
-def mask_img(img, mask, fill=False):
+def mask_img(img, mask):
     if type(img) is str:
         img = nib.load(img)
         img = np.array(img.dataobj)
@@ -20,11 +20,7 @@ def mask_img(img, mask, fill=False):
         mask = nib.load(mask)
 
     mask = np.array(mask.dataobj, dtype=bool)
-    if fill:
-        img[np.invert(mask)] = np.nan
-        return img
-    else:
-        return img[mask]
+    return img[mask].squeeze()
 
 
 class ROIPrediction:
@@ -32,13 +28,8 @@ class ROIPrediction:
         self.process = 'ROIPrediction'
         self.sid = str(args.s_num).zfill(2)
         self.hemi = args.hemi
-        self.model = args.model
+        self.category = args.category
         self.roi = args.roi
-        self.cross_validation = args.CV
-        if self.cross_validation:
-            self.method = 'CV'
-        else:
-            self.method = 'test'
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -46,16 +37,16 @@ class ROIPrediction:
         self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
         self.roi_mask = mask_img(self.roi_file, self.reliability_file).astype('bool')
         print(self.roi_mask.shape)
-        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_model-{self.model}_roi-{self.roi}_hemi-{self.hemi}.pkl'
-        Path(f'{self.out_dir}/{self.process}/').mkdir(parents=True, exist_ok=True)
+        Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
+        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_roi-{self.roi}_hemi-{self.hemi}.pkl'
         print(vars(self))
 
     def get_file_name(self, name):
-        top = f'{self.out_dir}/VoxelPermutation'
+        top = f'{self.out_dir}/CategoryVoxelPermutation'
         if 'null' not in name and 'var' not in name:
-            file_name = f'{top}/sub-{self.sid}_prediction-all_drop-{self.model}_single-None_method-{self.method}_{name}.nii.gz'
+            file_name = f'{top}/sub-{self.sid}_category-{self.category}_{name}.nii.gz'
         else:
-            file_name = f'{top}/dist/sub-{self.sid}_prediction-all_drop-{self.model}_single-None_method-{self.method}_{name}.npy'
+            file_name = f'{top}/dist/sub-{self.sid}_category-{self.category}_{name}.npy'
         return file_name
 
     def load_files(self, data, key):
@@ -63,11 +54,11 @@ class ROIPrediction:
         if 'npy' in file:
             reliable_data = np.load(file)
             roi_data = reliable_data[:, self.roi_mask]
-            roi_mean_data = np.nanmean(roi_data, axis=1)
+            roi_mean_data = np.nanmean(np.sign(roi_data)*(roi_data**2), axis=1)
         else:
             reliable_data = mask_img(file, self.reliability_file)
             roi_data = reliable_data[self.roi_mask]
-            roi_mean_data = np.nanmean(roi_data)
+            roi_mean_data = np.nanmean(np.sign(roi_data)*(roi_data**2))
         data[key] = roi_mean_data
         print(f'loaded {key}')
         return data
@@ -81,7 +72,7 @@ class ROIPrediction:
         d['sid'] = self.sid
         d['hemi'] = self.hemi
         d['roi'] = self.roi
-        d['model'] = self.model
+        d['category'] = self.category
         return d
 
     def run(self):
@@ -114,7 +105,7 @@ class ROIPrediction:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--model', type=str, default=None)
+    parser.add_argument('--category', type=str, default='affective')
     parser.add_argument('--hemi', type=str, default='rh')
     parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)

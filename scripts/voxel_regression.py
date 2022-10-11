@@ -3,55 +3,50 @@
 
 import argparse
 from pathlib import Path
-from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import nibabel as nib
-
-from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold
 
 
-def pca(a, b=None, n_components=8):
-    pca_ = PCA(svd_solver='full', whiten=True, n_components=n_components)
-    a_out = pca_.fit_transform(a)
-    if b is not None:
-        b_out = pca_.transform(b)
-    else:
-        b_out = None
-    return a_out, b_out
+def category_map(category=None):
+    d = dict()
+    d['scene_object'] = ['indoor', 'expanse', 'transitivity']
+    d['social_primitive'] = ['agent distance', 'facingness']
+    d['social'] = ['joint action', 'communication']
+    d['affective'] = ['valence', 'arousal']
+    return d[category]
 
 
 def scale(train_, test_):
-    n_features = test_.shape[-1]
     mean = np.nanmean(train_, axis=0).squeeze()
     variance = np.nanstd(train_, axis=0).squeeze()
     variance[np.isclose(variance, 0.)] = np.nan
     train_ = (train_ - mean) / variance
-    return train_, (test_ - mean[:n_features]) / variance[:n_features]
+    return train_, (test_ - mean) / variance
 
 
-def zero_inds(arr, inds_, max_val):
-    out = arr.copy()
-    if inds_ is not None:
-        for i in range(max_val):
-            if i not in inds_:
-                out[i, :] = 0.
-    return out
-
-
-def regress(X_train_, y_train_):
+def regress(X_train_, y_train_, X_test_):
     # ols
     lr = LinearRegression(fit_intercept=False)
     lr.fit(X_train_, y_train_)
-    return lr.coef_.T
+    return lr.predict(X_test_)
+
+
+def preprocess(X_train_, X_test_,
+               y_train_, y_test_):
+    X_train_, X_test_ = scale(X_train_, X_test_)
+    y_train_, y_test_ = scale(y_train_, y_test_)
+    return X_train_, X_test_, y_train_, y_test_
 
 
 class VoxelRegression:
     def __init__(self, args):
         self.process = 'VoxelRegression'
         self.sid = str(args.s_num).zfill(2)
+        self.category = args.category
+        self.feature = args.feature
+        self.unique_variance = args.unique_variance
         self.step = args.step
         self.space = args.space
         self.zscore_ses = args.zscore_ses
@@ -60,153 +55,78 @@ class VoxelRegression:
             if self.zscore_ses:
                 self.beta_path = 'betas_3mm_zscore'
             else: #self.smoothing and not self.zscore_ses:
-                self.beta_path  = 'betas_3mm_nozscore'
+                self.beta_path = 'betas_3mm_nozscore'
         else:
             if self.zscore_ses:
-                self.beta_path  = 'betas_0mm_zscore'
+                self.beta_path = 'betas_0mm_zscore'
             else: #not self.smoothing and not self.zscore_ses
-                self.beta_path  = 'betas_0mm_nozscore'
-        self.unique_model = args.unique_model
-        self.single_model = args.single_model
-        assert (self.unique_model is None or self.single_model is None) or (self.unique_model is None and self.single_model is None)
-        if self.unique_model is not None:
-            self.unique_model = self.unique_model.replace('_', ' ')
-        if self.single_model is not None:
-            self.single_model = self.single_model.replace('_', ' ')
-        self.cross_validation = args.CV
-        self.n_PCs = args.n_PCs
+                self.beta_path = 'betas_0mm_nozscore'
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
+        self.out_file_prefix = ''
         print(vars(self))
 
-    def mk_models(self):
-        if self.unique_model is not None:
-            models = {'all': None}
-        elif self.single_model is not None:
-            models = {'all': [0]}
-        else:
-            models = {'all': None}
-        return models
-
-    def preprocess(self, X_train_, X_test_,
-                   X_control_train_, X_control_test_,
-                   y_train_, y_test_):
-        X_control_train_PCs_, X_control_test_PCs_ = pca(X_control_train_, X_control_test_,
-                                                        n_components=self.n_PCs)
-        X_train_ = np.hstack([X_train_, X_control_train_PCs_])
-        X_test_ = np.hstack([X_test_, X_control_test_PCs_])
-        X_train_, X_test_ = scale(X_train_, X_test_)
-        y_train_, y_test_ = scale(y_train_, y_test_)
-        return X_train_, X_test_, y_train_, y_test_
-
-    def prediction(self, X_test_, betas_, y_test_, i=None):
-        if (self.unique_model is None) and (self.single_model is None):
-            if i is not None:
-                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_betas_method-CV_loop-{i}.npy', betas_)
-                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-test_method-CV_loop-{i}.npy', y_test_)
-            else:
-                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_betas_method-test.npy', betas_)
-                np.save(f'{self.out_dir}/{self.process}/sub-{self.sid}_y-test_method-test.npy', y_test_)
-
-        models = self.mk_models()
-        for key in models:
-            name_base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{key}'
-            cur_betas_ = zero_inds(betas_, models[key], X_test_.shape[-1])
-            y_pred = X_test_ @ cur_betas_
-
-            if i is not None:
-                np.save(f'{name_base}_drop-{self.unique_model}_single-{self.single_model}_method-CV_loop-{i}.npy',
-                        y_pred)
-            else:
-                np.save(f'{name_base}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy', y_pred)
-
-    def load_neural(self):
+    def load_neural(self, dataset):
         mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype('bool')
-        train = nib.load(f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-train-{self.step}_data.nii.gz')
-        test = nib.load(f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_data.nii.gz')
-        train = np.array(train.dataobj).reshape((-1, train.shape[-1])).T
-        test = np.array(test.dataobj).reshape((-1, test.shape[-1])).T
-        return train[:, mask], test[:, mask]
+        neural = nib.load(f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{dataset}-{self.step}_data.nii.gz')
+        neural = np.array(neural.dataobj).reshape((-1, neural.shape[-1])).T
+        return neural[:, mask]
 
-    def load_nuissance_regressors(self, dataset):
-        alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{dataset}_avgframe.npy').T
-        of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{dataset}.npy')
-        return np.hstack([alexnet, of])
+    def get_regression_features(self, df):
+        if self.unique_variance:
+            if self.category is not None:
+                columns = df.columns.to_list()
+                [columns.remove(i) for i in category_map(self.category)]
+                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-category-{self.category}'
+            else: #self.feature is not None:
+                columns = df.columns.to_list()
+                columns.remove(self.feature)
+                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-feature-{self.feature}'
+        else: #not self.unique_variance
+            if self.category is not None:
+                # Regression with the categories without the other regressors
+                columns = category_map(self.category)
+                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}'
+            elif self.feature is not None:
+                columns = [self.feature.replace('_', ' ')]
+                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}'
+            else:  # This is the full regression model with all annotated features
+                columns = df.columns.to_list()
+                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_all-features'
+        return columns
 
     def load_annotated_features(self, dataset):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
         set_names = pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv')
         df = df.merge(set_names)
         df.sort_values(by=['video_name'], inplace=True)
-        # Remove the high-level social dimensions -- 06/21/2022
-        cols_drop = ['video_name', 'cooperation', 'dominance', 'intimacy']
-
-        # If unique_model is not None, add that to the list of columns to drop
-        if self.unique_model is not None:
-            cols_drop.append(self.unique_model)
-
-        if self.single_model is not None:
-            out = np.expand_dims(df[self.single_model].to_numpy(), axis=1)
-        else:
-            out = df.drop(columns=cols_drop).to_numpy()
-        return out
-
-    def load_features(self):
-        X_control_train_ = self.load_nuissance_regressors('train')
-        X_control_test_ = self.load_nuissance_regressors('test')
-        X_train_ = self.load_annotated_features('train')
-        X_test_ = self.load_annotated_features('test')
-        return X_train_, X_test_, X_control_train_, X_control_test_
+        df.drop(columns=['video_name', 'cooperation',
+                         'dominance', 'intimacy'], inplace=True)
+        columns = self.get_regression_features(df)
+        print(columns)
+        df = df[columns]
+        return df.to_numpy()
 
     def load(self):
-        X_train_, X_test_, X_control_train_, X_control_test_ = self.load_features()
-        y_train_, y_test_ = self.load_neural()
-        if self.cross_validation:
-            return X_train_, X_control_train_, y_train_
-        else:
-            return X_train_, X_test_, X_control_train_, X_control_test_, y_train_, y_test_
+        X_train_ = self.load_annotated_features('train')
+        X_test_ = self.load_annotated_features('test')
+        y_train_ = self.load_neural('train')
+        y_test_ = self.load_neural('test')
+        return X_train_, X_test_, y_train_, y_test_
 
-    def cross_validated_regression(self, X_, X_control_, y_,
-                                   n_splits=10, random_state=0):
-        splitter = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
-        for i, (train_index, test_index) in tqdm(enumerate(splitter.split(X_)), total=n_splits):
-            X_train_, X_test_ = X_[train_index], X_[test_index]
-            y_train_, y_test_ = y_[train_index], y_[test_index]
-            X_control_train_, X_control_test_ = X_control_[train_index], X_control_[test_index]
+    def save_results(self, y_test_, y_pred_):
+        np.save(f'{self.out_file_prefix}_y-test.npy', y_test_)
+        np.save(f'{self.out_file_prefix}_y-pred.npy', y_pred_)
 
-            # Preprocess
-            X_train_, X_test_, y_train_, y_test_ = self.preprocess(X_train_, X_test_,
-                                                                   X_control_train_, X_control_test_,
-                                                                   y_train_, y_test_)
-
-            # Regression
-            betas = regress(X_train_, y_train_)
-
-            # predictions
-            self.prediction(X_test_, betas, y_test_, i)
-
-    def train_test_regression(self, X_train_, X_test_,
-                              X_control_train_, X_control_test_,
-                              y_train_, y_test_):
-        # Preprocess
-        X_train_, X_test_, y_train, y_test = self.preprocess(X_train_, X_test_,
-                                                             X_control_train_, X_control_test_,
-                                                             y_train_, y_test_)
-
-        # Regression
-        betas = regress(X_train_, y_train_)
-
-        # predictions
-        self.prediction(X_test_, betas, y_test_)
+    def regression(self, X_train_, X_test_, y_train_, y_test_):
+        X_train_, X_test_, y_train, y_test = preprocess(X_train_, X_test_, y_train_, y_test_)
+        y_pred = regress(X_train_, y_train_, X_test_)
+        self.save_results(y_pred, y_test)
 
     def run(self):
-        if self.cross_validation:
-            X, X_control, y = self.load()
-            self.cross_validated_regression(X, X_control, y)
-        else:
-            X_train, X_test, X_control_train, X_control_test, y_train, y_test = self.load()
-            self.train_test_regression(X_train, X_test, X_control_train, X_control_test, y_train, y_test)
+        X_train, X_test, y_train, y_test = self.load()
+        self.regression(X_train, X_test, y_train, y_test)
 
 
 def main():
@@ -214,12 +134,11 @@ def main():
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--space', type=str, default='T1w')
-    parser.add_argument('--unique_model', type=str, default=None)
-    parser.add_argument('--single_model', type=str, default=None)
-    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--n_PCs', type=int, default=8)
+    parser.add_argument('--category', type=str, default=None)
+    parser.add_argument('--feature', type=str, default=None)
+    parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

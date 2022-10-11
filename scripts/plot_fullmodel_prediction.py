@@ -52,8 +52,12 @@ def roi2color(key=None):
     d = {'EVC': np.array([1.0, 0.48627450980392156, 0.0, 0.8]),
          'MT': np.array([0.10196078431372549, 0.788235294117647, 0.2196078431372549, 0.8]),
          'EBA': np.array([1.0, 1.0, 0, 0.8]),
+         'FFA': np.array([1.0, 1.0, 0, 0.8]),
+         'PPA': np.array([1.0, 1.0, 0, 0.8]),
+         'LOC': np.array([1.0, 1.0, 0, 0.8]),
          'STS-Face': np.array([0.0, 0.8431372549019608, 1.0, 0.8]),
-         'STS-SI': np.array([1.0, 0.7686274509803922, 0.0, 0.8])
+         'aSTS-SI': np.array([1.0, 0.7686274509803922, 0.0, 0.8]),
+         'pSTS-SI': np.array([1.0, 0.7686274509803922, 0.0, 0.8]),
          }
     if key is not None:
         return d[key]
@@ -74,7 +78,7 @@ class PlotROIPrediction:
         #                'joint action', 'communication',
         #                'valence', 'arousal']
         self.subjs = ['01', '02', '03', '04']
-        self.rois = ['EVC', 'MT', 'EBA', 'STS-Face', 'STS-SI']
+        self.rois = ['EVC', 'MT', 'FFA', 'PPA', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
         self.hemis = ['lh', 'rh']
         self.roi_cmap = sns.color_palette("hls")[2:7]
 
@@ -82,12 +86,14 @@ class PlotROIPrediction:
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
         files = glob.glob(f'{self.out_dir}/ROIPrediction/*reliability.pkl')
+        print(files)
         for f in files:
             data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
         print(df.head())
         df.replace({'face-pSTS': 'STS-Face',
-                    'SI-pSTS': 'STS-SI'},
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
                    inplace=True)
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
                                    categories=self.subjs)
@@ -108,7 +114,8 @@ class PlotROIPrediction:
         df = df[df.roi != 'TPJ']
 
         df.replace({'face-pSTS': 'STS-Face',
-                    'SI-pSTS': 'STS-SI'},
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
                    inplace=True)
 
         # Make sid categorical
@@ -132,7 +139,7 @@ class PlotROIPrediction:
     def plot_results(self, df):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
         sns.set_theme(context='poster', style='white', rc=custom_params)
-        _, axes = plt.subplots(1, 2, figsize=(10, 5))
+        _, axes = plt.subplots(1, 2, figsize=(20, 5))
         for i, (hemi, ax) in enumerate(zip(self.hemis, axes)):
             if hemi == 'lh':
                 title = 'Left hemisphere'

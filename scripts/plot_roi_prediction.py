@@ -78,7 +78,7 @@ class PlotROIPrediction:
                        'joint action', 'communication',
                        'valence', 'arousal']
         self.subjs = ['01', '02', '03', '04']
-        self.rois = ['EVC', 'MT', 'EBA', 'STS-Face', 'STS-SI']
+        self.rois = ['EVC', 'MT', 'FFA', 'PPA', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
         self.hemis = ['lh', 'rh']
 
     def load_reliability(self):
@@ -91,7 +91,8 @@ class PlotROIPrediction:
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
                                    categories=self.subjs)
         df.replace({'face-pSTS': 'STS-Face',
-                    'SI-pSTS': 'STS-SI'},
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
                    inplace=True)
         df.rename(columns={'r2': 'reliability'}, inplace=True)
         return df
@@ -112,7 +113,8 @@ class PlotROIPrediction:
                     'joint_action': 'joint action'},
                    inplace=True)
         df.replace({'face-pSTS': 'STS-Face',
-                    'SI-pSTS': 'STS-SI'},
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
                    inplace=True)
         # Using replacement make a column with the different categories
         df['model_cat'] = df.model.replace(model2cat())
@@ -141,7 +143,7 @@ class PlotROIPrediction:
         return df
 
     def plot_results(self, df):
-        _, axes = plt.subplots(2, len(self.rois), figsize=(30, 10))
+        _, axes = plt.subplots(2, len(self.rois), figsize=(40, 10))
         axes = axes.flatten()
         sns.set_theme(font_scale=2)
         for i, (ax, (hemi, roi)) in enumerate(zip(axes,

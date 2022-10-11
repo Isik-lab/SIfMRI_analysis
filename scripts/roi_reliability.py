@@ -43,7 +43,8 @@ class ROIPrediction:
     def load_files(self):
         data = dict()
         for key in ['r2']:
-            file = mask_img(self.get_file_name(key), self.roi_mask) # Mask the reliability to the roi
+            print(key)
+            file = mask_img(self.get_file_name(), self.roi_mask) # Mask the reliability to the roi
             masked_file = file ** 2 # square the values because the reliability map is just the correlation
             data[key] = masked_file.mean(axis=0)
             print(f'loaded {key}')

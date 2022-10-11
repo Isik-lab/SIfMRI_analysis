@@ -4,7 +4,6 @@
 import argparse
 import numpy as np
 from pathlib import Path
-import glob
 from src import tools
 import nibabel as nib
 
@@ -12,24 +11,12 @@ import nibabel as nib
 class VoxelPermutation:
     def __init__(self, args):
         self.process = 'VoxelPermutation'
-        self.model = args.model.replace('_', ' ')
-        self.step = args.step
-        self.unique_model = args.unique_model
-        self.single_model = args.single_model
-        if self.unique_model is not None:
-            self.unique_model = self.unique_model.replace('_', ' ')
-        if self.single_model is not None:
-            self.single_model = self.single_model.replace('_', ' ')
         self.sid = str(args.s_num).zfill(2)
-        self.cross_validation = args.CV
-        if self.cross_validation:
-            self.method = 'CV'
-        else:
-            self.method = 'test'
+        self.category = args.category
+        self.step = args.step
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
         Path(f'{self.out_dir}/{self.process}/dist').mkdir(parents=True, exist_ok=True)
         print(vars(self))
@@ -40,54 +27,10 @@ class VoxelPermutation:
         self.header = im.header
         del im
 
-    def load_unique(self):
-        if self.cross_validation:
-            fnames_loo = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-None_method-CV_loop*.npy'
-            fnames_all = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-CV_loop*.npy'
-            full_files = sorted(glob.glob(fnames_all))
-            print(full_files)
-            loo_files = sorted(glob.glob(fnames_loo))
-            test_files = sorted(glob.glob(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop*.npy'))
-            loo = None
-            for i, ((full_file, loo_file), test_file) in enumerate(zip(zip(full_files, loo_files), test_files)):
-                full_file = np.load(full_file)
-                loo_file = np.load(loo_file)
-                test_file = np.load(test_file)
-                if loo is None:
-                    loo = np.zeros((loo_file.shape[0], len(loo_file), loo_file.shape[1]))
-                    full = np.zeros_like(loo)
-                    test = np.zeros_like(loo)
-                loo[:, i, :] = loo_file
-                full[:, i, :] = full_file
-                test[:, i, :] = test_file
-        else:
-            full = np.load(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-None_single-None_method-test.npy')
-            loo = np.load(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-all_drop-{self.unique_model}_single-None_method-test.npy')
-            test = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
-        return full, loo, test
-
     def load(self):
-        if self.cross_validation:
-            fnames = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-CV_loop*.npy'
-            print(fnames)
-            pred_files = sorted(glob.glob(fnames))
-            test_files = sorted(
-                glob.glob(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-CV_loop*.npy'))
-            pred = None
-            for i, (pred_file, test_file) in enumerate(zip(pred_files, test_files)):
-                pred_file = np.load(pred_file)
-                test_file = np.load(test_file)
-                if pred is None:
-                    pred = np.zeros((pred_file.shape[0], len(pred_files), pred_file.shape[1]))
-                    test = np.zeros_like(pred)
-                pred[:, i, :] = pred_file
-                test[:, i, :] = test_file
-        else:
-            pred = np.load(
-                f'{self.out_dir}/VoxelRegression/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-test.npy')
-            test = np.load(f'{self.out_dir}/VoxelRegression/sub-{self.sid}_y-test_method-test.npy')
+        in_dir = f'{self.out_dir}/CategoryVoxelRegression/'
+        pred = np.load(f'{in_dir}/sub-{self.sid}_category-{self.category}_y-pred.npy')
+        test = np.load(f'{in_dir}/sub-{self.sid}_category-{self.category}_y-test.npy')
         return test, pred
 
     def load_anatomy(self):
@@ -118,55 +61,30 @@ class VoxelPermutation:
     def save_perm_results(self, d):
         print('Saving output')
         for key in d.keys():
-            base = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
+            base = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}'
             nib.save(d[key], f'{base}_{key}.nii.gz')
             print(f'Saved {key} successfully')
 
-    def write_prop_predicted(self, p_corrected):
-        file = f'{self.out_dir}/{self.process}/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}_summary.txt'
-        content = f'Number of reliable voxels: {len(p_corrected)}. \n'
-        content += f'Number of significantly predicted voxels: {np.sum(p_corrected < 0.05)}. \n'
-        content += f'Proportion of significantly predicted voxels: {np.sum(p_corrected < 0.05)/len(p_corrected):0.3f}.'
-        with open(file, 'w') as f:
-            f.write(content)
-
     def run(self):
-        if self.unique_model is None:
-            y_true, y_pred = self.load()
-            print(np.unique(y_true))
+        y_true, y_pred = self.load()
+        print(np.unique(y_true))
 
-            # Run permutation
-            r2, p, r2_null = tools.perm(y_true, y_pred,
-                                        n_perm=self.n_perm)
-            base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
-            np.save(f'{base}_r2null.npy', r2_null)
-            del r2_null
+        # Run permutation
+        r2, p, r2_null = tools.perm(y_true, y_pred,
+                                    n_perm=self.n_perm, square=False)
+        base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_category-{self.category}'
+        print(f'r2_null shape: {r2_null.shape}')
+        np.save(f'{base}_r2null.npy', r2_null)
+        del r2_null
 
-            # Run bootstrap
-            r2_var = tools.bootstrap(y_true, y_pred,
-                                     n_perm=self.n_perm)
-            np.save(f'{base}_r2var.npy', r2_var)
-            del r2_var
-
-        else:
-            y_full_pred, y_loo_pred, y_true = self.load_unique()
-
-            # Run permutation
-            r2, p, r2_null = tools.perm_unique_variance(y_true, y_full_pred,
-                                                        y_loo_pred, n_perm=self.n_perm)
-            base = f'{self.out_dir}/{self.process}/dist/sub-{self.sid}_prediction-{self.model}_drop-{self.unique_model}_single-{self.single_model}_method-{self.method}'
-            np.save(f'{base}_r2null.npy', r2_null)
-            del r2_null
-
-            # Run bootstrap
-            r2_var = tools.bootstrap_unique_variance(y_true, y_full_pred,
-                                                     y_loo_pred, n_perm=self.n_perm)
-            np.save(f'{base}_r2var.npy', r2_var)
-            del r2_var
+        # Run bootstrap
+        r2_var = tools.bootstrap(y_true, y_pred,
+                                 n_perm=self.n_perm, square=False)
+        np.save(f'{base}_r2var.npy', r2_var)
+        del r2_var
 
         # filter the rs based on the significant voxels
         r2_filtered, p_corrected = tools.filter_r(r2, p)
-        self.write_prop_predicted(p_corrected)
 
         # transform arrays to nii
         out_data = dict()
@@ -180,18 +98,13 @@ class VoxelPermutation:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--unique_model', type=str, default=None)
-    parser.add_argument('--single_model', type=str, default=None)
-    parser.add_argument('--model', type=str, default='all')
-    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--category', type=str, default='affective')
     parser.add_argument('--n_perm', type=int, default=5000)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     VoxelPermutation(args).run()
 
