@@ -28,8 +28,6 @@ class ROIPrediction:
         self.roi = args.roi
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
-        self.roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{self.hemi}*mask.nii.gz')[0]
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_roi-{self.roi}_reliability.pkl'
         print(vars(self))
@@ -40,14 +38,15 @@ class ROIPrediction:
         return file_name
 
     def load_files(self):
-        data = dict()
-        for key in ['r2']:
-            print(key)
-            file = mask_img(self.get_file_name(), self.roi_mask) # Mask the reliability to the roi
-            masked_file = file ** 2 # square the values because the reliability map is just the correlation
-            data[key] = masked_file.mean(axis=0)
-            print(f'loaded {key}')
-        return data
+        out_data = None
+        for hemi in ['lh', 'rh']:
+            roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*roi-{self.roi}*hemi-{hemi}*mask.nii.gz')[0]
+            one_hemi = mask_img(self.get_file_name(), roi_mask)
+            if out_data is None:
+                out_data = one_hemi ** 2 # square the values because the reliability map is just the correlation
+            else:
+                out_data = np.concatenate([out_data, one_hemi ** 2])
+        return out_data.mean()
 
     def save_results(self, d):
         f = open(self.out_file_name, "wb")
@@ -62,23 +61,21 @@ class ROIPrediction:
         data['unique_variance'] = False
 
     def run(self):
-        data = self.load_files()
-        data = self.add_info2data(data)
+        data = dict()
+        data['reliability'] = self.load_files()
+        self.add_info2data(data)
         self.save_results(data)
-        print(f"r2 = {data['r2']:4f} \n")
+        print(f"reliability = {data['reliability']:4f} \n")
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--hemi', type=str, default='rh')
     parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     ROIPrediction(args).run()
 

@@ -81,26 +81,6 @@ class PlotROIPrediction:
         self.rois = ['EVC', 'MT', 'FFA', 'PPA', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
         self.roi_cmap = sns.color_palette("hls")[2:7]
 
-    def load_reliability(self):
-        # Load the results in their own dictionaries and create a dataframe
-        data_list = []
-        files = glob.glob(f'{self.out_dir}/ROIPrediction/*reliability.pkl')
-        print(files)
-        for f in files:
-            data_list.append(load_pkl(f))
-        df = pd.DataFrame(data_list)
-        print(df.head())
-        df.replace({'face-pSTS': 'STS-Face',
-                    'pSTS': 'pSTS-SI',
-                    'aSTS': 'aSTS-SI'},
-                   inplace=True)
-        df['sid'] = pd.Categorical(df['sid'], ordered=True,
-                                   categories=self.subjs)
-        df['roi'] = pd.Categorical(df['roi'], ordered=True,
-                                   categories=self.rois)
-        df.rename(columns={'r2': 'reliability'}, inplace=True)
-        return df
-
     def load_data(self):
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
@@ -186,12 +166,8 @@ class PlotROIPrediction:
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/fullmodel_results.pdf')
 
-    def run(self):        # data = data.merge(reliability,
-        #                   left_on=['hemi', 'sid', 'roi'],
-        #                   right_on=['hemi', 'sid', 'roi'],
-        #                   how='left')
+    def run(self):
         data = self.load_data()
-        # reliability = self.load_reliability()
         data.to_csv(f'{self.out_dir}/{self.process}/roi_prediction.csv', index=False)
         print(data.head())
         self.plot_results(data)
