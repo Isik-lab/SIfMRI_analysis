@@ -27,96 +27,126 @@ class ROIPrediction:
     def __init__(self, args):
         self.process = 'ROIPrediction'
         self.sid = str(args.s_num).zfill(2)
-        self.hemi = args.hemi
         self.category = args.category
+        self.feature = args.feature
+        self.unique_variance = args.unique_variance
         self.roi = args.roi
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
-        self.roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{self.hemi}*mask.nii.gz')[0]
         self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
-        self.roi_mask = mask_img(self.roi_file, self.reliability_file).astype('bool')
-        print(self.roi_mask.shape)
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
-        self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}_roi-{self.roi}_hemi-{self.hemi}.pkl'
+        self.in_file_prefix = ''
+        self.out_file_name = ''
         print(vars(self))
 
-    def get_file_name(self, name):
-        top = f'{self.out_dir}/CategoryVoxelPermutation'
-        if 'null' not in name and 'var' not in name:
-            file_name = f'{top}/sub-{self.sid}_category-{self.category}_{name}.nii.gz'
-        else:
-            file_name = f'{top}/dist/sub-{self.sid}_category-{self.category}_{name}.npy'
-        return file_name
+    def get_file_name_base(self):
+        if self.unique_variance:
+            if self.category is not None:
+                self.in_file_prefix = f'sub-{self.sid}_dropped-category-{self.category}'
+            else:  # self.feature is not None:
+                self.in_file_prefix = f'sub-{self.sid}_dropped-feature-{self.feature}'
+        else:  # not self.unique_variance
+            if self.category is not None:
+                # Regression with the categories without the other regressors
+                self.in_file_prefix = f'sub-{self.sid}_category-{self.category}'
+            elif self.feature is not None:
+                self.in_file_prefix = f'sub-{self.sid}_feature-{self.feature}'
+            else:  # This is the full regression model with all annotated features
+                self.in_file_prefix = f'sub-{self.sid}_all-features'
+        self.out_file_name = f'{self.out_dir}/{self.process}/{self.in_file_prefix}_roi-{self.roi}.pkl'
 
-    def load_files(self, data, key):
-        file = self.get_file_name(key)
+    def load_roi_hemi_mask(self, hemi):
+        roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{hemi}*mask.nii.gz')[
+            0]
+        roi_mask = mask_img(roi_file, self.reliability_file).astype('bool')
+        print(roi_mask.shape)
+        return roi_mask
+
+    def load_files(self, name, roi_mask):
+        top = f'{self.out_dir}/VoxelPermutation'
+        if 'null' not in name and 'var' not in name:
+            file = f'{top}/{self.in_file_prefix}_{name}.nii.gz'
+        else:
+            file = f'{top}/dist/{self.in_file_prefix}_{name}.npy'
         if 'npy' in file:
             reliable_data = np.load(file)
-            roi_data = reliable_data[:, self.roi_mask]
-            roi_mean_data = np.nanmean(np.sign(roi_data)*(roi_data**2), axis=1)
+            roi_data = reliable_data[:, roi_mask]
         else:
             reliable_data = mask_img(file, self.reliability_file)
-            roi_data = reliable_data[self.roi_mask]
-            roi_mean_data = np.nanmean(np.sign(roi_data)*(roi_data**2))
-        data[key] = roi_mean_data
-        print(f'loaded {key}')
-        return data
+            roi_data = reliable_data[roi_mask]
+        return roi_data
+
+    def get_both_hemi_data(self, name):
+        both_hemi_data = None
+        for hemi in ['lh', 'rh']:
+            roi_mask = self.load_roi_hemi_mask(hemi)
+            if both_hemi_data is None:
+                both_hemi_data = self.load_files(name, roi_mask)
+            else:
+                if both_hemi_data.ndim > 1:
+                    both_hemi_data = np.concatenate([both_hemi_data,
+                                                     self.load_files(name, roi_mask)],
+                                                    axis=1)
+                else:
+                    both_hemi_data = np.concatenate([both_hemi_data,
+                                                     self.load_files(name, roi_mask)])
+        if both_hemi_data.ndim > 1:
+            mean_data = both_hemi_data.mean(axis=1)
+        else:
+            mean_data = both_hemi_data.mean()
+        return mean_data
+
+    def get_variance(self, data):
+        r2var = self.get_both_hemi_data('r2var')
+        data['low_ci'], data['high_ci'] = np.percentile(r2var, [2.5, 97.5])
+
+    def get_significance(self, data):
+        data['r2'] = self.get_both_hemi_data('r2')
+        r2null = self.get_both_hemi_data('r2null')
+        data['p'] = tools.calculate_p(r2null, data['r2'],
+                                      n_perm_=len(r2null),
+                                      H0_='greater')
+
+    def add_info2data(self, data):
+        data['sid'] = self.sid
+        data['roi'] = self.roi
+        data['category'] = self.category
+        data['feature'] = self.feature
+        data['unique_variance'] = self.unique_variance
 
     def save_results(self, d):
         f = open(self.out_file_name, "wb")
         pickle.dump(d, f)
         f.close()
 
-    def add_info2data(self, d):
-        d['sid'] = self.sid
-        d['hemi'] = self.hemi
-        d['roi'] = self.roi
-        d['category'] = self.category
-        return d
-
     def run(self):
+        self.get_file_name_base()
         data = dict()
-
-        # Variance of ROI
-        data = self.load_files(data, 'r2var')
-        print(data['r2var'].shape)
-        data['low_ci'], data['high_ci'] = np.percentile(data['r2var'], [2.5, 97.5])
-        del data['r2var']  # Save memory
-
-        # Significance of ROI
-        data = self.load_files(data, 'r2')
-        data = self.load_files(data, 'r2null')
-        print(data['r2'].shape)
-        print(data['r2null'].shape)
-        data['p'] = tools.calculate_p(data['r2null'], data['r2'],
-                                      n_perm_=len(data['r2null']), H0_='greater')
-        del data['r2null'] #Save memory
-
-        # Add all the necessary info and save
-        data = self.add_info2data(data)
+        self.get_variance(data)
+        self.get_significance(data)
+        self.add_info2data(data)
         self.save_results(data)
         print(f"r2 = {data['r2']:4f}")
         print(f"p = {data['p']:4f}")
         print(f"low_ci = {data['low_ci']:4f}")
         print(f"high_ci = {data['high_ci']:4f} \n")
+        print(data)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
-    parser.add_argument('--category', type=str, default='affective')
-    parser.add_argument('--hemi', type=str, default='rh')
+    parser.add_argument('--category', type=str, default=None)
+    parser.add_argument('--feature', type=str, default=None)
     parser.add_argument('--roi', type=str, default='EVC')
-    parser.add_argument('--CV', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     ROIPrediction(args).run()
+
 
 if __name__ == '__main__':
     main()

@@ -81,7 +81,7 @@ class VoxelRegression:
                 self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-category-{self.category}'
             else: #self.feature is not None:
                 columns = df.columns.to_list()
-                columns.remove(self.feature)
+                columns.remove(self.feature.replace('_', ' '))
                 self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-feature-{self.feature}'
         else: #not self.unique_variance
             if self.category is not None:
@@ -104,7 +104,6 @@ class VoxelRegression:
         df.drop(columns=['video_name', 'cooperation',
                          'dominance', 'intimacy'], inplace=True)
         columns = self.get_regression_features(df)
-        print(columns)
         df = df[columns]
         return df.to_numpy()
 
@@ -115,14 +114,14 @@ class VoxelRegression:
         y_test_ = self.load_neural('test')
         return X_train_, X_test_, y_train_, y_test_
 
-    def save_results(self, y_test_, y_pred_):
-        np.save(f'{self.out_file_prefix}_y-test.npy', y_test_)
-        np.save(f'{self.out_file_prefix}_y-pred.npy', y_pred_)
+    def save_results(self, y_test, y_pred):
+        np.save(f'{self.out_file_prefix}_y-test.npy', y_test)
+        np.save(f'{self.out_file_prefix}_y-pred.npy', y_pred)
 
     def regression(self, X_train_, X_test_, y_train_, y_test_):
         X_train_, X_test_, y_train, y_test = preprocess(X_train_, X_test_, y_train_, y_test_)
         y_pred = regress(X_train_, y_train_, X_test_)
-        self.save_results(y_pred, y_test)
+        self.save_results(y_test, y_pred)
 
     def run(self):
         X_train, X_test, y_train, y_test = self.load()
