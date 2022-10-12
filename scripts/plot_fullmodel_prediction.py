@@ -81,21 +81,21 @@ class PlotROIPrediction:
         self.rois = ['EVC', 'MT', 'FFA', 'PPA', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
         self.roi_cmap = sns.color_palette("hls")[2:7]
 
-    def load_data(self):
+    def load_data(self, name):
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
-        files = glob.glob(f'{self.out_dir}/ROIPrediction/*pkl')
+        files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*pkl')
         for f in files:
             data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
 
-        # Remove TPJ
+        # Remove TPJ and rename some ROIs
         df = df[df.roi != 'TPJ']
-
         df.replace({'face-pSTS': 'STS-Face',
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
+        df.drop(columns=['unique_variance', 'category', 'feature'], inplace=True)
 
         # Make sid categorical
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
@@ -103,16 +103,18 @@ class PlotROIPrediction:
         df['roi'] = pd.Categorical(df['roi'], ordered=True,
                                    categories=self.rois)
 
-        # Perform FDR correction and make a column for how the marker should appear
-        df['p_corrected'] = 1
-        for roi in self.rois:
-            for subj in self.subjs:
-                rows = (df.sid == subj) & (df.roi == roi)
-                df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
-        df['significant'] = 'ns'
-        df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
-        df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
-        df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
+        if 'reliability' not in name:
+            # Perform FDR correction and make a column for how the marker should appear
+            df.drop(columns=['reliability'], inplace=True)
+            df['p_corrected'] = 1
+            for roi in self.rois:
+                for subj in self.subjs:
+                    rows = (df.sid == subj) & (df.roi == roi)
+                    df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
+            df['significant'] = 'ns'
+            df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
+            df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
+            df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
         return df
 
     def plot_results(self, df):
@@ -120,8 +122,6 @@ class PlotROIPrediction:
         sns.set_theme(context='poster', style='white', rc=custom_params)
         _, ax = plt.subplots(1, figsize=(10, 5))
 
-        df['reliability'] = 0
-        print(df.head())
         sns.barplot(x='roi', y='reliability',
                     hue='sid', color=[0.7, 0.7, 0.7],
                     edgecolor=".2",
@@ -160,6 +160,8 @@ class PlotROIPrediction:
                          'significant'].item()
             x = bar.get_x() + 0.1
             ax.plot([x, x], [y1, y2], 'k')
+            if sig != 'ns':
+                ax.scatter(x, y_max - 0.02, marker='o', color=color)
             bar.set_color(color)
         ax.legend([], [], frameon=False)
         ax.set_ylabel('Explained variance ($r^2$)', fontsize=22)
@@ -167,8 +169,11 @@ class PlotROIPrediction:
         plt.savefig(f'{self.figure_dir}/fullmodel_results.pdf')
 
     def run(self):
-        data = self.load_data()
-        data.to_csv(f'{self.out_dir}/{self.process}/roi_prediction.csv', index=False)
+        data = self.load_data('all-features')
+        data = data.merge(self.load_data('reliability'),
+                          left_on=['sid', 'roi'],
+                          right_on=['sid', 'roi'])
+        data.to_csv(f'{self.out_dir}/{self.process}/full_model.csv', index=False)
         print(data.head())
         self.plot_results(data)
 
