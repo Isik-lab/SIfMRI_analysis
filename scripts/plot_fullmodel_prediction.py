@@ -48,23 +48,6 @@ def subj2shade(key):
     return d[key]
 
 
-def roi2color(key=None):
-    d = {'EVC': np.array([1.0, 0.48627450980392156, 0.0, 0.8]),
-         'MT': np.array([0.10196078431372549, 0.788235294117647, 0.2196078431372549, 0.8]),
-         'EBA': np.array([1.0, 1.0, 0, 0.8]),
-         'FFA': np.array([1.0, 1.0, 0, 0.8]),
-         'PPA': np.array([1.0, 1.0, 0, 0.8]),
-         'LOC': np.array([1.0, 1.0, 0, 0.8]),
-         'STS-Face': np.array([0.0, 0.8431372549019608, 1.0, 0.8]),
-         'aSTS-SI': np.array([1.0, 0.7686274509803922, 0.0, 0.8]),
-         'pSTS-SI': np.array([1.0, 0.7686274509803922, 0.0, 0.8]),
-         }
-    if key is not None:
-        return d[key]
-    else:
-        return d
-
-
 class PlotROIPrediction:
     def __init__(self, args):
         self.process = 'PlotROIPrediction'
@@ -73,13 +56,17 @@ class PlotROIPrediction:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
-        # self.models = ['indoor', 'expanse', 'object',
-        #                'agent distance', 'facingness',
-        #                'joint action', 'communication',
-        #                'valence', 'arousal']
         self.subjs = ['01', '02', '03', '04']
-        self.rois = ['EVC', 'MT', 'FFA', 'PPA', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
-        self.roi_cmap = sns.color_palette("hls")[2:7]
+        if args.stream == 'lateral':
+            self.rois = ['EVC', 'MT', 'EBA', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
+            self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
+            self.out_prefix = 'lateral-rois_full-model'
+        else:
+            self.rois = ['FFA', 'PPA', 'LOC']
+            self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
+            self.out_prefix = 'ventral-rois_full-model'
+
+
 
     def load_data(self, name):
         # Load the results in their own dictionaries and create a dataframe
@@ -90,12 +77,14 @@ class PlotROIPrediction:
         df = pd.DataFrame(data_list)
 
         # Remove TPJ and rename some ROIs
-        df = df[df.roi != 'TPJ']
         df.replace({'face-pSTS': 'STS-Face',
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
-        df.drop(columns=['unique_variance', 'category', 'feature'], inplace=True)
+        for roi in df.roi.unique():
+            if roi not in self.rois:
+                df = df.loc[df.roi != roi]
+        df.drop(columns=['unique_variance', 'feature', 'category'], inplace=True)
 
         # Make sid categorical
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
@@ -106,6 +95,7 @@ class PlotROIPrediction:
         if 'reliability' not in name:
             # Perform FDR correction and make a column for how the marker should appear
             df.drop(columns=['reliability'], inplace=True)
+
             df['p_corrected'] = 1
             for roi in self.rois:
                 for subj in self.subjs:
@@ -120,28 +110,21 @@ class PlotROIPrediction:
     def plot_results(self, df):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
         sns.set_theme(context='poster', style='white', rc=custom_params)
-        _, ax = plt.subplots(1, figsize=(10, 5))
+        _, ax = plt.subplots(1, figsize=(int(len(self.rois)*3), 8))
 
         sns.barplot(x='roi', y='reliability',
                     hue='sid', color=[0.7, 0.7, 0.7],
                     edgecolor=".2",
                     ax=ax, data=df)
         sns.barplot(x='roi', y='r2',
-                    hue='sid', palette='gray',
+                    hue='sid', color=[0.8, 0, 0.8],
                     ax=ax, data=df)
 
         y_max = 0.7
         ax.set_ylim([0, y_max])
 
         ax.set_xlabel('')
-        ax.set_xticklabels(self.rois,
-                           fontsize=20,
-                           rotation=45, ha='right')
-        for ticklabel, pointer in zip(self.rois, ax.get_xticklabels()):
-            color = roi2color(ticklabel)
-            color[-1] = 1.
-            pointer.set_color(color)
-            pointer.set_weight('bold')
+        ax.set_xticklabels(self.rois, fontsize=20)
 
         # Plot vertical lines to separate the bars
         for x in np.arange(0.5, len(self.rois) - 0.5):
@@ -150,7 +133,7 @@ class PlotROIPrediction:
         # Manipulate the color and add error bars
         for bar, (subj, roi) in zip(ax.patches[int(len(ax.patches) / 2):],
                                     itertools.product(self.subjs, self.rois)):
-            color = roi2color(roi)
+            color = np.array(bar.get_facecolor())
             color[:-1] = color[:-1] * subj2shade(subj)
             y1 = df.loc[(df.sid == subj) & (df.roi == roi),
                         'low_ci'].item()
@@ -161,25 +144,27 @@ class PlotROIPrediction:
             x = bar.get_x() + 0.1
             ax.plot([x, x], [y1, y2], 'k')
             if sig != 'ns':
-                ax.scatter(x, y_max - 0.02, marker='o', color=color)
-            bar.set_color(color)
+                ax.scatter(x, y_max - 0.02, marker='o', color=color, edgecolors=[0.2, 0.2, 0.2])
+            bar.set_facecolor(color)
+            bar.set_edgecolor((.2, .2, .2))
         ax.legend([], [], frameon=False)
         ax.set_ylabel('Explained variance ($r^2$)', fontsize=22)
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/fullmodel_results.pdf')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
     def run(self):
         data = self.load_data('all-features')
         data = data.merge(self.load_data('reliability'),
                           left_on=['sid', 'roi'],
                           right_on=['sid', 'roi'])
-        data.to_csv(f'{self.out_dir}/{self.process}/full_model.csv', index=False)
+        data.to_csv(f'{self.out_dir}/{self.process}/{self.out_prefix}.csv', index=False)
         print(data.head())
         self.plot_results(data)
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--stream', type=str, default='lateral')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

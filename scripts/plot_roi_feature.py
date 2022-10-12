@@ -124,7 +124,7 @@ class PlotROIPrediction:
         return df
 
     def plot_results(self, df):
-        _, axes = plt.subplots(1, len(self.rois), figsize=(30, 8))
+        _, axes = plt.subplots(1, len(self.rois), figsize=(int(len(self.rois)*6), 8))
         sns.set_theme(font_scale=2)
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]

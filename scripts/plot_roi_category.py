@@ -132,11 +132,10 @@ class PlotROIPrediction:
         return df
 
     def plot_results(self, df):
-        _, axes = plt.subplots(1, len(self.rois), figsize=(30, 8))
+        _, axes = plt.subplots(1, len(self.rois), figsize=(int(len(self.rois)*6), 8))
         sns.set_theme(font_scale=2)
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]
-            print(cur_df.head())
             sns.barplot(x='category', y='r2',
                         hue='sid', palette='gray', saturation=0.8,
                         data=cur_df,
@@ -180,9 +179,6 @@ class PlotROIPrediction:
             for bar, (subj, category) in zip(ax.patches, itertools.product(self.subjs, self.categories)):
                 color = cat2color(category)
                 color[:-1] = color[:-1] * subj2shade(subj)
-                # print(cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category)])
-                print(bar.get_height())
-                print(bar.get_x())
                 y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()
                 y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'high_ci'].item()
                 sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'significant'].item()
