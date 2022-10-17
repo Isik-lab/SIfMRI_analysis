@@ -58,11 +58,11 @@ class PlotROIPrediction:
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         self.subjs = ['01', '02', '03', '04']
         if args.stream == 'lateral':
-            self.rois = ['EVC', 'MT', 'EBA', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
+            self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
             self.out_prefix = 'lateral-rois_full-model'
         else:
-            self.rois = ['FFA', 'PPA', 'LOC']
+            self.rois = ['FFA', 'PPA']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
             self.out_prefix = 'ventral-rois_full-model'
 

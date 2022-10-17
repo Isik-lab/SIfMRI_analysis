@@ -71,10 +71,10 @@ class PlotROIPrediction:
         self.categories = ['scene & object', 'social primitives', 'social', 'affective']
         self.subjs = ['01', '02', '03', '04']
         if args.stream == 'lateral':
-            self.rois = ['EVC', 'MT', 'EBA', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
+            self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.out_prefix = 'lateral-rois_'
         else:
-            self.rois = ['FFA', 'PPA', 'LOC']
+            self.rois = ['FFA', 'PPA']
             self.out_prefix = 'ventral-rois_'
 
         if args.unique_variance:
