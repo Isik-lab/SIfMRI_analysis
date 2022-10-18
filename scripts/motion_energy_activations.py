@@ -32,14 +32,14 @@ class MotionEnergyActivations():
         plt.savefig(f'{self.figure_dir}/pca_visualization_set-{self.set}.pdf')
 
     def get_moten(self):
-        # import moten
+        import moten
         df = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
         df.sort_values(by=['video_name'], inplace=True)
         vid_dir = f'{self.data_dir}/videos'
 
         # Create a pyramid of spatio-temporal gabor filters
         vdim, hdim, fps = 500, 500, 30
-        # pyramid = moten.get_default_pyramid(vhsize=(vdim, hdim), fps=fps)
+        pyramid = moten.get_default_pyramid(vhsize=(vdim, hdim), fps=fps)
 
         out_moten = []
         for ivid, vid in enumerate(df.video_name):
