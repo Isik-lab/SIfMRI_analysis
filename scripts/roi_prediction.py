@@ -59,7 +59,6 @@ class ROIPrediction:
         roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{hemi}*mask.nii.gz')[
             0]
         roi_mask = mask_img(roi_file, self.reliability_file).astype('bool')
-        print(roi_mask.shape)
         return roi_mask
 
     def load_files(self, name, roi_mask):

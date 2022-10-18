@@ -36,6 +36,8 @@ def subj2shade(key):
 
 def cat2color(key=None):
     d = dict()
+    d['AlexNet conv2'] = np.array([0.7, 0.7, 0.7])
+    d['motion energy'] = np.array([0.7, 0.7, 0.7])
     d['scene & object'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
     d['social primitives'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
     d['social'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
@@ -46,20 +48,6 @@ def cat2color(key=None):
         return d
 
 
-def model2cat():
-    d = dict()
-    d['indoor'] = 'scene & object'
-    d['expanse'] = 'scene & object'
-    d['object'] = 'scene & object'
-    d['agent distance'] = 'social primitives'
-    d['facingness'] = 'social primitives'
-    d['joint action'] = 'social'
-    d['communication'] = 'social'
-    d['valence'] = 'affective'
-    d['arousal'] = 'affective'
-    return d
-
-
 class PlotROIPrediction:
     def __init__(self, args):
         self.process = 'PlotROIPrediction'
@@ -68,7 +56,8 @@ class PlotROIPrediction:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
-        self.categories = ['scene & object', 'social primitives', 'social', 'affective']
+        self.categories = ['AlexNet conv2', 'motion energy',
+                           'scene & object', 'social primitives', 'social', 'affective']
         self.subjs = ['01', '02', '03', '04']
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
@@ -113,7 +102,9 @@ class PlotROIPrediction:
         if 'reliability' not in name:
             # Perform FDR correction and make a column for how the marker should appear
             df.drop(columns=['reliability'], inplace=True)
-            df.replace({'social_primitive': 'social primitives',
+            df.replace({'moten': 'motion energy',
+                        'alexnet': 'AlexNet conv2',
+                        'social_primitive': 'social primitives',
                         'scene_object': 'scene & object'}, inplace=True)
             df['category'] = pd.Categorical(df['category'], ordered=True,
                                             categories=self.categories)
@@ -132,7 +123,7 @@ class PlotROIPrediction:
         return df
 
     def plot_results(self, df):
-        _, axes = plt.subplots(1, len(self.rois), figsize=(int(len(self.rois)*6), 8))
+        _, axes = plt.subplots(1, len(self.rois), figsize=(int(len(self.rois) * 6), 8))
         sns.set_theme(font_scale=2)
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]

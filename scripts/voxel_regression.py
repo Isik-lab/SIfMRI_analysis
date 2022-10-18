@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
+from sklearn.decomposition import PCA
 
 
 def category_map(category=None):
@@ -33,11 +34,10 @@ def regress(X_train_, y_train_, X_test_):
     return lr.predict(X_test_)
 
 
-def preprocess(X_train_, X_test_,
-               y_train_, y_test_):
-    X_train_, X_test_ = scale(X_train_, X_test_)
-    y_train_, y_test_ = scale(y_train_, y_test_)
-    return X_train_, X_test_, y_train_, y_test_
+def pca(X_train_, X_test_, n_PCs):
+    pca = PCA(whiten=False, n_components=n_PCs)
+    X_train_PCs = pca.fit_transform(X_train_)
+    return X_train_PCs, pca.transform(X_test_)
 
 
 class VoxelRegression:
@@ -51,6 +51,8 @@ class VoxelRegression:
         self.space = args.space
         self.zscore_ses = args.zscore_ses
         self.smooth = args.smooth
+        self.perform_pca = False
+        self.n_PCs = None
         if self.smooth:
             if self.zscore_ses:
                 self.beta_path = 'betas_3mm_zscore'
@@ -67,7 +69,7 @@ class VoxelRegression:
         self.out_file_prefix = ''
         print(vars(self))
 
-    def load_neural(self, dataset):
+    def load_y(self, dataset):
         mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype('bool')
         neural = nib.load(f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{dataset}-{self.step}_data.nii.gz')
         neural = np.array(neural.dataobj).reshape((-1, neural.shape[-1])).T
@@ -79,11 +81,11 @@ class VoxelRegression:
                 columns = df.columns.to_list()
                 [columns.remove(i) for i in category_map(self.category)]
                 self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-category-{self.category}'
-            else: #self.feature is not None:
+            else:
                 columns = df.columns.to_list()
                 columns.remove(self.feature.replace('_', ' '))
                 self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-feature-{self.feature}'
-        else: #not self.unique_variance
+        else:
             if self.category is not None:
                 # Regression with the categories without the other regressors
                 columns = category_map(self.category)
@@ -94,24 +96,45 @@ class VoxelRegression:
             else:  # This is the full regression model with all annotated features
                 columns = df.columns.to_list()
                 self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_all-features'
-        return columns
+        return df[columns].to_numpy()
 
-    def load_annotated_features(self, dataset):
-        df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        set_names = pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv')
-        df = df.merge(set_names)
-        df.sort_values(by=['video_name'], inplace=True)
-        df.drop(columns=['video_name', 'cooperation',
-                         'dominance', 'intimacy'], inplace=True)
-        columns = self.get_regression_features(df)
-        df = df[columns]
-        return df.to_numpy()
+    def get_highD_data(self, dataset):
+        self.perform_pca = True
+        if 'moten' in self.category:
+            X = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{dataset}.npy')
+            self.n_PCs = 5
+        else: #if 'alexnet' in self.category:
+            X = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{dataset}_avgframe.npy')
+            self.n_PCs = 10
+        self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}'
+        return X
+
+    def load_X(self, dataset):
+        if (self.category is not None and 'alexnet' not in self.category) and (self.category is not None and 'moten' not in self.category):
+            df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
+            set_names = pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv')
+            df = df.merge(set_names)
+            df.sort_values(by=['video_name'], inplace=True)
+            df.drop(columns=['video_name', 'cooperation',
+                             'dominance', 'intimacy'], inplace=True)
+            X = self.get_regression_features(df)
+        else:
+            X = self.get_highD_data(dataset)
+        return X
+
+    def preprocess(self, X_train_, X_test_,
+                   y_train_, y_test_):
+        X_train_, X_test_ = scale(X_train_, X_test_)
+        if self.perform_pca:
+            X_train_, X_test_ = pca(X_train_, X_test_, self.n_PCs)
+        y_train_, y_test_ = scale(y_train_, y_test_)
+        return X_train_, X_test_, y_train_, y_test_
 
     def load(self):
-        X_train_ = self.load_annotated_features('train')
-        X_test_ = self.load_annotated_features('test')
-        y_train_ = self.load_neural('train')
-        y_test_ = self.load_neural('test')
+        X_train_ = self.load_X('train')
+        X_test_ = self.load_X('test')
+        y_train_ = self.load_y('train')
+        y_test_ = self.load_y('test')
         return X_train_, X_test_, y_train_, y_test_
 
     def save_results(self, y_test, y_pred):
@@ -119,7 +142,8 @@ class VoxelRegression:
         np.save(f'{self.out_file_prefix}_y-pred.npy', y_pred)
 
     def regression(self, X_train_, X_test_, y_train_, y_test_):
-        X_train_, X_test_, y_train, y_test = preprocess(X_train_, X_test_, y_train_, y_test_)
+        X_train_, X_test_, y_train, y_test = self.preprocess(X_train_, X_test_,
+                                                             y_train_, y_test_)
         y_pred = regress(X_train_, y_train_, X_test_)
         self.save_results(y_test, y_pred)
 
