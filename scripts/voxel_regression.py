@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
-from sklearn.decomposition import PCA
 
 
 def category_map(category=None):
@@ -34,10 +33,24 @@ def regress(X_train_, y_train_, X_test_):
     return lr.predict(X_test_)
 
 
-def pca(X_train_, X_test_, n_PCs):
-    pca = PCA(whiten=False, n_components=n_PCs)
-    X_train_PCs = pca.fit_transform(X_train_)
-    return X_train_PCs, pca.transform(X_test_)
+def get_annotated_features(df,
+                           category=None, feature=None, unique_variance=False):
+    if unique_variance:
+        if category is not None:
+            columns = df.columns.to_list()
+            [columns.remove(i) for i in category_map(category)]
+        else:
+            columns = df.columns.to_list()
+            columns.remove(feature.replace('_', ' '))
+    else:
+        if category is not None:
+            # Regression with the categories without the other regressors
+            columns = category_map(category)
+        elif feature is not None:
+            columns = [feature.replace('_', ' ')]
+        else:  # This is the full regression model with all annotated features
+            columns = df.columns.to_list()
+    return df[columns].to_numpy()
 
 
 class VoxelRegression:
@@ -51,82 +64,98 @@ class VoxelRegression:
         self.space = args.space
         self.zscore_ses = args.zscore_ses
         self.smooth = args.smooth
-        self.perform_pca = False
-        self.n_PCs = None
         if self.smooth:
             if self.zscore_ses:
                 self.beta_path = 'betas_3mm_zscore'
-            else: #self.smoothing and not self.zscore_ses:
+            else:  # self.smoothing and not self.zscore_ses:
                 self.beta_path = 'betas_3mm_nozscore'
         else:
             if self.zscore_ses:
                 self.beta_path = 'betas_0mm_zscore'
-            else: #not self.smoothing and not self.zscore_ses
+            else:  # not self.smoothing and not self.zscore_ses
                 self.beta_path = 'betas_0mm_nozscore'
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_file_prefix = ''
+        self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_'
+        if self.unique_variance:
+            if self.category is not None:
+                self.out_file_prefix += f'dropped-category-{self.category}'
+            else: #self.feature is not None:
+                self.out_file_prefix += f'dropped-feature-{self.feature}'
+        else:
+            if self.category is not None:
+                self.out_file_prefix += f'category-{self.category}'
+            elif self.feature is not None:
+                self.out_file_prefix += f'feature-{self.feature}'
+            else:
+                self.out_file_prefix += 'all-features'
         print(vars(self))
 
     def load_y(self, dataset):
-        mask = np.load(f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype('bool')
-        neural = nib.load(f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{dataset}-{self.step}_data.nii.gz')
+        mask = np.load(
+            f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype(
+            'bool')
+        neural = nib.load(
+            f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{dataset}-{self.step}_data.nii.gz')
         neural = np.array(neural.dataobj).reshape((-1, neural.shape[-1])).T
         return neural[:, mask]
 
-    def get_regression_features(self, df):
-        if self.unique_variance:
-            if self.category is not None:
-                columns = df.columns.to_list()
-                [columns.remove(i) for i in category_map(self.category)]
-                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-category-{self.category}'
-            else:
-                columns = df.columns.to_list()
-                columns.remove(self.feature.replace('_', ' '))
-                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_dropped-feature-{self.feature}'
-        else:
-            if self.category is not None:
-                # Regression with the categories without the other regressors
-                columns = category_map(self.category)
-                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}'
-            elif self.feature is not None:
-                columns = [self.feature.replace('_', ' ')]
-                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_feature-{self.feature}'
-            else:  # This is the full regression model with all annotated features
-                columns = df.columns.to_list()
-                self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_all-features'
-        return df[columns].to_numpy()
+    def load_annotations(self, dataset):
+        df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
+        set_names = pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv')
+        df = df.merge(set_names)
+        df.sort_values(by=['video_name'], inplace=True)
+        df.drop(columns=['video_name', 'cooperation',
+                         'dominance', 'intimacy'], inplace=True)
+        return df
 
-    def get_highD_data(self, dataset):
-        self.perform_pca = True
-        if 'moten' in self.category:
-            X = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{dataset}.npy')
-            self.n_PCs = 5
-        else: #if 'alexnet' in self.category:
-            X = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{dataset}_avgframe.npy')
-            self.n_PCs = 10
-        self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-{self.category}'
-        return X
+    def get_highD_data(self, data, dataset):
+        return np.load(f'{self.out_dir}/ActivationPCA/{data}_PCs_set-{dataset}.npy')
 
     def load_X(self, dataset):
-        if (self.category is not None and 'alexnet' not in self.category) and (self.category is not None and 'moten' not in self.category):
-            df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-            set_names = pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv')
-            df = df.merge(set_names)
-            df.sort_values(by=['video_name'], inplace=True)
-            df.drop(columns=['video_name', 'cooperation',
-                             'dominance', 'intimacy'], inplace=True)
-            X = self.get_regression_features(df)
+        df = self.load_annotations(dataset)
+        if not self.unique_variance:
+            if (self.category is not None) and (('alexnet' not in self.category) and ('moten' not in self.category)):
+                # load annotated features
+                X = get_annotated_features(df, category=self.category,
+                                           feature=self.feature,
+                                           unique_variance=self.unique_variance)
+            elif (self.category is not None) and (('alexnet' in self.category) or ('moten' in self.category)):
+                X = self.get_highD_data(self.category, dataset)
+            else:
+                X_annotated = get_annotated_features(df, category=None,
+                                           feature=self.feature,
+                                           unique_variance=False)
+                X_moten = self.get_highD_data('moten', dataset)
+                X_alexnet = self.get_highD_data('alexnet', dataset)
+                X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
         else:
-            X = self.get_highD_data(dataset)
+            if self.category is not None and 'alexnet' in self.category:
+                X_moten = self.get_highD_data('moten', dataset)
+                X_annotated = get_annotated_features(df, category=None,
+                                                     feature=None,
+                                                     unique_variance=False)
+                X = np.concatenate([X_annotated, X_moten], axis=1)
+            elif self.category is not None and 'moten' in self.category:
+                X_alexnet = self.get_highD_data('alexnet', dataset)
+                X_annotated = get_annotated_features(df, category=None,
+                                                     feature=None,
+                                                     unique_variance=False)
+                X = np.concatenate([X_annotated, X_alexnet], axis=1)
+            else:
+                X_alexnet = self.get_highD_data('alexnet', dataset)
+                X_moten = self.get_highD_data('moten', dataset)
+                X_annotated = get_annotated_features(df, category=self.category,
+                                                     feature=self.feature,
+                                                     unique_variance=True)
+                X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
+        print(X.shape)
         return X
 
     def preprocess(self, X_train_, X_test_,
                    y_train_, y_test_):
         X_train_, X_test_ = scale(X_train_, X_test_)
-        if self.perform_pca:
-            X_train_, X_test_ = pca(X_train_, X_test_, self.n_PCs)
         y_train_, y_test_ = scale(y_train_, y_test_)
         return X_train_, X_test_, y_train_, y_test_
 
