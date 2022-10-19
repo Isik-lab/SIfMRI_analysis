@@ -30,12 +30,10 @@ class ActivationPCA:
         self.model = args.model
         self.out_prefix = ''
         if 'alexnet' in self.model:
-            self.n_PCs = 10
+            self.n_PCs = 13
         else: #'moten'
-            self.n_PCs = 5
-        self.figure_dir = f'{args.figure_dir}/{self.process}'
+            self.n_PCs = 3
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
-        Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
 
     def get_highD_data(self, dataset):
         if 'moten' in self.model:
@@ -67,8 +65,6 @@ def main():
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
-    parser.add_argument('--figure_dir', '-figures', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures')
     args = parser.parse_args()
     ActivationPCA(args).run()
 

@@ -8,6 +8,17 @@ import pandas as pd
 from pathlib import Path
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from kneed import KneeLocator
+
+
+def find_elbow(data):
+    kn = KneeLocator(
+        np.arange(len(data)), data,
+        curve='convex',
+        direction='decreasing',
+        interp_method='polynomial',
+    )
+    return kn.elbow
 
 
 class MotionEnergyActivations():
@@ -24,10 +35,15 @@ class MotionEnergyActivations():
     def get_PCs(self, X):
         pca = PCA(whiten=False, n_components=20)
         pca.fit(X)
+        elbow = find_elbow(pca.explained_variance_ratio_)
+        print(f'PCs to elbow: {elbow+1}')
+
         _, axes = plt.subplots(2)
         axes[0].plot(pca.explained_variance_ratio_, '-o')
+        axes[0].vlines(elbow, ymin=0, ymax=pca.explained_variance_ratio_[0])
         axes[0].set_title('Explained variance')
         axes[1].plot(pca.explained_variance_ratio_.cumsum(), '-o')
+        axes[1].vlines(elbow, ymin=0, ymax=pca.explained_variance_ratio_.cumsum()[-1])
         axes[1].set_title('Cumulative explained variance')
         plt.savefig(f'{self.figure_dir}/pca_visualization_set-{self.set}.pdf')
 

@@ -40,7 +40,7 @@ def cat2color(key=None):
     d['motion energy'] = np.array([0.7, 0.7, 0.7])
     d['scene & object'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
     d['social primitives'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
-    d['social'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
+    d['social interaction'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
     d['affective'] = np.array([0.8515625, 0.32421875, 0.35546875, 0.8])
     if key is not None:
         return d[key]
@@ -57,7 +57,8 @@ class PlotROIPrediction:
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         self.categories = ['AlexNet conv2', 'motion energy',
-                           'scene & object', 'social primitives', 'social', 'affective']
+                           'scene & object', 'social primitives',
+                           'social interaction', 'affective']
         self.subjs = ['01', '02', '03', '04']
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
@@ -105,6 +106,7 @@ class PlotROIPrediction:
             df.replace({'moten': 'motion energy',
                         'alexnet': 'AlexNet conv2',
                         'social_primitive': 'social primitives',
+                        'social': 'social interaction',
                         'scene_object': 'scene & object'}, inplace=True)
             df['category'] = pd.Categorical(df['category'], ordered=True,
                                             categories=self.categories)

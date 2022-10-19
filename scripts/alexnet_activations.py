@@ -19,6 +19,17 @@ from torchvision import transforms as trn
 from torch.autograd import Variable as V
 import torch.nn as nn
 from sklearn.decomposition import PCA
+from kneed import KneeLocator
+
+
+def find_elbow(data):
+    kn = KneeLocator(
+        np.arange(len(data)), data,
+        curve='convex',
+        direction='decreasing',
+        interp_method='polynomial',
+    )
+    return kn.elbow
 
 
 def combine(X, combination=None):
@@ -110,10 +121,14 @@ class AlexNetActivations():
     def get_PCs(self, X):
         pca = PCA(whiten=False, n_components=0.8)
         pca.fit(X)
+        elbow = find_elbow(pca.explained_variance_ratio_)
+        print(f'PCs to elbow: {elbow+1}')
         _, axes = plt.subplots(2)
         axes[0].plot(pca.explained_variance_ratio_, '-o')
+        axes[0].vlines(elbow, ymin=0, ymax=pca.explained_variance_ratio_[0])
         axes[0].set_title('Explained variance')
         axes[1].plot(pca.explained_variance_ratio_.cumsum(), '-o')
+        axes[1].vlines(elbow, ymin=0, ymax=pca.explained_variance_ratio_.cumsum()[-1])
         axes[1].set_title('Cumulative explained variance')
         plt.savefig(f'{self.figure_dir}/pca_visualization_set-{self.set}.pdf')
 
@@ -148,7 +163,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--layer', '-l', type=int, default=2)
     parser.add_argument('--set', type=str, default='train')
-    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
