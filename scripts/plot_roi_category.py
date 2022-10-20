@@ -172,9 +172,14 @@ class PlotROIPrediction:
             for bar, (subj, category) in zip(ax.patches, itertools.product(self.subjs, self.categories)):
                 color = cat2color(category)
                 color[:-1] = color[:-1] * subj2shade(subj)
-                y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()
-                y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'high_ci'].item()
-                sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'significant'].item()
+                try:
+                    y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()
+                    y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'high_ci'].item()
+                    sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'significant'].item()
+                except:
+                    y1 = np.nan
+                    y2 = np.nan
+                    sig = np.nan
                 x = bar.get_x() + 0.1
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':

@@ -30,6 +30,10 @@ class ROIPrediction:
         self.category = args.category
         self.feature = args.feature
         self.unique_variance = args.unique_variance
+        self.full_model = args.full_model
+        assert (self.feature is None) or self.unique_variance, "not yet implemented"
+        assert (not self.full_model) or (
+                self.full_model and self.feature is None and self.category is None and not self.unique_variance), "no other inputs can be combined with the full model"
         self.roi = args.roi
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
@@ -40,19 +44,22 @@ class ROIPrediction:
         print(vars(self))
 
     def get_file_name_base(self):
-        if self.unique_variance:
-            if self.category is not None:
-                self.in_file_prefix = f'sub-{self.sid}_dropped-category-{self.category}'
-            else:  # self.feature is not None:
-                self.in_file_prefix = f'sub-{self.sid}_dropped-feature-{self.feature}'
-        else:  # not self.unique_variance
-            if self.category is not None:
-                # Regression with the categories without the other regressors
-                self.in_file_prefix = f'sub-{self.sid}_category-{self.category}'
-            elif self.feature is not None:
-                self.in_file_prefix = f'sub-{self.sid}_feature-{self.feature}'
-            else:  # This is the full regression model with all annotated features
-                self.in_file_prefix = f'sub-{self.sid}_all-features'
+        if self.full_model:
+            self.in_file_prefix = f'sub-{self.sid}_full-model'
+        else:
+            if self.unique_variance:
+                if self.category is not None:
+                    self.in_file_prefix = f'sub-{self.sid}_dropped-category-{self.category}'
+                else:  # self.feature is not None:
+                    self.in_file_prefix = f'sub-{self.sid}_dropped-feature-{self.feature}'
+            else:  # not self.unique_variance
+                if self.category is not None:
+                    # Regression with the categories without the other regressors
+                    self.in_file_prefix = f'sub-{self.sid}_category-{self.category}'
+                elif self.feature is not None:
+                    self.in_file_prefix = f'sub-{self.sid}_feature-{self.feature}'
+                else:  # This is the full regression model with all annotated features
+                    self.in_file_prefix = f'sub-{self.sid}_all-features'
         self.out_file_name = f'{self.out_dir}/{self.process}/{self.in_file_prefix}_roi-{self.roi}.pkl'
 
     def load_roi_hemi_mask(self, hemi):
@@ -139,6 +146,7 @@ def main():
     parser.add_argument('--category', type=str, default=None)
     parser.add_argument('--feature', type=str, default=None)
     parser.add_argument('--roi', type=str, default='EVC')
+    parser.add_argument('--full_model', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
