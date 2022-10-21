@@ -56,9 +56,7 @@ class PlotROIPrediction:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
-        self.categories = ['AlexNet conv2', 'motion energy',
-                           'scene & object', 'social primitives',
-                           'social interaction', 'affective']
+
         self.subjs = ['01', '02', '03', '04']
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
@@ -66,15 +64,27 @@ class PlotROIPrediction:
         else:
             self.rois = ['FFA', 'PPA']
             self.out_prefix = 'ventral-rois_'
-
         if args.unique_variance:
             self.file_id = 'dropped-cat'
             self.out_prefix += 'dropped-category'
             self.y_label = 'Unique variance'
+            self.categories = ['scene & object', 'social primitives',
+                               'social interaction', 'affective']
+            self.file_rename_map = {'social_primitive': 'social primitives',
+                                    'social': 'social interaction',
+                                    'scene_object': 'scene & object'}
         else:
             self.file_id = '_category'
             self.out_prefix += 'category'
             self.y_label = 'Explained variance'
+            self.categories = ['AlexNet conv2', 'motion energy',
+                               'scene & object', 'social primitives',
+                               'social interaction', 'affective']
+            self.file_rename_map = {'moten': 'motion energy',
+                                    'alexnet': 'AlexNet conv2',
+                                    'social_primitive': 'social primitives',
+                                    'social': 'social interaction',
+                                    'scene_object': 'scene & object'}
 
     def load_data(self, name):
         # Load the results in their own dictionaries and create a dataframe
@@ -103,11 +113,7 @@ class PlotROIPrediction:
         if 'reliability' not in name:
             # Perform FDR correction and make a column for how the marker should appear
             df.drop(columns=['reliability'], inplace=True)
-            df.replace({'moten': 'motion energy',
-                        'alexnet': 'AlexNet conv2',
-                        'social_primitive': 'social primitives',
-                        'social': 'social interaction',
-                        'scene_object': 'scene & object'}, inplace=True)
+            df.replace(self.file_rename_map, inplace=True)
             df['category'] = pd.Categorical(df['category'], ordered=True,
                                             categories=self.categories)
 
@@ -172,14 +178,9 @@ class PlotROIPrediction:
             for bar, (subj, category) in zip(ax.patches, itertools.product(self.subjs, self.categories)):
                 color = cat2color(category)
                 color[:-1] = color[:-1] * subj2shade(subj)
-                try:
-                    y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()
-                    y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'high_ci'].item()
-                    sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'significant'].item()
-                except:
-                    y1 = np.nan
-                    y2 = np.nan
-                    sig = np.nan
+                y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()
+                y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'high_ci'].item()
+                sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'significant'].item()
                 x = bar.get_x() + 0.1
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':

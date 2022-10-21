@@ -67,7 +67,7 @@ class SurfaceStats:
             elif self.feature is not None:
                 base = f'sub-{self.sid}_feature-{self.feature}'
             else:  # This is the full regression model with all annotated features
-                base = f'sub-{self.sid}_all-features'
+                base = f'sub-{self.sid}_full-model'
         self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2filtered.nii.gz'
         self.out_file_prefix = f'{self.out_dir}/{self.process}/{base}'
         self.figure_prefix = f'{self.figure_dir}/{base}'
@@ -157,20 +157,19 @@ class SurfaceStats:
                                         colors=self.roi_cmap,
                                         output_file=f'{self.figure_prefix}_hemi-{hemi_}.jpg')
         else:
-            views = ['lateral', 'ventral']
-            _, axes = plt.subplots(len(views), figsize=(5, int(len(views)*5)),
+            _, axes = plt.subplots(1, figsize=(10, 10),
                                  subplot_kw={'projection': '3d'})
-            for ax, view in zip(axes, views):
-                plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                       roi_map=surf_map,
-                                       bg_map=bg_map,
-                                       vmax=0.5,
-                                       vmin=0.,
-                                       axes=ax,
-                                       cmap=self.cmap,
-                                       hemi=hemi_name,
-                                       colorbar=True,
-                                       view=view)
+            # for ax, view in zip(axes, views):
+            plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                   roi_map=surf_map,
+                                   bg_map=bg_map,
+                                   vmax=0.5,
+                                   vmin=0.,
+                                   axes=axes,
+                                   cmap=self.cmap,
+                                   hemi=hemi_name,
+                                   colorbar=True,
+                                   view='lateral')
             plt.savefig(f'{self.figure_prefix}_hemi-{hemi_}.jpg')
         print(f'{self.figure_prefix}_hemi-{hemi_}.jpg')
 

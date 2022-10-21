@@ -153,7 +153,7 @@ class PlotROIPrediction:
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
     def run(self):
-        data = self.load_data('all-features')
+        data = self.load_data('full-model')
         data = data.merge(self.load_data('reliability'),
                           left_on=['sid', 'roi'],
                           right_on=['sid', 'roi'])

@@ -62,6 +62,7 @@ class FeatureCorrelations:
         self.process = 'FeatureCorrelations'
         self.data_dir = args.data_dir
         self.set = args.set
+        self.context = args.context
         self.n_perm = args.n_perm
         self.plot_dists = args.plot_dists
         self.precomputed = args.precomputed
@@ -125,15 +126,15 @@ class FeatureCorrelations:
         p_bool[i, j] = ps
         return plotting_rsm, p_bool
 
-    def plot(self, rs, ps, ticks, context='poster'):
-        if context == 'talk' or context == 'paper':
+    def plot(self, rs, ps, ticks):
+        if self.context == 'talk' or self.context == 'paper':
             r_size = 16
             label_size = 18
         else:
             r_size = 20
 
         nqs = len(ticks)
-        sns.set(rc={'figure.figsize': (11, 10)}, context=context)
+        sns.set(rc={'figure.figsize': (15, 15)}, context=self.context)
         fig, ax = plt.subplots()
 
         vmax = 0.7  # np.nanmax(np.abs(rs))
@@ -203,13 +204,14 @@ class FeatureCorrelations:
         return df
 
     def load_nuisance_regressors(self, n_components=8):
-        alexnet = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{self.set}_avgframe.npy').T
-        of = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{self.set}.npy')
-        pcs, _ = pca(np.hstack([alexnet, of]), n_components=n_components)
-        cols = [f'low-level PC {i + 1}' for i in range(n_components)]
-        return pd.DataFrame(pcs, columns=cols)
+        alexnet = np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-{self.set}.npy')
+        moten = np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-{self.set}.npy')
+        highD_data = np.hstack([alexnet, moten])
+        cols = [f'AlexNet conv2 PC{i + 1}' for i in range(alexnet.shape[-1])]
+        cols += [f'motion energy PC{i + 1}' for i in range(moten.shape[-1])]
+        return pd.DataFrame(highD_data, columns=cols)
 
-    def run(self, context='talk'):
+    def run(self):
         if self.rsa:
             df = pd.read_csv(f'{self.out_dir}/FeatureRDMs/rdms_set-{self.set}.csv')
             columns = df.columns.to_list()
@@ -232,13 +234,14 @@ class FeatureCorrelations:
             if feature == 'transitivity':
                 feature = 'object'
             features.append(feature)
-        self.plot(rs, ps, features, context=context)
+        self.plot(rs, ps, features)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_perm', type=int, default=int(5e3))
     parser.add_argument('--set', type=str, default='train')
+    parser.add_argument('--context', type=str, default='talk')
     parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)

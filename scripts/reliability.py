@@ -121,10 +121,10 @@ class Reliability():
         _, ax = plt.subplots(1, figsize=(10, 10),
                                subplot_kw={'projection': '3d'})
         plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                               roi_map=surf_map,
+                               roi_map=surf_map**2,
                                bg_map=bg_map,
                                ax=ax,
-                               threshold=self.threshold,
+                               threshold=self.threshold**2,
                                vmax=1.,
                                cmap=self.cmap,
                                hemi=hemi,
