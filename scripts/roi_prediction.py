@@ -49,7 +49,7 @@ class ROIPrediction:
         else:
             if self.unique_variance:
                 if self.category is not None:
-                    self.in_file_prefix = f'sub-{self.sid}_dropped-category-{self.category}'
+                    self.in_file_prefix = f'sub-{self.sid}_dropped-categorywithnuissance-{self.category}'
                 else:  # self.feature is not None:
                     self.in_file_prefix = f'sub-{self.sid}_dropped-feature-{self.feature}'
             else:  # not self.unique_variance
