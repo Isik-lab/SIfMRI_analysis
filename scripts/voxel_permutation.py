@@ -43,7 +43,7 @@ class VoxelPermutation:
         else:
             if self.unique_variance:
                 if self.category is not None:
-                    base = f'sub-{self.sid}_dropped-category-{self.category}'
+                    base = f'sub-{self.sid}_dropped-categorywithnuissance-{self.category}'
                 else:  # self.feature is not None:
                     base = f'sub-{self.sid}_dropped-feature-{self.feature}'
             else:  # not self.unique_variance
@@ -54,7 +54,7 @@ class VoxelPermutation:
                     base = f'sub-{self.sid}_feature-{self.feature}'
                 else:  # This is the full regression model with all annotated features
                     base = f'sub-{self.sid}_all-features'
-        self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_all-features'
+        self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_full-model'
         self.in_file_prefix = f'{self.out_dir}/VoxelRegression/{base}'
         self.out_file_prefix = f'{self.out_dir}/{self.process}/{base}'
         self.dist_file_prefix = f'{self.out_dir}/{self.process}/dist/{base}'

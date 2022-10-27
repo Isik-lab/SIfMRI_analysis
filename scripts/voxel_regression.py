@@ -85,7 +85,7 @@ class VoxelRegression:
         if not self.full_model:
             if self.unique_variance:
                 if self.category is not None:
-                    self.out_file_prefix += f'dropped-category-{self.category}'
+                    self.out_file_prefix += f'dropped-categorywithnuissance-{self.category}'
                 else:  # self.feature is not None:
                     self.out_file_prefix += f'dropped-feature-{self.feature}'
             else:
@@ -143,9 +143,12 @@ class VoxelRegression:
                                                feature=None,
                                                unique_variance=False)
             else:
-                X = get_annotated_features(df, category=self.category,
-                                           feature=self.feature,
-                                           unique_variance=True)
+                X_annotated = get_annotated_features(df, category=self.category,
+                                                     feature=self.feature,
+                                                     unique_variance=True)
+                X_moten = self.get_highD_data('moten', dataset)
+                X_alexnet = self.get_highD_data('alexnet', dataset)
+                X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
         print(X.shape)
         return X
 
