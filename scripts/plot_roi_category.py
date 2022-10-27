@@ -65,8 +65,8 @@ class PlotROIPrediction:
             self.rois = ['FFA', 'PPA']
             self.out_prefix = 'ventral-rois_'
         if args.unique_variance:
-            self.file_id = 'dropped-cat'
-            self.out_prefix += 'dropped-category'
+            self.file_id = 'dropped-categorywithnuissance-'
+            self.out_prefix += 'dropped-categorywithnuissance'
             self.y_label = 'Unique variance'
             self.categories = ['scene & object', 'social primitives',
                                'social interaction', 'affective']
