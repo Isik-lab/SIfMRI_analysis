@@ -30,6 +30,7 @@ class ROIPrediction:
         self.category = args.category
         self.feature = args.feature
         self.unique_variance = args.unique_variance
+        self.include_nuisance = args.include_nuisance
         self.full_model = args.full_model
         assert (self.feature is None) or self.unique_variance, "not yet implemented"
         assert (not self.full_model) or (
@@ -47,9 +48,14 @@ class ROIPrediction:
         if self.full_model:
             self.in_file_prefix = f'sub-{self.sid}_full-model'
         else:
-            if self.unique_variance:
+            if self.unique_variance and self.include_nuisance:
                 if self.category is not None:
                     self.in_file_prefix = f'sub-{self.sid}_dropped-categorywithnuissance-{self.category}'
+                else:  # self.feature is not None:
+                    self.in_file_prefix = f'sub-{self.sid}_dropped-featurewithnuissance-{self.feature}'
+            elif self.unique_variance and not self.include_nuisance:
+                if self.category is not None:
+                    self.in_file_prefix = f'sub-{self.sid}_dropped-category-{self.category}'
                 else:  # self.feature is not None:
                     self.in_file_prefix = f'sub-{self.sid}_dropped-feature-{self.feature}'
             else:  # not self.unique_variance
@@ -60,6 +66,7 @@ class ROIPrediction:
                     self.in_file_prefix = f'sub-{self.sid}_feature-{self.feature}'
                 else:  # This is the full regression model with all annotated features
                     self.in_file_prefix = f'sub-{self.sid}_all-features'
+        print(self.in_file_prefix)
         self.out_file_name = f'{self.out_dir}/{self.process}/{self.in_file_prefix}_roi-{self.roi}.pkl'
 
     def load_roi_hemi_mask(self, hemi):
@@ -148,6 +155,7 @@ def main():
     parser.add_argument('--roi', type=str, default='EVC')
     parser.add_argument('--full_model', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

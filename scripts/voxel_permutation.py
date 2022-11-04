@@ -15,6 +15,7 @@ class VoxelPermutation:
         self.category = args.category
         self.feature = args.feature
         self.unique_variance = args.unique_variance
+        self.include_nuisance = args.include_nuisance
         self.full_model = args.full_model
         assert (self.feature is None) or self.unique_variance, "not yet implemented"
         assert (not self.full_model) or (
@@ -41,9 +42,16 @@ class VoxelPermutation:
         if self.full_model:
             base = f'sub-{self.sid}_full-model'
         else:
-            if self.unique_variance:
+            if self.unique_variance and self.include_nuisance:
+                self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_full-model'
                 if self.category is not None:
                     base = f'sub-{self.sid}_dropped-categorywithnuissance-{self.category}'
+                else:  # self.feature is not None:
+                    base = f'sub-{self.sid}_dropped-featurewithnuissance-{self.feature}'
+            elif self.unique_variance and not self.include_nuisance:
+                self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_all-features'
+                if self.category is not None:
+                    base = f'sub-{self.sid}_dropped-category-{self.category}'
                 else:  # self.feature is not None:
                     base = f'sub-{self.sid}_dropped-feature-{self.feature}'
             else:  # not self.unique_variance
@@ -54,7 +62,6 @@ class VoxelPermutation:
                     base = f'sub-{self.sid}_feature-{self.feature}'
                 else:  # This is the full regression model with all annotated features
                     base = f'sub-{self.sid}_all-features'
-        self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_full-model'
         self.in_file_prefix = f'{self.out_dir}/VoxelRegression/{base}'
         self.out_file_prefix = f'{self.out_dir}/{self.process}/{base}'
         self.dist_file_prefix = f'{self.out_dir}/{self.process}/dist/{base}'
@@ -170,6 +177,7 @@ def main():
     parser.add_argument('--feature', type=str, default=None)
     parser.add_argument('--full_model', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=5000)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,

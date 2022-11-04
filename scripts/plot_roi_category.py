@@ -65,14 +65,18 @@ class PlotROIPrediction:
             self.rois = ['FFA', 'PPA']
             self.out_prefix = 'ventral-rois_'
         if args.unique_variance:
-            self.file_id = 'dropped-categorywithnuissance-'
-            self.out_prefix += 'dropped-categorywithnuissance'
             self.y_label = 'Unique variance'
             self.categories = ['scene & object', 'social primitives',
                                'social interaction', 'affective']
             self.file_rename_map = {'social_primitive': 'social primitives',
                                     'social': 'social interaction',
                                     'scene_object': 'scene & object'}
+            if self.include_nuisance:
+                self.file_id = 'dropped-categorywithnuissance'
+                self.out_prefix += 'dropped-categorywithnuissance'
+            else:
+                self.file_id = 'dropped-category-'
+                self.out_prefix += 'dropped-category'
         else:
             self.file_id = '_category'
             self.out_prefix += 'category'
@@ -205,6 +209,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stream', type=str, default='lateral')
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
