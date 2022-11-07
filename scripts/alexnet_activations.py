@@ -117,6 +117,7 @@ class AlexNetActivations():
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.out_dir).mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
+        print(vars(self))
 
     def get_PCs(self, X):
         pca = PCA(whiten=False, n_components=0.8)
@@ -134,6 +135,7 @@ class AlexNetActivations():
 
     def run(self):
         out_file = f'{self.out_dir}/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy'
+        print(out_file)
         if not os.path.exists(out_file) or self.overwrite:
             df = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
             df.sort_values(by=['video_name'], inplace=True)
@@ -149,9 +151,10 @@ class AlexNetActivations():
                 cur_act = []
                 for i in range(90):
                     input_img = preprocess(Image.fromarray(vid.get_data(i)))
-                    cur_act.append(feature_extractor.forward(input_img, layer=self.layer, combination=None))
-                activation.append(np.array(cur_act).mean(axis=0))
-            activation = np.array(activation)
+                    features = feature_extractor.forward(input_img, layer=self.layer, combination=None)
+                    cur_act.append(np.expand_dims(features, axis=0))
+                activation.append(np.expand_dims(np.concatenate(cur_act).mean(axis=0), axis=0))
+            activation = np.concatenate(activation)
             print(activation.shape)
             np.save(out_file, activation)
         else:
@@ -161,8 +164,8 @@ class AlexNetActivations():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--layer', '-l', type=int, default=2)
-    parser.add_argument('--set', type=str, default='train')
+    parser.add_argument('--layer', '-l', type=int, default=5)
+    parser.add_argument('--set', type=str, default='test')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
