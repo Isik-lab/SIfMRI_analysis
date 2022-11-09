@@ -41,7 +41,7 @@ def combine(X, combination=None):
             X = X.mean(axis=(X.ndim-2, X.ndim-1))
         elif combination == 'max':
             X = X.max(axis=(X.ndim-2, X.ndim-1))
-    return X.flatten()
+    return X
 
 
 def preprocess(image_fname, resize=256):
@@ -83,11 +83,11 @@ class AlexNet_Extractor(nn.Module):
 
     def _get_features(self, layer):
         switcher = {
-            1: 3,   # from features
-            2: 6,
-            3: 8,
-            4: 10,
-            5: 13}
+            1: 1,   # from features
+            2: 4,
+            3: 7,
+            4: 9,
+            5: 11}
         index = switcher.get(layer)
         features = nn.Sequential(
             # stop at the layer
@@ -123,15 +123,15 @@ class AlexNetActivations():
         pca = PCA(whiten=False, n_components=0.8)
         pca.fit(X)
         elbow = find_elbow(pca.explained_variance_ratio_)
-        print(f'PCs to elbow: {elbow+1}')
+        print()
         _, axes = plt.subplots(2)
         axes[0].plot(pca.explained_variance_ratio_, '-o')
         axes[0].vlines(elbow, ymin=0, ymax=pca.explained_variance_ratio_[0])
-        axes[0].set_title('Explained variance')
+        axes[0].set_title(f'PCs to elbow: {elbow+1}, Total units: {X.shape[-1]}')
         axes[1].plot(pca.explained_variance_ratio_.cumsum(), '-o')
         axes[1].vlines(elbow, ymin=0, ymax=pca.explained_variance_ratio_.cumsum()[-1])
-        axes[1].set_title('Cumulative explained variance')
-        plt.savefig(f'{self.figure_dir}/pca_visualization_set-{self.set}.pdf')
+        axes[1].set_title('Cummulative explained variance')
+        plt.savefig(f'{self.figure_dir}/alexnet-conv{self.layer}_set-{self.set}.pdf')
 
     def run(self):
         out_file = f'{self.out_dir}/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy'
@@ -152,8 +152,9 @@ class AlexNetActivations():
                 for i in range(90):
                     input_img = preprocess(Image.fromarray(vid.get_data(i)))
                     features = feature_extractor.forward(input_img, layer=self.layer, combination=None)
-                    cur_act.append(np.expand_dims(features, axis=0))
-                activation.append(np.expand_dims(np.concatenate(cur_act).mean(axis=0), axis=0))
+                    cur_act.append(features)
+                cur_act = np.concatenate(cur_act)
+                activation.append(cur_act.mean(axis=0).reshape((1, -1)))
             activation = np.concatenate(activation)
             print(activation.shape)
             np.save(out_file, activation)
@@ -164,7 +165,7 @@ class AlexNetActivations():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--layer', '-l', type=int, default=5)
+    parser.add_argument('--layer', '-l', type=int, default=3)
     parser.add_argument('--set', type=str, default='test')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
