@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 import numpy as np
 import nibabel as nib
+import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.decomposition import PCA
 
@@ -45,42 +46,24 @@ def preprocess(X_train_, X_test_,
     return X_train_, X_test_, y_train_, y_test_
 
 
-class VoxelRegressionAlexNet:
+class FeatureRegression:
     def __init__(self, args):
-        self.process = 'VoxelRegressionAlexNet'
-        self.sid = str(args.s_num).zfill(2)
+        self.process = 'FeatureRegression'
         self.layer = args.layer
-        self.step = args.step
-        self.space = args.space
-        self.zscore_ses = args.zscore_ses
-        self.smooth = args.smooth
-        if self.smooth:
-            if self.zscore_ses:
-                self.beta_path = 'betas_3mm_zscore'
-            else:  # self.smoothing and not self.zscore_ses:
-                self.beta_path = 'betas_3mm_nozscore'
-        else:
-            if self.zscore_ses:
-                self.beta_path = 'betas_0mm_zscore'
-            else:  # not self.smoothing and not self.zscore_ses
-                self.beta_path = 'betas_0mm_nozscore'
+        self.feature = args.feature
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_alexnet-conv{self.layer}'
+        self.out_file_prefix = f'{self.out_dir}/{self.process}/feature-{self.feature}_alexnet-conv{self.layer}'
         print(vars(self))
 
     def load_X(self, dataset):
         return np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{dataset}.npy')
 
     def load_y(self, dataset):
-        mask = np.load(
-            f'{self.out_dir}/Reliability/sub-{self.sid}_space-{self.space}_desc-test-{self.step}_reliability-mask.npy').astype(
-            'bool')
-        neural = nib.load(
-            f'{self.data_dir}/{self.beta_path}/sub-{self.sid}/sub-{self.sid}_space-{self.space}_desc-{dataset}-{self.step}_data.nii.gz')
-        neural = np.array(neural.dataobj).reshape((-1, neural.shape[-1])).T
-        return neural[:, mask]
+        df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
+        df = df.merge(pd.read_csv(f'{self.data_dir}/annotations/{dataset}.csv'))
+        return df[self.feature.replace('_', ' ')].to_numpy()
 
     def load(self):
         X_train_ = self.load_X('train')
@@ -106,18 +89,14 @@ class VoxelRegressionAlexNet:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=int, default=2)
-    parser.add_argument('--step', type=str, default='fracridge')
-    parser.add_argument('--space', type=str, default='T1w')
-    parser.add_argument('--layer', type=int, default='3')
-    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--feature', type=str, default='expanse')
+    parser.add_argument('--layer', type=int, default='2')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
     args = parser.parse_args()
-    VoxelRegressionAlexNet(args).run()
+    FeatureRegression(args).run()
 
 
 if __name__ == '__main__':

@@ -83,11 +83,11 @@ class AlexNet_Extractor(nn.Module):
 
     def _get_features(self, layer):
         switcher = {
-            1: 1,   # from features
-            2: 4,
-            3: 7,
-            4: 9,
-            5: 11}
+            1: 2,   # from features
+            2: 5,
+            3: 8,
+            4: 10,
+            5: 12}
         index = switcher.get(layer)
         features = nn.Sequential(
             # stop at the layer
@@ -112,9 +112,11 @@ class AlexNetActivations():
         self.set = args.set
         self.layer = args.layer
         self.overwrite = args.overwrite
+        self.average_all_frames = args.average_all_frames
         self.data_dir = args.data_dir
         self.out_dir = f'{args.out_dir}/{self.process}'
         self.figure_dir = f'{args.figure_dir}/{self.process}'
+        self.out_file = f'{self.out_dir}/alexnet_conv{self.layer}_set-{self.set}.npy'
         Path(self.out_dir).mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         print(vars(self))
@@ -134,9 +136,7 @@ class AlexNetActivations():
         plt.savefig(f'{self.figure_dir}/alexnet-conv{self.layer}_set-{self.set}.pdf')
 
     def run(self):
-        out_file = f'{self.out_dir}/alexnet_conv{self.layer}_set-{self.set}_avgframe.npy'
-        print(out_file)
-        if not os.path.exists(out_file) or self.overwrite:
+        if not os.path.exists(self.out_file) or self.overwrite:
             df = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
             df.sort_values(by=['video_name'], inplace=True)
             vid_dir = f'{self.data_dir}/videos'
@@ -148,18 +148,23 @@ class AlexNetActivations():
             activation = []
             for vid in tqdm.tqdm(df.video_name, total=len(df)):
                 vid = imageio.get_reader(f'{vid_dir}/{vid}', 'ffmpeg')
-                cur_act = []
-                for i in range(90):
-                    input_img = preprocess(Image.fromarray(vid.get_data(i)))
+                if self.average_all_frames:
+                    cur_act = []
+                    for i in range(90):
+                        input_img = preprocess(Image.fromarray(vid.get_data(i)))
+                        features = feature_extractor.forward(input_img, layer=self.layer, combination=None)
+                        cur_act.append(features)
+                    cur_act = np.concatenate(cur_act)
+                    activation.append(cur_act.mean(axis=0).reshape((1, -1)))
+                else:
+                    input_img = preprocess(Image.fromarray(vid.get_data(45)))
                     features = feature_extractor.forward(input_img, layer=self.layer, combination=None)
-                    cur_act.append(features)
-                cur_act = np.concatenate(cur_act)
-                activation.append(cur_act.mean(axis=0).reshape((1, -1)))
+                    activation.append(features.reshape(1, -1))
             activation = np.concatenate(activation)
             print(activation.shape)
-            np.save(out_file, activation)
+            np.save(self.out_file, activation)
         else:
-            activation = np.load(out_file)
+            activation = np.load(self.out_file)
         self.get_PCs(activation)
 
 
@@ -168,6 +173,7 @@ def main():
     parser.add_argument('--layer', '-l', type=int, default=3)
     parser.add_argument('--set', type=str, default='test')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--average_all_frames', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
