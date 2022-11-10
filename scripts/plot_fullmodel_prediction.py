@@ -60,11 +60,11 @@ class PlotROIPrediction:
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
-            self.out_prefix = 'lateral-rois_full-model'
+            self.out_prefix = 'lateral-rois_all-features'
         else:
             self.rois = ['FFA', 'PPA']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
-            self.out_prefix = 'ventral-rois_full-model'
+            self.out_prefix = 'ventral-rois_all-features'
 
 
 
@@ -153,7 +153,7 @@ class PlotROIPrediction:
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
     def run(self):
-        data = self.load_data('full-model')
+        data = self.load_data('all-features')
         data = data.merge(self.load_data('reliability'),
                           left_on=['sid', 'roi'],
                           right_on=['sid', 'roi'])

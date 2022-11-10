@@ -71,12 +71,8 @@ class PlotROIPrediction:
 
         if args.unique_variance:
             self.y_label = 'Unique variance'
-            if args.include_nuisance:
-                self.file_id = 'dropped-featurewithnuissance'
-                self.out_prefix += 'dropped-featurewithnuissance'
-            else:
-                self.file_id = 'dropped-feature-'
-                self.out_prefix += 'dropped-feature'
+            self.file_id = 'dropped-feature-'
+            self.out_prefix += 'dropped-feature'
         else:
             assert False, 'not implemented'
 
@@ -202,7 +198,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stream', type=str, default='lateral')
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
