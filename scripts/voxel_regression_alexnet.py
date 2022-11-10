@@ -31,7 +31,7 @@ def regress(X_train_, y_train_, X_test_):
 
 
 def pca(X_train_, X_test_):
-    pca = PCA(whiten=False)
+    pca = PCA(whiten=False, n_components=0.95)
     X_train_ = pca.fit_transform(X_train_)
     print(X_train_.shape)
     return X_train_, pca.transform(X_test_)
