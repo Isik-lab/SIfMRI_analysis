@@ -25,10 +25,11 @@ def load_pkl(file):
 def load_data(out_dir, layers, features):
     # Load the results in their own dictionaries and create a dataframe
     data_list = []
-    files = glob.glob(f'{out_dir}/FeaturePermutation/*pkl')
+    files = glob.glob(f'{out_dir}/FeaturePermutation/*alexnet*pkl')
     for f in files:
         data_list.append(load_pkl(f))
     df = pd.DataFrame(data_list)
+    print(df.head())
     df['layer'] = pd.Categorical(df['layer'], ordered=True,
                                  categories=layers)
     df['feature'] = pd.Categorical(df['feature'], ordered=True,
@@ -58,8 +59,7 @@ def layer2shade(key):
          2: 0.8,
          3: 0.6,
          4: 0.4,
-         5: 0.2,
-         'moten': 0}
+         5: 0.2}
     return d[key]
 
 
@@ -68,7 +68,7 @@ figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/f
 process = 'PlotFeatureAlexNet'
 Path(f'{figure_dir}/{process}').mkdir(exist_ok=True, parents=True)
 Path(f'{out_dir}/{process}').mkdir(exist_ok=True, parents=True)
-layers = [1, 2, 3, 4, 5, 'moten']
+layers = [1, 2, 3, 4, 5]
 features = ['indoor', 'expanse', 'transitivity',
             'agent_distance', 'facingness',
             'joint_action', 'communication',
@@ -98,7 +98,6 @@ for ax, feature in zip(axes, features):
         bar.set_color(color)
         bar.set_edgecolor([0.2, 0.2, 0.2])
 
-    ax.set_xlabel('')
     ax.legend([], [], frameon=False)
     ax.set_ylim([0, y_max])
     ax.set_title(feature.replace('_', ' '), fontsize=26)
@@ -115,10 +114,8 @@ for ax, feature in zip(axes, features):
     ax.spines['right'].set_visible(False)
 
     # Change the xaxis font size and colors
-    ax.set_xticklabels(['conv1', 'conv2', 'conv3',
-                        'conv4', 'conv5', 'moten'],
-                       fontsize=20, rotation=45,
-                       ha='right')
+    ax.set_xticklabels(layers, fontsize=20)
+    ax.set_xlabel('AlexNet layer', fontsize=22)
 
 plt.tight_layout()
 plt.savefig(f'{figure_dir}/{process}/feature_prediction.png')

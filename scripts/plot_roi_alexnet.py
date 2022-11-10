@@ -84,7 +84,7 @@ for ax, roi in zip(axes, rois):
         bar.set_color(color)
         bar.set_edgecolor([0.2, 0.2, 0.2])
 
-    ax.set_xlabel('AlexNet Layer', fontsize=22)
+    ax.set_xlabel('AlexNet layer', fontsize=22)
     ax.legend([], [], frameon=False)
     ax.set_ylim([0, y_max])
     ax.set_title(roi, fontsize=30)
