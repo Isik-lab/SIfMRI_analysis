@@ -6,19 +6,6 @@ import numpy as np
 from pathlib import Path
 from src import tools
 import nibabel as nib
-from scipy.stats import permutation_test, bootstrap
-from timeit import default_timer as timer
-
-
-def statistic(x, y, axis=0):
-    x_m = x - np.expand_dims(np.mean(x, axis=axis), axis=1)
-    y_m = y - np.expand_dims(np.mean(y, axis=axis), axis=1)
-
-    numer = np.sum((x_m * y_m), axis=axis)
-    denom = np.sqrt(np.sum((x_m * x_m), axis=axis) * np.sum((y_m * y_m), axis=axis))
-    denom[np.isclose(denom, 0)] = np.nan
-    r = numer / denom
-    return np.sign(r) * (r ** 2)
 
 
 class VoxelPermutationAlexNet:
@@ -75,35 +62,24 @@ class VoxelPermutationAlexNet:
 
     def run_permutation(self, y_true, y_pred):
         # Run permutation
-        start = timer()
-        res = permutation_test((y_true, y_pred), statistic,
-                               vectorized=True,
-                               axis=0,
-                               permutation_type='pairings',
-                               alternative='greater',
-                               n_resamples=self.n_perm,
-                               random_state=0)
-        r2_filtered, p_corrected = tools.filter_r(res.statistic, res.pvalue)
-        end = timer()
-        print(end - start)
+        r2, p, r2_null = tools.perm(y_true, y_pred,
+                                    n_perm=self.n_perm)
+        r2_filtered, p_corrected = tools.filter_r(r2, p)
 
         # transform arrays to nii
         out_data = dict()
         for name, i in zip(['r2', 'r2filtered', 'p', 'pcorrected'],
-                           [res.statistic, r2_filtered, res.pvalue, p_corrected]):
+                           [r2, r2_filtered, p, p_corrected]):
             out_data[name] = self.nib_transform(i)
         self.save_perm_results(out_data)
-        self.save_dist(res.null_distribution, 'r2null')
+        self.save_dist(r2_null, 'r2null')
         print('Permutation testing done')
 
     def run_bootstrap(self, y_true, y_pred):
         # Run bootstrap
-        res = bootstrap((y_true, y_pred), statistic,
-                        vectorized=True,
-                        axis=0,
-                        paired=True,
-                        random_state=0)
-        self.save_dist(res, 'r2var')
+        r2_var = tools.bootstrap(y_true, y_pred,
+                                 n_perm=self.n_perm)
+        self.save_dist(r2_var, 'r2var')
         print('Bootstrapping done')
 
     def run(self):
@@ -114,8 +90,8 @@ class VoxelPermutationAlexNet:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=int, default=2)
-    parser.add_argument('--layer', type=int, default=2)
+    parser.add_argument('--s_num', '-s', type=int, default=1)
+    parser.add_argument('--layer', type=int, default=1)
     parser.add_argument('--n_perm', type=int, default=5000)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,
