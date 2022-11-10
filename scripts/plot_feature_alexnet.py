@@ -12,6 +12,7 @@ import seaborn as sns
 from statsmodels.stats.multitest import multipletests
 import itertools
 import matplotlib.ticker as mticker
+from statsmodels.stats.multitest import fdrcorrection
 
 
 def load_pkl(file):
@@ -28,11 +29,9 @@ def load_data(out_dir, layers, features):
     for f in files:
         data_list.append(load_pkl(f))
     df = pd.DataFrame(data_list)
-    df['significant'] = 'ns'
-    df.loc[df.p < 0.05, 'significant'] = '*'
     df['layer'] = pd.Categorical(df['layer'], ordered=True,
                                  categories=layers)
-    df['features'] = pd.Categorical(df['feature'], ordered=True,
+    df['feature'] = pd.Categorical(df['feature'], ordered=True,
                                     categories=features)
     return df
 
@@ -59,7 +58,8 @@ def layer2shade(key):
          2: 0.8,
          3: 0.6,
          4: 0.4,
-         5: 0.2}
+         5: 0.2,
+         'moten': 0}
     return d[key]
 
 
@@ -68,28 +68,57 @@ figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/f
 process = 'PlotFeatureAlexNet'
 Path(f'{figure_dir}/{process}').mkdir(exist_ok=True, parents=True)
 Path(f'{out_dir}/{process}').mkdir(exist_ok=True, parents=True)
-layers = [1, 2, 3, 4, 5]
-features = ['indoor', 'expanse', 'transitivity', 'agent_distance', 'facingness', 'joint_action', 'communication',
+layers = [1, 2, 3, 4, 5, 'moten']
+features = ['indoor', 'expanse', 'transitivity',
+            'agent_distance', 'facingness',
+            'joint_action', 'communication',
             'valence', 'arousal']
 
 df = load_data(out_dir, layers, features)
+df['p_corrected'] = 1
+for feature in features:
+    _, p_corrected = fdrcorrection(df.loc[df.feature == feature, 'p'])
+    df.loc[df.feature == feature, 'p_corrected'] = p_corrected
+df['significant'] = 'ns'
+df.loc[df.p_corrected < 0.05, 'significant'] = '*'
 df.to_csv(f'{out_dir}/{process}/feature_prediction.csv', index=False)
-y_max = df.high_ci.max()
-_, ax = plt.subplots(figsize=(8, 8))
-sns.barplot(x='feature', y='r2', hue='layer', ax=ax, data=df)
-for bar, (layer, feature) in zip(ax.patches, itertools.product(layers, features)):
-    color = feature2color(feature)
-    color[:-1] = color[:-1] * layer2shade(layer)
-    y1 = df.loc[(df.feature == feature) & (df.layer == layer), 'low_ci'].item()
-    y2 = df.loc[(df.feature == feature) & (df.layer == layer), 'high_ci'].item()
-    sig = df.loc[(df.feature == feature) & (df.layer == layer), 'significant'].item()
-    x = bar.get_x() + 0.1
-    ax.plot([x, x], [y1, y2], 'k')
-    if sig != 'ns':
-        ax.scatter(x, y_max - 0.02, marker='o', color=color)
-    bar.set_color(color)
-ax.legend([], [], frameon=False)
-ax.set_xticklabels(features,
-                   fontsize=20,
-                   rotation=45, ha='right')
+_, axes = plt.subplots(1, len(features), figsize=(int(len(features)*6), 8))
+y_max = df.high_ci.max() + 0.04
+for ax, feature in zip(axes, features):
+    sns.barplot(x='layer', y='r2', ax=ax, data=df[df.feature == feature])
+    for bar, layer in zip(ax.patches, layers):
+        color = feature2color(feature)
+        y1 = df.loc[(df.feature == feature) & (df.layer == layer), 'low_ci'].item()
+        y2 = df.loc[(df.feature == feature) & (df.layer == layer), 'high_ci'].item()
+        sig = df.loc[(df.feature == feature) & (df.layer == layer), 'significant'].item()
+        x = bar.get_x() + 0.45
+        ax.plot([x, x], [y1, y2], 'k', linewidth=3)
+        if sig != 'ns':
+            ax.scatter(x, y_max - 0.02, marker='o', color='k')
+        bar.set_color(color)
+        bar.set_edgecolor([0.2, 0.2, 0.2])
+
+    ax.set_xlabel('')
+    ax.legend([], [], frameon=False)
+    ax.set_ylim([0, y_max])
+    ax.set_title(feature.replace('_', ' '), fontsize=26)
+    ax.set_ylabel(f'Explained variance ($r^2$)', fontsize=22)
+
+    # Change the ytick font size
+    label_format = '{:,.2f}'
+    y_ticklocs = ax.get_yticks().tolist()
+    ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
+    ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=20)
+
+    # Remove lines on the top and left of the plot
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # Change the xaxis font size and colors
+    ax.set_xticklabels(['conv1', 'conv2', 'conv3',
+                        'conv4', 'conv5', 'moten'],
+                       fontsize=20, rotation=45,
+                       ha='right')
+
+plt.tight_layout()
 plt.savefig(f'{figure_dir}/{process}/feature_prediction.png')

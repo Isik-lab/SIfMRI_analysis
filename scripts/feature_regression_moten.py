@@ -49,16 +49,15 @@ def preprocess(X_train_, X_test_,
 class FeatureRegression:
     def __init__(self, args):
         self.process = 'FeatureRegression'
-        self.layer = args.layer
         self.feature = args.feature
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_file_prefix = f'{self.out_dir}/{self.process}/feature-{self.feature}_alexnet-conv{self.layer}'
+        self.out_file_prefix = f'{self.out_dir}/{self.process}/feature-{self.feature}_motion-energy'
         print(vars(self))
 
     def load_X(self, dataset):
-        return np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv{self.layer}_set-{dataset}.npy')
+        return np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{dataset}.npy')
 
     def load_y(self, dataset):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
@@ -90,7 +89,6 @@ class FeatureRegression:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--feature', type=str, default='expanse')
-    parser.add_argument('--layer', type=int, default='2')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
