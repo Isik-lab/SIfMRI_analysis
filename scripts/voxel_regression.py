@@ -60,11 +60,6 @@ class VoxelRegression:
         self.category = args.category
         self.feature = args.feature
         self.unique_variance = args.unique_variance
-        self.include_nuisance = args.include_nuisance
-        self.full_model = args.full_model
-        assert (self.feature is None) or self.unique_variance, "not yet implemented"
-        assert (not self.full_model) or (
-                self.full_model and self.feature is None and self.category is None and not self.unique_variance), "no other inputs can be combined with the full model"
         self.step = args.step
         self.space = args.space
         self.zscore_ses = args.zscore_ses
@@ -83,26 +78,18 @@ class VoxelRegression:
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
         self.out_file_prefix = f'{self.out_dir}/{self.process}/sub-{self.sid}_'
-        if not self.full_model:
-            if self.unique_variance and self.include_nuisance:
-                if self.category is not None:
-                    self.out_file_prefix += f'dropped-categorywithnuissance-{self.category}'
-                else:  # self.feature is not None:
-                    self.out_file_prefix += f'dropped-featurewithnuissance-{self.feature}'
-            elif self.unique_variance and not self.include_nuisance:
-                if self.category is not None:
-                    self.out_file_prefix += f'dropped-category-{self.category}'
-                else:  # self.feature is not None:
-                    self.out_file_prefix += f'dropped-feature-{self.feature}'
-            else:
-                if self.category is not None:
-                    self.out_file_prefix += f'category-{self.category}'
-                elif self.feature is not None:
-                    self.out_file_prefix += f'feature-{self.feature}'
-                else:
-                    self.out_file_prefix += 'all-features'
+        if self.unique_variance:
+            if self.category is not None:
+                self.out_file_prefix += f'dropped-category-{self.category}'
+            else:  # self.feature is not None:
+                self.out_file_prefix += f'dropped-feature-{self.feature}'
         else:
-            self.out_file_prefix += 'full-model'
+            if self.category is not None:
+                self.out_file_prefix += f'category-{self.category}'
+            elif self.feature is not None:
+                self.out_file_prefix += f'feature-{self.feature}'
+            else:
+                self.out_file_prefix += 'all-features'
         print(vars(self))
 
     def load_y(self, dataset):
@@ -128,37 +115,38 @@ class VoxelRegression:
 
     def load_X(self, dataset):
         df = self.load_annotations(dataset)
-        if self.full_model:
-            X_annotated = get_annotated_features(df, category=None,
-                                       feature=None,
-                                       unique_variance=False)
-            X_moten = self.get_highD_data('moten', dataset)
-            X_alexnet = self.get_highD_data('alexnet', dataset)
-            X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
-        else:
-            if self.unique_variance and self.include_nuisance:
+        if self.unique_variance:
+            if (self.category is not None) and ('moten' not in self.category):
+                # load annotated features
                 X_annotated = get_annotated_features(df, category=self.category,
+                                                     feature=None,
+                                                     unique_variance=True)
+                X_moten = self.get_highD_data('moten', dataset)
+                X = np.concatenate([X_annotated, X_moten], axis=1)
+            elif (self.category is not None) and ('moten' in self.category):
+                X = get_annotated_features(df, category=None,
+                                           feature=None,
+                                           unique_variance=False)
+            else:
+                X_annotated = get_annotated_features(df, category=None,
                                                      feature=self.feature,
                                                      unique_variance=True)
                 X_moten = self.get_highD_data('moten', dataset)
-                X_alexnet = self.get_highD_data('alexnet', dataset)
-                X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
-            elif self.unique_variance and not self.include_nuisance:
+                X = np.concatenate([X_annotated, X_moten], axis=1)
+        else:
+            if (self.category is not None) and ('moten' not in self.category):
+                # load annotated features
                 X = get_annotated_features(df, category=self.category,
-                                                     feature=self.feature,
-                                                     unique_variance=True)
+                                           feature=None,
+                                           unique_variance=False)
+            elif (self.category is not None) and ('moten' in self.category):
+                X = self.get_highD_data(self.category, dataset)
             else:
-                if (self.category is not None) and (('alexnet' not in self.category) and ('moten' not in self.category)):
-                    # load annotated features
-                    X = get_annotated_features(df, category=self.category,
-                                               feature=self.feature,
-                                               unique_variance=self.unique_variance)
-                elif (self.category is not None) and (('alexnet' in self.category) or ('moten' in self.category)):
-                    X = self.get_highD_data(self.category, dataset)
-                else:
-                    X = get_annotated_features(df, category=None,
-                                               feature=None,
-                                               unique_variance=False)
+                X_annotated = get_annotated_features(df, category=None,
+                                                     feature=None,
+                                                     unique_variance=False)
+                X_moten = self.get_highD_data('moten', dataset)
+                X = np.concatenate([X_annotated, X_moten], axis=1)
         print(X.shape)
         return X
 
@@ -197,9 +185,7 @@ def main():
     parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--category', type=str, default=None)
     parser.add_argument('--feature', type=str, default=None)
-    parser.add_argument('--full_model', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
