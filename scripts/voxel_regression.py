@@ -168,10 +168,10 @@ class VoxelRegression:
         np.save(f'{self.out_file_prefix}_y-pred.npy', y_pred)
 
     def regression(self, X_train_, X_test_, y_train_, y_test_):
-        X_train_, X_test_, y_train, y_test = self.preprocess(X_train_, X_test_,
-                                                             y_train_, y_test_)
-        y_pred = regress(X_train_, y_train_, X_test_)
-        self.save_results(y_test, y_pred)
+        X_train_normed, X_test_normed, y_train_normed, y_test_normed = self.preprocess(X_train_, X_test_,
+                                                                                  y_train_, y_test_)
+        y_pred = regress(X_train_normed, y_train_normed, X_test_normed)
+        self.save_results(y_test_normed, y_pred)
 
     def run(self):
         X_train, X_test, y_train, y_test = self.load()

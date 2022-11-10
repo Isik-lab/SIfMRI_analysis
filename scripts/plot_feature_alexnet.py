@@ -25,7 +25,7 @@ def load_pkl(file):
 def load_data(out_dir, layers, features):
     # Load the results in their own dictionaries and create a dataframe
     data_list = []
-    files = glob.glob(f'{out_dir}/FeaturePermutation/*alexnet*pkl')
+    files = glob.glob(f'{out_dir}/FeaturePermutation/*pkl')
     for f in files:
         data_list.append(load_pkl(f))
     df = pd.DataFrame(data_list)
@@ -68,7 +68,7 @@ figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/f
 process = 'PlotFeatureAlexNet'
 Path(f'{figure_dir}/{process}').mkdir(exist_ok=True, parents=True)
 Path(f'{out_dir}/{process}').mkdir(exist_ok=True, parents=True)
-layers = [1, 2, 3, 4, 5]
+layers = [1, 2, 3, 4, 5, 'moten']
 features = ['indoor', 'expanse', 'transitivity',
             'agent_distance', 'facingness',
             'joint_action', 'communication',
