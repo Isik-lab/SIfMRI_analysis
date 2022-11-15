@@ -111,11 +111,13 @@ class ROIPrediction:
 
     def get_variance(self, data):
         r2var = self.get_both_hemi_data('r2var')
+        data['r2var'] = r2var
         data['low_ci'], data['high_ci'] = np.percentile(r2var, [2.5, 97.5])
 
     def get_significance(self, data):
         data['r2'] = self.get_both_hemi_data('r2')
         r2null = self.get_both_hemi_data('r2null')
+        data['r2null'] = r2null
         data['p'] = tools.calculate_p(r2null, data['r2'],
                                       n_perm_=len(r2null),
                                       H0_='greater')
