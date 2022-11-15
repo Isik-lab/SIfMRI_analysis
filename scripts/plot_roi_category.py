@@ -20,10 +20,8 @@ def load_pkl(file):
     d.pop('r2null', None)
     return d
 
-
-def multiple_comp_correct(arr):
-    out = multipletests(arr, alpha=0.05, method='fdr_bh')[1]
-    return out
+def multiple_comp_correct(arr, method='fdr_bh'):
+    return multipletests(arr, alpha=0.05, method=method)[1]
 
 
 def subj2shade(key):

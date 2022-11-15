@@ -9,9 +9,15 @@ from sklearn.decomposition import PCA
 
 
 def scale(train_, test_):
+    # first remove activations that have 0 variance
+    variance = np.nanstd(train_, axis=0).squeeze()
+    train_ = train_[:, np.invert(np.isclose(variance, 0.))]
+    test_ = test_[:, np.invert(np.isclose(variance, 0.))]
+    print(f'{np.sum(np.isclose(variance, 0.))} channels had a variance of zero')
+
+    # now scale the data
     mean = np.nanmean(train_, axis=0).squeeze()
     variance = np.nanstd(train_, axis=0).squeeze()
-    variance[np.isclose(variance, 0.)] = np.nan
     train_ = (train_ - mean) / variance
     return train_, (test_ - mean) / variance
 
@@ -30,7 +36,7 @@ class ActivationPCA:
         self.model = args.model
         self.out_prefix = ''
         if 'alexnet' in self.model:
-            self.n_PCs = 13
+            self.n_PCs = 20
         else: #'moten'
             self.n_PCs = 3
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
