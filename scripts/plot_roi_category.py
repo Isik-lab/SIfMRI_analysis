@@ -72,8 +72,8 @@ class PlotROIPrediction:
                                     'social': 'social interaction',
                                     'scene_object': 'scene & object'}
             if self.include_nuisance:
-                self.file_id = 'dropped-categorywithnuissance'
-                self.out_prefix += 'dropped-categorywithnuissance'
+                self.file_id = 'dropped-categorywithnuisance'
+                self.out_prefix += 'dropped-categorywithnuisance'
             else:
                 self.file_id = 'dropped-category-'
                 self.out_prefix += 'dropped-category'

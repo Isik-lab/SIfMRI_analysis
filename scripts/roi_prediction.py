@@ -50,9 +50,9 @@ class ROIPrediction:
         else:
             if self.unique_variance and self.include_nuisance:
                 if self.category is not None:
-                    self.in_file_prefix = f'sub-{self.sid}_dropped-categorywithnuissance-{self.category}'
+                    self.in_file_prefix = f'sub-{self.sid}_dropped-categorywithnuisance-{self.category}'
                 else:  # self.feature is not None:
-                    self.in_file_prefix = f'sub-{self.sid}_dropped-featurewithnuissance-{self.feature}'
+                    self.in_file_prefix = f'sub-{self.sid}_dropped-featurewithnuisance-{self.feature}'
             elif self.unique_variance and not self.include_nuisance:
                 if self.category is not None:
                     self.in_file_prefix = f'sub-{self.sid}_dropped-category-{self.category}'

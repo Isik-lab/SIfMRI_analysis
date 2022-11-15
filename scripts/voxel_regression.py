@@ -86,9 +86,9 @@ class VoxelRegression:
         if not self.full_model:
             if self.unique_variance and self.include_nuisance:
                 if self.category is not None:
-                    self.out_file_prefix += f'dropped-categorywithnuissance-{self.category}'
+                    self.out_file_prefix += f'dropped-categorywithnuisance-{self.category}'
                 else:  # self.feature is not None:
-                    self.out_file_prefix += f'dropped-featurewithnuissance-{self.feature}'
+                    self.out_file_prefix += f'dropped-featurewithnuisance-{self.feature}'
             elif self.unique_variance and not self.include_nuisance:
                 if self.category is not None:
                     self.out_file_prefix += f'dropped-category-{self.category}'
@@ -137,12 +137,25 @@ class VoxelRegression:
             X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
         else:
             if self.unique_variance and self.include_nuisance:
-                X_annotated = get_annotated_features(df, category=self.category,
-                                                     feature=self.feature,
-                                                     unique_variance=True)
-                X_moten = self.get_highD_data('moten', dataset)
-                X_alexnet = self.get_highD_data('alexnet', dataset)
-                X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
+                if (self.category is not None) and ('moten' in self.category):
+                    X_annotated = get_annotated_features(df, category=None,
+                                                         feature=None,
+                                                         unique_variance=False)
+                    X_alexnet = self.get_highD_data('alexnet', dataset)
+                    X = np.concatenate([X_annotated, X_alexnet], axis=1)
+                elif (self.category is not None) and ('alexnet' in self.category):
+                    X_annotated = get_annotated_features(df, category=None,
+                                                         feature=None,
+                                                         unique_variance=False)
+                    X_moten = self.get_highD_data('moten', dataset)
+                    X = np.concatenate([X_annotated, X_moten], axis=1)
+                else:
+                    X_annotated = get_annotated_features(df, category=self.category,
+                                                         feature=self.feature,
+                                                         unique_variance=True)
+                    X_moten = self.get_highD_data('moten', dataset)
+                    X_alexnet = self.get_highD_data('alexnet', dataset)
+                    X = np.concatenate([X_annotated, X_alexnet, X_moten], axis=1)
             elif self.unique_variance and not self.include_nuisance:
                 X = get_annotated_features(df, category=self.category,
                                                      feature=self.feature,

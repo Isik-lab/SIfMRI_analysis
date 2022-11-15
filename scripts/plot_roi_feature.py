@@ -72,8 +72,8 @@ class PlotROIPrediction:
         if args.unique_variance:
             self.y_label = 'Unique variance'
             if args.include_nuisance:
-                self.file_id = 'dropped-featurewithnuissance'
-                self.out_prefix += 'dropped-featurewithnuissance'
+                self.file_id = 'dropped-featurewithnuisance'
+                self.out_prefix += 'dropped-featurewithnuisance'
             else:
                 self.file_id = 'dropped-feature-'
                 self.out_prefix += 'dropped-feature'

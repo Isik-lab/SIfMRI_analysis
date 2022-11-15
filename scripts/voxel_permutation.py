@@ -45,9 +45,9 @@ class VoxelPermutation:
             if self.unique_variance and self.include_nuisance:
                 self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_full-model'
                 if self.category is not None:
-                    base = f'sub-{self.sid}_dropped-categorywithnuissance-{self.category}'
+                    base = f'sub-{self.sid}_dropped-categorywithnuisance-{self.category}'
                 else:  # self.feature is not None:
-                    base = f'sub-{self.sid}_dropped-featurewithnuissance-{self.feature}'
+                    base = f'sub-{self.sid}_dropped-featurewithnuisance-{self.feature}'
             elif self.unique_variance and not self.include_nuisance:
                 self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_all-features'
                 if self.category is not None:
