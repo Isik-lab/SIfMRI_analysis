@@ -60,11 +60,11 @@ class PlotROIPrediction:
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
-            self.out_prefix = 'lateral-rois_all-features'
+            self.out_prefix = 'lateral-rois_full-model'
         else:
             self.rois = ['FFA', 'PPA']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
-            self.out_prefix = 'ventral-rois_all-features'
+            self.out_prefix = 'ventral-rois_full-model'
 
 
 
@@ -81,15 +81,23 @@ class PlotROIPrediction:
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
+        for roi in df.roi.unique():
+            if roi not in self.rois:
+                df = df.loc[df.roi != roi]
         df.drop(columns=['unique_variance', 'feature', 'category'], inplace=True)
+
+        # Make sid categorical
+        df['sid'] = pd.Categorical(df['sid'], ordered=True,
+                                   categories=self.subjs)
+        df['roi'] = pd.Categorical(df['roi'], ordered=True,
+                                   categories=self.rois)
 
         if 'reliability' not in name:
             # Perform FDR correction and make a column for how the marker should appear
             df.drop(columns=['reliability'], inplace=True)
-            df = df[df.roi != 'TPJ']
 
             df['p_corrected'] = 1
-            for roi in df.roi.unique():
+            for roi in self.rois:
                 for subj in self.subjs:
                     rows = (df.sid == subj) & (df.roi == roi)
                     df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
@@ -97,15 +105,6 @@ class PlotROIPrediction:
             df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
             df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
             df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
-
-            for roi in df.roi.unique():
-                if roi not in self.rois:
-                    df = df.loc[df.roi != roi]
-        # Make sid categorical
-        df['sid'] = pd.Categorical(df['sid'], ordered=True,
-                                   categories=self.subjs)
-        df['roi'] = pd.Categorical(df['roi'], ordered=True,
-                                   categories=self.rois)
         return df
 
     def plot_results(self, df):
@@ -154,7 +153,7 @@ class PlotROIPrediction:
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
     def run(self):
-        data = self.load_data('all-features')
+        data = self.load_data('full-model')
         data = data.merge(self.load_data('reliability'),
                           left_on=['sid', 'roi'],
                           right_on=['sid', 'roi'])

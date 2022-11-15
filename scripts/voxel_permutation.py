@@ -15,7 +15,11 @@ class VoxelPermutation:
         self.category = args.category
         self.feature = args.feature
         self.unique_variance = args.unique_variance
+        self.include_nuisance = args.include_nuisance
+        self.full_model = args.full_model
         assert (self.feature is None) or self.unique_variance, "not yet implemented"
+        assert (not self.full_model) or (
+                    self.full_model and self.feature is None and self.category is None and not self.unique_variance), "no other inputs can be combined with the full model"
         self.step = args.step
         self.n_perm = args.n_perm
         self.data_dir = args.data_dir
@@ -35,20 +39,29 @@ class VoxelPermutation:
         del im
 
     def get_file_names(self):
-        if self.unique_variance:
-            self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_all-features'
-            if self.category is not None:
-                base = f'sub-{self.sid}_dropped-category-{self.category}'
-            else:  # self.feature is not None:
-                base = f'sub-{self.sid}_dropped-feature-{self.feature}'
-        else:  # not self.unique_variance
-            if self.category is not None:
-                # Regression with the categories without the other regressors
-                base = f'sub-{self.sid}_category-{self.category}'
-            elif self.feature is not None:
-                base = f'sub-{self.sid}_feature-{self.feature}'
-            else:  # This is the full regression model with all annotated features
-                base = f'sub-{self.sid}_all-features'
+        if self.full_model:
+            base = f'sub-{self.sid}_full-model'
+        else:
+            if self.unique_variance and self.include_nuisance:
+                self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_full-model'
+                if self.category is not None:
+                    base = f'sub-{self.sid}_dropped-categorywithnuissance-{self.category}'
+                else:  # self.feature is not None:
+                    base = f'sub-{self.sid}_dropped-featurewithnuissance-{self.feature}'
+            elif self.unique_variance and not self.include_nuisance:
+                self.allfeature_file_prefix = f'{self.out_dir}/VoxelRegression/sub-{self.sid}_all-features'
+                if self.category is not None:
+                    base = f'sub-{self.sid}_dropped-category-{self.category}'
+                else:  # self.feature is not None:
+                    base = f'sub-{self.sid}_dropped-feature-{self.feature}'
+            else:  # not self.unique_variance
+                if self.category is not None:
+                    # Regression with the categories without the other regressors
+                    base = f'sub-{self.sid}_category-{self.category}'
+                elif self.feature is not None:
+                    base = f'sub-{self.sid}_feature-{self.feature}'
+                else:  # This is the full regression model with all annotated features
+                    base = f'sub-{self.sid}_all-features'
         self.in_file_prefix = f'{self.out_dir}/VoxelRegression/{base}'
         self.out_file_prefix = f'{self.out_dir}/{self.process}/{base}'
         self.dist_file_prefix = f'{self.out_dir}/{self.process}/dist/{base}'
@@ -162,7 +175,9 @@ def main():
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--category', type=str, default=None)
     parser.add_argument('--feature', type=str, default=None)
+    parser.add_argument('--full_model', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=5000)
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,

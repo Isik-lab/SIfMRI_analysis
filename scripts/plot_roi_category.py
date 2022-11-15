@@ -20,8 +20,10 @@ def load_pkl(file):
     d.pop('r2null', None)
     return d
 
-def multiple_comp_correct(arr, method='fdr_bh'):
-    return multipletests(arr, alpha=0.05, method=method)[1]
+
+def multiple_comp_correct(arr):
+    out = multipletests(arr, alpha=0.05, method='fdr_bh')[1]
+    return out
 
 
 def subj2shade(key):
@@ -56,28 +58,37 @@ class PlotROIPrediction:
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
 
         self.subjs = ['01', '02', '03', '04']
-        self.categories = ['motion energy',
-                           'scene & object', 'social primitives',
-                           'social interaction', 'affective']
-        self.file_rename_map = {'moten': 'motion energy',
-                                'social_primitive': 'social primitives',
-                                'social': 'social interaction',
-                                'scene_object': 'scene & object'}
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.out_prefix = 'lateral-rois_'
         else:
             self.rois = ['FFA', 'PPA']
             self.out_prefix = 'ventral-rois_'
-
         if args.unique_variance:
             self.y_label = 'Unique variance'
-            self.file_id = 'dropped-category-'
-            self.out_prefix += 'dropped-category'
+            self.categories = ['scene & object', 'social primitives',
+                               'social interaction', 'affective']
+            self.file_rename_map = {'social_primitive': 'social primitives',
+                                    'social': 'social interaction',
+                                    'scene_object': 'scene & object'}
+            if self.include_nuisance:
+                self.file_id = 'dropped-categorywithnuissance'
+                self.out_prefix += 'dropped-categorywithnuissance'
+            else:
+                self.file_id = 'dropped-category-'
+                self.out_prefix += 'dropped-category'
         else:
             self.file_id = '_category'
             self.out_prefix += 'category'
             self.y_label = 'Explained variance'
+            self.categories = ['AlexNet conv2', 'motion energy',
+                               'scene & object', 'social primitives',
+                               'social interaction', 'affective']
+            self.file_rename_map = {'moten': 'motion energy',
+                                    'alexnet': 'AlexNet conv2',
+                                    'social_primitive': 'social primitives',
+                                    'social': 'social interaction',
+                                    'scene_object': 'scene & object'}
 
     def load_data(self, name):
         # Load the results in their own dictionaries and create a dataframe
@@ -92,18 +103,26 @@ class PlotROIPrediction:
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
+        for roi in df.roi.unique():
+            if roi not in self.rois:
+                df = df.loc[df.roi != roi]
         df.drop(columns=['unique_variance', 'feature'], inplace=True)
+
+        # Make sid categorical
+        df['sid'] = pd.Categorical(df['sid'], ordered=True,
+                                   categories=self.subjs)
+        df['roi'] = pd.Categorical(df['roi'], ordered=True,
+                                   categories=self.rois)
 
         if 'reliability' not in name:
             # Perform FDR correction and make a column for how the marker should appear
             df.drop(columns=['reliability'], inplace=True)
-            df = df[df.roi != 'TPJ']
             df.replace(self.file_rename_map, inplace=True)
             df['category'] = pd.Categorical(df['category'], ordered=True,
                                             categories=self.categories)
 
             df['p_corrected'] = 1
-            for roi in df.roi.unique():
+            for roi in self.rois:
                 for subj in self.subjs:
                     rows = (df.sid == subj) & (df.roi == roi)
                     df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
@@ -111,18 +130,8 @@ class PlotROIPrediction:
             df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
             df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
             df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
-
-            for roi in df.roi.unique():
-                if roi not in self.rois:
-                    df = df.loc[df.roi != roi]
         else:
             df.drop(columns=['category'], inplace=True)
-
-        # Make sid categorical
-        df['sid'] = pd.Categorical(df['sid'], ordered=True,
-                                   categories=self.subjs)
-        df['roi'] = pd.Categorical(df['roi'], ordered=True,
-                                   categories=self.rois)
         return df
 
     def plot_results(self, df):
@@ -200,6 +209,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stream', type=str, default='lateral')
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
