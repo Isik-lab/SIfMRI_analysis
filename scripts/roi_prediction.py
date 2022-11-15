@@ -145,8 +145,8 @@ class ROIPrediction:
         print(f"r2 = {data['r2']:4f}")
         print(f"p = {data['p']:4f}")
         print(f"low_ci = {data['low_ci']:4f}")
-        print(f"high_ci = {data['high_ci']:4f} \n")
-        print(f"r2var len = {len(data['r2var'])} \n")
+        print(f"high_ci = {data['high_ci']:4f}")
+        print(f"r2var len = {len(data['r2var'])}")
         print(f"r2null len = {len(data['r2null'])} \n")
 
 
