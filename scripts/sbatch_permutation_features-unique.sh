@@ -20,11 +20,10 @@ conda activate nibabel
 #  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
 #  --feature $feature --unique_variance
 
-#EVC MT EBA PPA FFA LOC pSTS face-pSTS
-for roi in aSTS TPJ; do
+for roi in EVC MT EBA PPA FFA LOC pSTS face-pSTS aSTS TPJ; do
   time python roi_prediction.py -s $subj \
     --roi $roi \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
     --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-    --feature $feature --unique_variance
+    --feature $feature --unique_variance --include_nuisance
 done
