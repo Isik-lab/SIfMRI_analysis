@@ -12,12 +12,11 @@ import seaborn as sns
 from statsmodels.stats.multitest import multipletests
 import itertools
 import matplotlib.ticker as mticker
+from src import tools
 
 
 def load_pkl(file):
     d = pickle.load(open(file, 'rb'))
-    d.pop('r2var', None)
-    d.pop('r2null', None)
     return d
 
 
@@ -51,6 +50,9 @@ def cat2color(key=None):
 class PlotROIPrediction:
     def __init__(self, args):
         self.process = 'PlotROIPrediction'
+        self.n_perm = args.n_perm
+        self.individual = args.individual
+        self.include_nuisance = args.include_nuisance
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -58,12 +60,21 @@ class PlotROIPrediction:
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
 
         self.subjs = ['01', '02', '03', '04']
+        self.all_rois = ['EVC', 'MT', 'EBA', 'LOC', 'FFA', 'PPA', 'face-pSTS', 'pSTS', 'aSTS']
+        self.all_categories = ['moten', 'alexnet', 'scene_object', 'social_primitive', 'social', 'affective']
+
+        if self.individual:
+            self.out_prefix = 'individual_'
+        else:
+            self.out_prefix = 'group_'
+
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
-            self.out_prefix = 'lateral-rois_'
+            self.out_prefix += 'lateral-rois_'
         else:
             self.rois = ['FFA', 'PPA']
-            self.out_prefix = 'ventral-rois_'
+            self.out_prefix += 'ventral-rois_'
+
         if args.unique_variance:
             self.y_label = 'Unique variance'
             self.categories = ['scene & object', 'social primitives',
@@ -90,7 +101,51 @@ class PlotROIPrediction:
                                     'social': 'social interaction',
                                     'scene_object': 'scene & object'}
 
-    def load_data(self, name):
+    def load_group_data(self, name):
+        print(name)
+        data_list = []
+        for category, roi in itertools.product(self.all_categories, self.all_rois):
+            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*{category}*{roi}*pkl')
+            if files:
+                r2 = 0
+                r2null = np.zeros(self.n_perm)
+                r2var = np.zeros(self.n_perm)
+                for f in files:
+                    in_data = load_pkl(f)
+                    r2 += in_data['r2']
+                    r2null += in_data['r2null']
+                    r2var += in_data['r2var']
+                r2 /= len(files)
+                r2null /= len(files)
+                r2var /= len(files)
+                data = {'roi': roi, 'r2': r2, 'category': category}
+                data['p'] = tools.calculate_p(r2null, r2, self.n_perm, 'greater')
+                data['low_ci'], data['high_ci'] = np.percentile(r2var, [2.5, 97.5])
+                data_list.append(data)
+        df = pd.DataFrame(data_list)
+
+        df['p_corrected'] = 1
+        for roi in self.all_rois:
+                rows = (df.roi == roi)
+                df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
+        df['significant'] = 'ns'
+        df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
+        df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
+        df.loc[(df['p_corrected'] < 0.001), 'significant'] = '***'
+
+        df.replace({'face-pSTS': 'STS-Face',
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
+                   inplace=True)
+        df.replace(self.file_rename_map, inplace=True)
+        df = df.loc[df['roi'].isin(self.rois)]
+        df['roi'] = pd.Categorical(df['roi'], ordered=True,
+                                   categories=self.rois)
+        df['category'] = pd.Categorical(df['category'], ordered=True,
+                                   categories=self.categories)
+        return df
+
+    def load_individual_data(self, name):
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
         files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*pkl')
@@ -134,7 +189,62 @@ class PlotROIPrediction:
             df.drop(columns=['category'], inplace=True)
         return df
 
-    def plot_results(self, df):
+    def plot_group_results(self, df):
+        custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+        sns.set_theme(context='poster', style='white', rc=custom_params)
+        _, axes = plt.subplots(1, len(self.rois), figsize=(int(len(self.rois) * 6), 8))
+
+        for i, (ax, roi) in enumerate(zip(axes, self.rois)):
+            cur_df = df.loc[df.roi == roi]
+            sns.barplot(x='category', y='r2', palette='gray', saturation=0.8,
+                        data=cur_df,
+                        ax=ax)
+            ax.set_title(roi, fontsize=26)
+            ax.set_xlabel('')
+            y_max = cur_df.high_ci.max() + 0.04
+            ax.set_ylim([0, y_max])
+
+            # Change the ytick font size
+            label_format = '{:,.2f}'
+            y_ticklocs = ax.get_yticks().tolist()
+            ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
+            ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=20)
+
+            # Change the xaxis font size and colors
+            ax.set_xticklabels(self.categories,
+                               fontsize=20,
+                               rotation=45, ha='right')
+            for ticklabel, pointer in zip(self.categories, ax.get_xticklabels()):
+                color = cat2color(ticklabel)
+                color[-1] = 1.
+                pointer.set_color(color)
+                pointer.set_weight('bold')
+
+            # Remove the yaxis label from all plots except the two leftmost plots
+            if i == 0:
+                ax.set_ylabel(f'{self.y_label} ($r^2$)', fontsize=22)
+            else:
+                ax.set_ylabel('')
+
+            # Manipulate the color and add error bars
+            for bar, category in zip(ax.patches, self.categories):
+                color = cat2color(category)
+                y1 = cur_df.loc[(cur_df.category == category), 'low_ci'].item()
+                y2 = cur_df.loc[(cur_df.category == category), 'high_ci'].item()
+                sig = cur_df.loc[(cur_df.category == category), 'significant'].item()
+                width = bar.get_width()
+                x = bar.get_x() + (width/2)
+                ax.plot([x, x], [y1, y2], 'k')
+                if sig != 'ns':
+                    ax.text(x, y_max - 0.02, sig,
+                            horizontalalignment='center',
+                            fontsize=16)
+                bar.set_color(color)
+            ax.legend([], [], frameon=False)
+        plt.tight_layout()
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+
+    def plot_individual_results(self, df):
         _, axes = plt.subplots(1, len(self.rois), figsize=(int(len(self.rois) * 6), 8))
         sns.set_theme(font_scale=2)
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
@@ -196,18 +306,21 @@ class PlotROIPrediction:
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
     def run(self):
-        data = self.load_data(self.file_id)
-        data = data.merge(self.load_data('reliability'),
-                          left_on=['sid', 'roi'],
-                          right_on=['sid', 'roi'])
+        if self.individual:
+            data = self.load_individual_data(self.file_id)
+            self.plot_individual_results(data)
+        else:
+            data = self.load_group_data(self.file_id)
+            self.plot_group_results(data)
         data.to_csv(f'{self.out_dir}/{self.process}/{self.out_prefix}.csv', index=False)
         print(data.head())
-        self.plot_results(data)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stream', type=str, default='lateral')
+    parser.add_argument('--n_perm', type=int, default=10000)
+    parser.add_argument('--individual', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,

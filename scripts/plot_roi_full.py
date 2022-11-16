@@ -12,12 +12,13 @@ import seaborn as sns
 from statsmodels.stats.multitest import multipletests
 import itertools
 import matplotlib.ticker as mticker
+from src import tools
 
 
 def load_pkl(file):
     d = pickle.load(open(file, 'rb'))
-    d.pop('r2var', None)
-    d.pop('r2null', None)
+    # d.pop('r2var', None)
+    # d.pop('r2null', None)
     return d
 
 
@@ -51,24 +52,90 @@ def subj2shade(key):
 class PlotROIPrediction:
     def __init__(self, args):
         self.process = 'PlotROIPrediction'
+        self.n_perm = args.n_perm
+        self.individual = args.individual
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         self.subjs = ['01', '02', '03', '04']
+        self.all_rois = ['EVC', 'MT', 'EBA', 'LOC', 'FFA', 'PPA', 'face-pSTS', 'pSTS', 'aSTS']
+        if self.individual:
+            self.out_prefix = 'individual_'
+        else:
+            self.out_prefix = 'group_'
+
         if args.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
-            self.out_prefix = 'lateral-rois_full-model'
+            self.out_prefix += 'lateral-rois_full-model'
         else:
             self.rois = ['FFA', 'PPA']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
-            self.out_prefix = 'ventral-rois_full-model'
+            self.out_prefix += 'ventral-rois_full-model'
 
+    def load_group_reliability(self):
+        data_list = []
+        for roi in self.all_rois:
+            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{roi}*reliability*pkl')
+            r2 = 0
+            for f in files:
+                in_data = load_pkl(f)
+                r2 += in_data['reliability']
+            r2 /= len(files)
+            data = {'roi': roi, 'reliability': r2}
+            data_list.append(data)
+        df = pd.DataFrame(data_list)
+        df.replace({'face-pSTS': 'STS-Face',
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
+                   inplace=True)
+        df = df.loc[df['roi'].isin(self.rois)]
+        df['roi'] = pd.Categorical(df['roi'], ordered=True,
+                                   categories=self.rois)
+        return df
 
+    def load_group_data(self, name):
+        data_list = []
+        for roi in self.all_rois:
+            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*{roi}*pkl')
+            r2 = 0
+            r2null = np.zeros(self.n_perm)
+            r2var = np.zeros(self.n_perm)
+            for f in files:
+                in_data = load_pkl(f)
+                r2 += in_data['r2']
+                r2null += in_data['r2null']
+                r2var += in_data['r2var']
+            r2 /= len(files)
+            r2null /= len(files)
+            r2var /= len(files)
+            data = {'roi': roi, 'r2': r2}
+            data['p'] = tools.calculate_p(r2null, r2, self.n_perm, 'greater')
+            data['low_ci'], data['high_ci'] = np.percentile(r2var, [2.5, 97.5])
+            data_list.append(data)
+        df = pd.DataFrame(data_list)
 
-    def load_data(self, name):
+        df['p_corrected'] = 1
+        for roi in self.all_rois:
+                rows = (df.roi == roi)
+                df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
+        df['significant'] = 'ns'
+        df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
+        df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
+        df.loc[(df['p_corrected'] < 0.001), 'significant'] = '***'
+
+        df.replace({'face-pSTS': 'STS-Face',
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
+                   inplace=True)
+        df = df.loc[df['roi'].isin(self.rois)]
+        df['roi'] = pd.Categorical(df['roi'], ordered=True,
+                                   categories=self.rois)
+        return df
+
+    def load_individual_data(self, name):
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
         files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*pkl')
@@ -107,7 +174,34 @@ class PlotROIPrediction:
             df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
         return df
 
-    def plot_results(self, df):
+    def plot_group_results(self, df):
+        custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+        sns.set_theme(context='poster', style='white', rc=custom_params)
+        _, ax = plt.subplots(1, figsize=(int(len(self.rois)*3), 8))
+        sns.barplot(x='roi', y='reliability',
+                    color=[0.8, 0.8, 0.8], edgecolor=[0.2, 0.2, 0.2],
+                    ax=ax, data=df)
+        sns.barplot(x='roi', y='r2',
+                    color=[0.87, 0.67, 0.87], edgecolor=[0.2, 0.2, 0.2],
+                    ax=ax, data=df)
+        y_max = df.reliability.max() + 0.04
+        for bar, roi in zip(ax.patches[int(len(ax.patches)/2):], self.rois):
+            y1 = df.loc[(df.roi == roi), 'low_ci'].item()
+            y2 = df.loc[(df.roi == roi), 'high_ci'].item()
+            sig = df.loc[(df.roi == roi), 'significant'].item()
+            width = bar.get_width()
+            x = bar.get_x() + (width/2)
+            ax.plot([x, x], [y1, y2], 'k')
+            if sig != 'ns':
+                ax.text(x, y_max - 0.02, sig,
+                        horizontalalignment='center')
+        ax.legend([], [], frameon=False)
+        ax.set_xlabel('')
+        ax.set_ylabel('Explained variance ($r^2$)', fontsize=22)
+        plt.tight_layout()
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+
+    def plot_individual_results(self, df):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
         sns.set_theme(context='poster', style='white', rc=custom_params)
         _, ax = plt.subplots(1, figsize=(int(len(self.rois)*3), 8))
@@ -153,18 +247,25 @@ class PlotROIPrediction:
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
     def run(self):
-        data = self.load_data('full-model')
-        data = data.merge(self.load_data('reliability'),
-                          left_on=['sid', 'roi'],
-                          right_on=['sid', 'roi'])
+        if self.individual:
+            data = self.load_individual_data('full-model')
+            data = data.merge(self.load_individual_data('reliability'),
+                              left_on=['sid', 'roi'],
+                              right_on=['sid', 'roi'])
+            self.plot_individual_results(data)
+        else:
+            data = self.load_group_data('full-model')
+            data = data.merge(self.load_group_reliability(), on='roi')
+            self.plot_group_results(data)
         data.to_csv(f'{self.out_dir}/{self.process}/{self.out_prefix}.csv', index=False)
         print(data.head())
-        self.plot_results(data)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stream', type=str, default='lateral')
+    parser.add_argument('--individual', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--n_perm', type=int, default=10000)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,
