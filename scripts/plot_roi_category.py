@@ -58,10 +58,9 @@ class PlotROIPrediction:
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
-
+        self.y_max = 0
         self.subjs = ['01', '02', '03', '04']
         self.all_rois = ['EVC', 'MT', 'EBA', 'LOC', 'FFA', 'PPA', 'face-pSTS', 'pSTS', 'aSTS']
-        self.all_categories = ['moten', 'alexnet', 'scene_object', 'social_primitive', 'social', 'affective']
 
         if self.individual:
             self.out_prefix = 'individual_'
@@ -77,35 +76,36 @@ class PlotROIPrediction:
 
         if args.unique_variance:
             self.y_label = 'Unique variance'
-            self.categories = ['scene & object', 'social primitives',
-                               'social interaction', 'affective']
-            self.file_rename_map = {'social_primitive': 'social primitives',
-                                    'social': 'social interaction',
-                                    'scene_object': 'scene & object'}
             if self.include_nuisance:
-                self.file_id = 'dropped-categorywithnuisance'
+                self.file_id = '_dropped-categorywithnuisance'
                 self.out_prefix += 'dropped-categorywithnuisance'
+                self.all_categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social', 'affective']
+                self.categories = ['AlexNet conv2', 'motion energy',
+                                   'scene & object', 'social primitives',
+                                   'social interaction', 'affective']
+                self.file_rename_map = {key: val for key, val in zip(self.all_categories, self.categories)}
             else:
-                self.file_id = 'dropped-category-'
+                self.file_id = '_dropped-category'
                 self.out_prefix += 'dropped-category'
+                self.all_categories = ['scene_object', 'social_primitive', 'social', 'affective']
+                self.categories = ['scene & object', 'social primitives',
+                                   'social interaction', 'affective']
+                self.file_rename_map = {key: val for key, val in zip(self.all_categories, self.categories)}
         else:
             self.file_id = '_category'
             self.out_prefix += 'category'
             self.y_label = 'Explained variance'
+            self.all_categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social', 'affective']
             self.categories = ['AlexNet conv2', 'motion energy',
                                'scene & object', 'social primitives',
                                'social interaction', 'affective']
-            self.file_rename_map = {'moten': 'motion energy',
-                                    'alexnet': 'AlexNet conv2',
-                                    'social_primitive': 'social primitives',
-                                    'social': 'social interaction',
-                                    'scene_object': 'scene & object'}
+            self.file_rename_map = {key: val for key, val in zip(self.all_categories, self.categories)}
 
     def load_group_data(self, name):
-        print(name)
         data_list = []
         for category, roi in itertools.product(self.all_categories, self.all_rois):
-            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*{category}*{roi}*pkl')
+            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}-{category}_roi-{roi}*pkl')
+            print(f'{name}-{category}_roi-{roi}', len(files))
             if files:
                 r2 = 0
                 r2null = np.zeros(self.n_perm)
@@ -126,8 +126,8 @@ class PlotROIPrediction:
 
         df['p_corrected'] = 1
         for roi in self.all_rois:
-                rows = (df.roi == roi)
-                df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
+            rows = (df.roi == roi)
+            df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
         df['significant'] = 'ns'
         df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
         df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
@@ -137,6 +137,8 @@ class PlotROIPrediction:
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
+        self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.05
+        print(self.y_max)
         df.replace(self.file_rename_map, inplace=True)
         df = df.loc[df['roi'].isin(self.rois)]
         df['roi'] = pd.Categorical(df['roi'], ordered=True,
@@ -148,45 +150,43 @@ class PlotROIPrediction:
     def load_individual_data(self, name):
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
-        files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*pkl')
-        for f in files:
-            data_list.append(load_pkl(f))
+        for category in self.all_categories:
+            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}-{category}_roi*pkl')
+            print(category, len(files))
+            for f in files:
+                data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
 
         # Remove TPJ and rename some ROIs
+        df.drop(columns=['unique_variance', 'feature', 'r2var', 'r2null'], inplace=True)
+
+        # Perform FDR correction and make a column for how the marker should appear
+        df['p_corrected'] = 1
+        for subj in self.subjs:
+            for roi in self.all_rois:
+                rows = (df.roi == roi) & (df.sid == subj)
+                df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
+        df['significant'] = 'ns'
+        df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
+        df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
+        df.loc[(df['p_corrected'] < 0.001), 'significant'] = '***'
+
         df.replace({'face-pSTS': 'STS-Face',
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
-        for roi in df.roi.unique():
-            if roi not in self.rois:
-                df = df.loc[df.roi != roi]
-        df.drop(columns=['unique_variance', 'feature'], inplace=True)
+        self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.05
+        print(self.y_max)
+        df = df.loc[df['roi'].isin(self.rois)]
 
         # Make sid categorical
+        df.replace(self.file_rename_map, inplace=True)
+        df['category'] = pd.Categorical(df['category'], ordered=True,
+                                        categories=self.categories)
         df['sid'] = pd.Categorical(df['sid'], ordered=True,
                                    categories=self.subjs)
         df['roi'] = pd.Categorical(df['roi'], ordered=True,
                                    categories=self.rois)
-
-        if 'reliability' not in name:
-            # Perform FDR correction and make a column for how the marker should appear
-            df.drop(columns=['reliability'], inplace=True)
-            df.replace(self.file_rename_map, inplace=True)
-            df['category'] = pd.Categorical(df['category'], ordered=True,
-                                            categories=self.categories)
-
-            df['p_corrected'] = 1
-            for roi in self.rois:
-                for subj in self.subjs:
-                    rows = (df.sid == subj) & (df.roi == roi)
-                    df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
-            df['significant'] = 'ns'
-            df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
-            df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
-            df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
-        else:
-            df.drop(columns=['category'], inplace=True)
         return df
 
     def plot_group_results(self, df):
@@ -201,8 +201,7 @@ class PlotROIPrediction:
                         ax=ax)
             ax.set_title(roi, fontsize=26)
             ax.set_xlabel('')
-            y_max = cur_df.high_ci.max() + 0.04
-            ax.set_ylim([0, y_max])
+            ax.set_ylim([0, self.y_max])
 
             # Change the ytick font size
             label_format = '{:,.2f}'
@@ -236,7 +235,7 @@ class PlotROIPrediction:
                 x = bar.get_x() + (width/2)
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':
-                    ax.text(x, y_max - 0.02, sig,
+                    ax.text(x, self.y_max - 0.02, sig,
                             horizontalalignment='center',
                             fontsize=16)
                 bar.set_color(color)
@@ -254,8 +253,7 @@ class PlotROIPrediction:
                         data=cur_df,
                         ax=ax).set(title=roi)
             ax.set_xlabel('')
-            y_max = df.loc[(df.roi == roi), 'high_ci'].max() + 0.04
-            ax.set_ylim([0, y_max])
+            ax.set_ylim([0, self.y_max])
 
             # Change the ytick font size
             label_format = '{:,.2f}'
@@ -285,7 +283,7 @@ class PlotROIPrediction:
 
             # Plot vertical lines to separate the bars
             ax.vlines(np.arange(0.5, len(self.categories) - 0.5),
-                      ymin=0, ymax=y_max - (y_max / 20),
+                      ymin=0, ymax=self.y_max - (self.y_max / 20),
                       colors='lightgray')
 
             # Manipulate the color and add error bars
@@ -298,7 +296,7 @@ class PlotROIPrediction:
                 x = bar.get_x() + 0.1
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':
-                    ax.scatter(x, y_max - 0.02, marker='o', color=color)
+                    ax.scatter(x, self.y_max - 0.02, marker='o', color=color)
                 bar.set_color(color)
 
             ax.legend([], [], frameon=False)

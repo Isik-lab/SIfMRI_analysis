@@ -78,7 +78,7 @@ class PlotROIPrediction:
     def load_group_reliability(self):
         data_list = []
         for roi in self.all_rois:
-            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{roi}*reliability*pkl')
+            files = glob.glob(f'{self.out_dir}/ROIPrediction/*roi-{roi}*reliability*pkl')
             r2 = 0
             for f in files:
                 in_data = load_pkl(f)
@@ -99,7 +99,8 @@ class PlotROIPrediction:
     def load_group_data(self, name):
         data_list = []
         for roi in self.all_rois:
-            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*{roi}*pkl')
+            files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*roi-{roi}*pkl')
+            print(f'*{name}*roi-{roi}*', len(files))
             r2 = 0
             r2null = np.zeros(self.n_perm)
             r2var = np.zeros(self.n_perm)
@@ -139,32 +140,20 @@ class PlotROIPrediction:
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
         files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*pkl')
+        print(name, len(files))
         for f in files:
             data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
 
         # Remove TPJ and rename some ROIs
-        df.replace({'face-pSTS': 'STS-Face',
-                    'pSTS': 'pSTS-SI',
-                    'aSTS': 'aSTS-SI'},
-                   inplace=True)
-        for roi in df.roi.unique():
-            if roi not in self.rois:
-                df = df.loc[df.roi != roi]
         df.drop(columns=['unique_variance', 'feature', 'category'], inplace=True)
-
-        # Make sid categorical
-        df['sid'] = pd.Categorical(df['sid'], ordered=True,
-                                   categories=self.subjs)
-        df['roi'] = pd.Categorical(df['roi'], ordered=True,
-                                   categories=self.rois)
 
         if 'reliability' not in name:
             # Perform FDR correction and make a column for how the marker should appear
-            df.drop(columns=['reliability'], inplace=True)
+            df.drop(columns=['reliability', 'r2null', 'r2var'], inplace=True)
 
             df['p_corrected'] = 1
-            for roi in self.rois:
+            for roi in self.all_rois:
                 for subj in self.subjs:
                     rows = (df.sid == subj) & (df.roi == roi)
                     df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
@@ -172,6 +161,17 @@ class PlotROIPrediction:
             df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
             df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
             df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
+
+        # Make sid categorical
+        df.replace({'face-pSTS': 'STS-Face',
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
+                   inplace=True)
+        df = df.loc[df['roi'].isin(self.rois)]
+        df['sid'] = pd.Categorical(df['sid'], ordered=True,
+                                   categories=self.subjs)
+        df['roi'] = pd.Categorical(df['roi'], ordered=True,
+                                   categories=self.rois)
         return df
 
     def plot_group_results(self, df):
