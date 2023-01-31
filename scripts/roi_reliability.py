@@ -26,6 +26,7 @@ class ROIPrediction:
         self.process = 'ROIPrediction'
         self.sid = str(args.s_num).zfill(2)
         self.roi = args.roi
+        self.step = args.step
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
@@ -34,7 +35,7 @@ class ROIPrediction:
 
     def get_file_name(self):
         top = f'{self.out_dir}/Reliability'
-        file_name = f'{top}/sub-{self.sid}_space-T1w_desc-test-fracridge_stat-r_statmap.nii.gz'
+        file_name = f'{top}/sub-{self.sid}_space-T1w_desc-test-{self.step}_stat-r_statmap.nii.gz'
         return file_name
 
     def load_files(self):
@@ -64,7 +65,7 @@ class ROIPrediction:
         data = dict()
         data['reliability'] = self.load_files()
         self.add_info2data(data)
-        self.save_results(data)
+        # self.save_results(data)
         print(f"reliability = {data['reliability']:4f} \n")
 
 
@@ -72,6 +73,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--roi', type=str, default='EVC')
+    parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

@@ -26,6 +26,7 @@ class Reliability():
         self.space = args.space
         self.step = args.step
         self.zscore_ses = args.zscore_ses
+        self.ses_or_pres = args.ses_or_pres
         self.smooth = args.smooth
         if self.smooth:
             if self.zscore_ses:
@@ -58,8 +59,8 @@ class Reliability():
 
     def load_betas(self):
         print('loading betas...')
-        even, shape, affine, header = self.load_even_or_odd('even')
-        odd, _, _, _ = self.load_even_or_odd('odd')
+        even, shape, affine, header = self.load_even_or_odd('even'+self.ses_or_pres)
+        odd, _, _, _ = self.load_even_or_odd('odd'+self.ses_or_pres)
         return even, odd, shape, affine, header
 
     def load_anatomy(self):
@@ -151,6 +152,7 @@ def main():
     parser.add_argument('--set', type=str, default='test')
     parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--step', type=str, default='fracridge')
+    parser.add_argument('--ses_or_pres', type=str, default='')
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
