@@ -66,6 +66,7 @@ class FeatureCorrelations:
         self.n_perm = args.n_perm
         self.plot_dists = args.plot_dists
         self.precomputed = args.precomputed
+        self.include_nuisance = args.include_nuisance
         self.rsa = args.rsa
         if self.rsa:
             self.H0 = 'greater'
@@ -131,7 +132,8 @@ class FeatureCorrelations:
             r_size = 16
             label_size = 18
         else:
-            r_size = 20
+            r_size = 24
+            label_size = 30
 
         nqs = len(ticks)
         sns.set(rc={'figure.figsize': (15, 15)}, context=self.context)
@@ -157,7 +159,7 @@ class FeatureCorrelations:
                             color='black', fontsize=r_size, weight='bold')
         ax.grid(False)
         # ticks = np.linspace(vmin, vmax, num=12).round(decimals=1)
-        cbar = plt.colorbar()
+        cbar = plt.colorbar(fraction=0.046, pad=0.04)
         cbar.ax.tick_params(size=0)
         cbar.set_label(label=r"Correlation ($r$)", size=label_size + 2)
         for t in cbar.ax.get_yticklabels():
@@ -190,11 +192,11 @@ class FeatureCorrelations:
 
         ax.grid(False)
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/correlation-matrix_rsa-{self.rsa}_set-{self.set}.pdf')
+        plt.savefig(f'{self.figure_dir}/correlation-matrix_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.pdf')
         plt.close()
 
     def save(self, arr, name):
-        np.save(f'{self.out_dir}/{self.process}/{name}_rsa-{self.rsa}_set-{self.set}.npy', arr)
+        np.save(f'{self.out_dir}/{self.process}/{name}_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.npy', arr)
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
@@ -219,8 +221,9 @@ class FeatureCorrelations:
             df = df[columns]
         else:
             df = self.load_annotations()
-            nuisance = self.load_nuisance_regressors()
-            df = pd.concat([df, nuisance], axis=1)
+            if self.include_nuisance:
+                nuisance = self.load_nuisance_regressors()
+                df = pd.concat([df, nuisance], axis=1)
 
         if not self.precomputed:
             rs, ps = self.compute_mat(np.array(df))
@@ -245,6 +248,7 @@ def main():
     parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

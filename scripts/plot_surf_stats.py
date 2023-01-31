@@ -57,9 +57,9 @@ class SurfaceStats:
     def get_file_names(self):
         if self.unique_variance:
             if self.category is not None:
-                base = f'sub-{self.sid}_dropped-category-{self.category}'
+                base = f'sub-{self.sid}_dropped-categorywithnuisance-{self.category}'
             else:  # self.feature is not None:
-                base = f'sub-{self.sid}_dropped-feature-{self.feature}'
+                base = f'sub-{self.sid}_dropped-featurewithnuisance-{self.feature}'
         else:  # not self.unique_variance
             if self.category is not None:
                 # Regression with the categories without the other regressors
@@ -157,21 +157,21 @@ class SurfaceStats:
                                         colors=self.roi_cmap,
                                         output_file=f'{self.figure_prefix}_hemi-{hemi_}.jpg')
         else:
-            _, axes = plt.subplots(1, figsize=(10, 10),
-                                 subplot_kw={'projection': '3d'})
-            # for ax, view in zip(axes, views):
-            plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                   roi_map=surf_map,
-                                   bg_map=bg_map,
-                                   vmax=0.5,
-                                   vmin=0.,
-                                   axes=axes,
-                                   cmap=self.cmap,
-                                   hemi=hemi_name,
-                                   colorbar=True,
-                                   view='lateral')
-            plt.savefig(f'{self.figure_prefix}_hemi-{hemi_}.jpg')
-        print(f'{self.figure_prefix}_hemi-{hemi_}.jpg')
+            for view in ['lateral', 'ventral', 'medial']:
+                _, axes = plt.subplots(1, figsize=(10, 10),
+                                     subplot_kw={'projection': '3d'})
+                # for ax, view in zip(axes, views):
+                plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                       roi_map=surf_map,
+                                       bg_map=bg_map,
+                                       vmax=0.5,
+                                       vmin=0.,
+                                       axes=axes,
+                                       cmap=self.cmap,
+                                       hemi=hemi_name,
+                                       colorbar=False,
+                                       view=view)
+                plt.savefig(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.jpg')
 
     def plot_one_hemi(self, hemi_):
         surface_data = self.compute_surf_stats(hemi_)

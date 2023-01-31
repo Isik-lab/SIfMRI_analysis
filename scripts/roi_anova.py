@@ -85,11 +85,11 @@ roi1 = 'aSTS'
 roi2 = 'FFA'
 for sid in ['01', '02', '03', '04']:
     reliability_file = f'{out_dir}/Reliability/sub-{sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
-    r2_cats = subtract_cats(f'{out_dir}/{prior_process}/sub-{sid}_dropped-category',
+    r2_cats = subtract_cats(f'{out_dir}/{prior_process}/sub-{sid}_dropped-categorywithnuisance',
                             cat1, cat2, 'r2.nii.gz')
-    r2null_cats = subtract_cats(f'{out_dir}/{prior_process}/dist/sub-{sid}_dropped-category',
+    r2null_cats = subtract_cats(f'{out_dir}/{prior_process}/dist/sub-{sid}_dropped-categorywithnuisance',
                                 cat1, cat2, 'r2null.npy')
-    r2var_cats = subtract_cats(f'{out_dir}/{prior_process}/dist/sub-{sid}_dropped-category',
+    r2var_cats = subtract_cats(f'{out_dir}/{prior_process}/dist/sub-{sid}_dropped-categorywithnuisance',
                                cat1, cat2, 'r2var.npy')
 
     data = {'sid': sid, 'roi1': roi1, 'roi2': roi2, 'cat1': cat1, 'cat2': cat2,
