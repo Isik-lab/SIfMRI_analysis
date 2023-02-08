@@ -25,6 +25,5 @@ for roi in EVC MT EBA PPA FFA LOC pSTS face-pSTS aSTS TPJ; do
     --roi $roi \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
     --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-    --category $category \
-    --include_nuisance
+    --category $category
 done
