@@ -14,7 +14,7 @@ import seaborn as sns
 
 from scipy.stats import spearmanr
 from statsmodels.stats.multitest import multipletests
-from src.tools import spearmanr, calculate_p, mantel_permutation
+from src.tools import calculate_p, mantel_permutation
 from src.custom_plotting import feature_colors, custom_palette
 
 
@@ -115,22 +115,22 @@ class FeatureCorrelations:
             ps.append(p)
         ps = np.array(ps)
         if correct:
-            ps, _, _, _ = multipletests(ps, method='fdr_bh')
+            _, ps, _, _ = multipletests(ps, method='fdr_bh')
         return ps
 
     def compute_mat(self, ratings):
         rsm, _ = spearmanr(ratings)
         ps = self.pairwise_corr(ratings)
         plotting_rsm = diag(rsm)
-        p_bool = np.zeros_like(plotting_rsm, dtype='bool')
+        p_bool = np.zeros_like(plotting_rsm)#, dtype='bool')
         i, j = np.where(~np.isnan(plotting_rsm))
         p_bool[i, j] = ps
         return plotting_rsm, p_bool
 
     def plot(self, rs, ps, ticks):
         if self.context == 'talk' or self.context == 'paper':
-            r_size = 16
-            label_size = 18
+            r_size = 12
+            label_size = 16
         else:
             r_size = 24
             label_size = 30
@@ -151,10 +151,11 @@ class FeatureCorrelations:
         plt.imshow(rs, cmap=cmap, vmin=vmin, vmax=vmax)
         for ((j, i), label) in np.ndenumerate(rs):
             if not np.isnan(rs[j, i]):
-                # color = 'black' if ps[j, i] else 'white'
-                # weight = 'bold' if ps[j, i] else 'normal'
-                if ps[j, i]:
+                # color = 'black' if ps[j, i] < 0.05 else 'white'
+                # weight = 'bold' if ps[j, i] < 0.05 else 'normal'
+                if ps[j, i] < 0.05:
                     label = label if np.round_(label, decimals=1) != 0 else int(0)
+                    print(f'{ticks[j+1]}, {ticks[i]}, r = {label:.2f}, p = {ps[j, i]:.3f}')
                     ax.text(i, j, '{:.1f}'.format(label), ha='center', va='center',
                             color='black', fontsize=r_size, weight='bold')
         ax.grid(False)
@@ -200,14 +201,26 @@ class FeatureCorrelations:
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
-        df = df.merge(train)
+        if self.set != 'both':
+            subset = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
+            df = df.merge(subset)
         df = df.drop(columns=['video_name', 'cooperation', 'dominance', 'intimacy'])
         return df
 
     def load_nuisance_regressors(self, n_components=8):
-        alexnet = np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-{self.set}.npy')
-        moten = np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-{self.set}.npy')
+        if self.set != 'both':
+            alexnet = np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-{self.set}.npy')
+            moten = np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-{self.set}.npy')
+        else:
+            train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
+            test = pd.read_csv(f'{self.data_dir}/annotations/test.csv')
+            sort_indices = pd.concat([train, test]).reset_index().sort_values(by='video_name').reset_index().level_0.to_numpy()
+            alexnet = np.vstack([np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-train.npy'),
+                                 np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-test.npy')])
+            moten = np.vstack([np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-train.npy'),
+                                 np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-test.npy')])
+            alexnet = alexnet[sort_indices, :] # Reorganize the videos to alphabetical
+            moten = moten[sort_indices, :]
         highD_data = np.hstack([alexnet, moten])
         cols = [f'AlexNet conv2 PC{i + 1}' for i in range(alexnet.shape[-1])]
         cols += [f'motion energy PC{i + 1}' for i in range(moten.shape[-1])]
@@ -228,10 +241,11 @@ class FeatureCorrelations:
         if not self.precomputed:
             rs, ps = self.compute_mat(np.array(df))
             self.save(rs, 'rs')
+            print('here')
             self.save(ps, 'ps')
         else:
-            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}.npy')
-            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}.npy')
+            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.npy')
+            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.npy')
         features = []
         for feature in df.columns:
             if feature == 'transitivity':
@@ -243,8 +257,8 @@ class FeatureCorrelations:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_perm', type=int, default=int(5e3))
-    parser.add_argument('--set', type=str, default='train')
-    parser.add_argument('--context', type=str, default='talk')
+    parser.add_argument('--set', type=str, default='both')
+    parser.add_argument('--context', type=str, default='paper')
     parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)

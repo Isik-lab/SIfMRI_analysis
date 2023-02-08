@@ -24,29 +24,29 @@ class FeatureVariance():
     def plot(self, df, title, color, ax):
         sns.histplot(x=title, data=df, color=color, ax=ax)
         ax.set_xlim([0, 1])
-        ax.set_ylim([0, int(len(df)*.8)])
-        ax.set_xlabel('')
+        # ax.set_ylim([0, int(len(df)*.8)])
+        ax.set_xlabel('Rating')
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.set_title(title.capitalize())
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        train = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
-        df = df.merge(train)
+        if self.set != 'both':
+            subset = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
+            df = df.merge(subset)
         df.sort_values(by=['video_name'], inplace=True)
         df.rename(columns={'transitivity': 'object'}, inplace=True)
-        return df.drop(columns=['video_name', 'dominance', 'cooperation', 'intimacy'])
+        return df.drop(columns=['video_name', 'indoor', 'dominance', 'cooperation', 'intimacy'])
 
     def run(self):
         palette = custom_palette(rgb=False)
         colors = feature_colors()
         df = self.load_annotations()
-        sns.set(style='white', context='poster', rc={'figure.figsize': (15, 20)})
-        fig, ax = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True)
+        sns.set(style='white', context='poster', rc={'figure.figsize': (8, 14)})
+        fig, ax = plt.subplots(nrows=4, ncols=2, sharex=True, sharey=True)
         ax = ax.flatten()
         for i, feature in enumerate(df.columns):
-            print(feature)
             color = colors[feature]
             rgb = palette[color]
             self.plot(df, feature, rgb, ax[i])

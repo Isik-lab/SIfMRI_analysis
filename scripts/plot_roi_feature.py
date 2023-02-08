@@ -209,7 +209,7 @@ class PlotROIPrediction:
                                rotation=45, ha='right')
             for ticklabel, pointer in zip(self.features, ax.get_xticklabels()):
                 color = feature2color(ticklabel)
-                color[-1] = 1.
+                # color[-1] = 1.
                 pointer.set_color(color)
                 pointer.set_weight('bold')
 
@@ -265,7 +265,7 @@ class PlotROIPrediction:
                                rotation=45, ha='right')
             for ticklabel, pointer in zip(self.features, ax.get_xticklabels()):
                 color = feature2color(ticklabel)
-                color[-1] = 1.
+                # color[-1] = 1.
                 pointer.set_color(color)
                 pointer.set_weight('bold')
 

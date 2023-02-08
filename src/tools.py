@@ -3,7 +3,6 @@
 
 import numpy as np
 from tqdm import tqdm
-from scipy.stats import spearmanr
 from scipy.spatial.distance import squareform
 from statsmodels.stats.multitest import fdrcorrection
 import nibabel as nib
@@ -69,16 +68,15 @@ def mantel_permutation(a, i):
 
 def calculate_p(r_null_, r_true_, n_perm_, H0_):
     # Get the p-value depending on the type of test
-    denominator = n_perm_ + 1
     if H0_ == 'two_tailed':
-        numerator = np.sum(np.abs(r_null_) >= np.abs(r_true_), axis=0)
-        p_ = numerator / denominator
+        n_extreme = np.sum(np.abs(r_null_) >= np.abs(r_true_), axis=0)
+        p_ = (n_extreme + 1) / (n_perm_ + 1)
     elif H0_ == 'greater':
-        numerator = np.sum(r_true_ > r_null_, axis=0)
-        p_ = 1 - (numerator / denominator)
+        n_extreme = np.sum(r_true_ > r_null_, axis=0)
+        p_ = 1 - (n_extreme / (n_perm_ + 1))
     else:  # H0 == 'less':
-        numerator = np.sum(r_true_ < r_null_, axis=0)
-        p_ = 1 - (numerator / denominator)
+        n_extreme = np.sum(r_true_ < r_null_, axis=0)
+        p_ = 1 - (n_extreme / (n_perm_ + 1))
     return p_
 
 

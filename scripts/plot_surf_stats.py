@@ -22,6 +22,51 @@ def roi2contrast(roi):
     return d[roi]
 
 
+def camera_switcher(hemi, view):
+    if view == 'lateral':
+        if hemi == 'lh':
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=-1.5, y=0, z=0)
+            )
+        else:
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.5, y=0, z=0)
+            )
+    elif view == 'medial':
+        if hemi == 'lh':
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.75, y=0, z=0)
+            )
+        else:
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=-1.75, y=0, z=0)
+            )
+    elif view == 'ventral':
+        if hemi == 'lh':
+            camera = dict(
+                up=dict(x=0, y=1, z=0),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=0, y=0, z=-2.5)
+            )
+        else:
+            camera = dict(
+                up=dict(x=0, y=1, z=0),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=0, y=0, z=-2.5)
+            )
+    else:
+        raise 'invalid view'
+    return camera
+
+
 def roi_cmap():
     d = {
         'MT': (0.10196078431372549, 0.788235294117647, 0.2196078431372549),
@@ -31,6 +76,15 @@ def roi_cmap():
         'pSTS': (1.0, 1.0, 1.0),
         'aSTS': (1.0, 1.0, 0.)}
     return list(d.values())
+
+
+def get_vmax(analysis):
+    d = dict(full=0.7,
+             categories=0.6,
+             features=0.25,
+             categories_unique=0.25,
+             features_unique=0.15)
+    return d[analysis]
 
 
 class SurfaceStats:
@@ -43,6 +97,7 @@ class SurfaceStats:
         self.ROIs = args.ROIs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
+        self.vmax = 1
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
@@ -58,19 +113,26 @@ class SurfaceStats:
         if self.unique_variance:
             if self.category is not None:
                 base = f'sub-{self.sid}_dropped-categorywithnuisance-{self.category}'
+                analysis = 'categories_unique'
             else:  # self.feature is not None:
                 base = f'sub-{self.sid}_dropped-featurewithnuisance-{self.feature}'
+                analysis = 'features_unique'
         else:  # not self.unique_variance
             if self.category is not None:
                 # Regression with the categories without the other regressors
                 base = f'sub-{self.sid}_category-{self.category}'
+                analysis = 'categories'
             elif self.feature is not None:
                 base = f'sub-{self.sid}_feature-{self.feature}'
+                analysis = 'features'
             else:  # This is the full regression model with all annotated features
                 base = f'sub-{self.sid}_full-model'
+                analysis = 'full'
+        self.vmax = get_vmax(analysis)
         self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2filtered.nii.gz'
         self.out_file_prefix = f'{self.out_dir}/{self.process}/{base}'
-        self.figure_prefix = f'{self.figure_dir}/{base}'
+        Path(f'{self.figure_dir}/{analysis}/sub-{self.sid}').mkdir(parents=True, exist_ok=True)
+        self.figure_prefix = f'{self.figure_dir}/{analysis}/sub-{self.sid}/{base}'
         print(self.in_file_prefix)
         print(self.out_file_prefix)
         print(self.figure_prefix)
@@ -133,45 +195,39 @@ class SurfaceStats:
         else:
             hemi_name = 'right'
 
-        if self.ROIs:
-            roi_map, roi_indices = self.load_rois(hemi_)
-            fig, ax = plt.subplots(1, figsize=(50, 50),
-                                   subplot_kw={'projection': '3d'})
-            plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                   roi_map=surf_map,
-                                   bg_map=bg_map,
-                                   vmax=0.5,
-                                   vmin=0.,
-                                   cmap=self.cmap,
-                                   axes=ax,
-                                   colorbar=False,
-                                   hemi=hemi_name,
-                                   view='lateral')
-            plotting.plot_surf_contours(surf_mesh=surf_mesh,
-                                        roi_map=roi_map,
-                                        legend=False,
-                                        labels=self.rois,
-                                        levels=roi_indices,
-                                        figure=fig,
-                                        axes=None,
-                                        colors=self.roi_cmap,
-                                        output_file=f'{self.figure_prefix}_hemi-{hemi_}.jpg')
-        else:
-            for view in ['lateral', 'ventral', 'medial']:
-                _, axes = plt.subplots(1, figsize=(10, 10),
-                                     subplot_kw={'projection': '3d'})
-                # for ax, view in zip(axes, views):
-                plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                       roi_map=surf_map,
-                                       bg_map=bg_map,
-                                       vmax=0.5,
-                                       vmin=0.,
-                                       axes=axes,
-                                       cmap=self.cmap,
-                                       hemi=hemi_name,
-                                       colorbar=False,
-                                       view=view)
-                plt.savefig(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.jpg')
+        surf_map = np.nan_to_num(surf_map)
+        surf_map[surf_map < 0] = 0
+        if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
+            threshold = surf_map[np.invert(np.isclose(surf_map, 0))].min()
+            max_val = surf_map.max()
+            print(f'smallest value = {threshold:.3f}')
+            print(f'largest value = {max_val:.3f}')
+            for view in ['ventral', 'lateral', 'medial']:
+                fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                             roi_map=surf_map,
+                                             bg_map=bg_map,
+                                             vmax=self.vmax,
+                                             threshold=threshold,
+                                             engine='plotly',
+                                             colorbar=False,
+                                             view=view,
+                                             cmap=self.cmap,
+                                             hemi=hemi_name)
+                fig.figure.update_layout(scene_camera=camera_switcher(hemi_, view))
+                fig.figure.write_image(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.pdf')
+
+            # Save an interactive plot with colorbar
+            fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                         roi_map=surf_map,
+                                         bg_map=bg_map,
+                                         vmax=self.vmax,
+                                         threshold=threshold,
+                                         engine='plotly',
+                                         colorbar=True,
+                                         view='lateral',
+                                         cmap=self.cmap,
+                                         hemi=hemi_name)
+            fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
 
     def plot_one_hemi(self, hemi_):
         surface_data = self.compute_surf_stats(hemi_)
