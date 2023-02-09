@@ -234,9 +234,8 @@ class FeatureCorrelations:
             df = df[columns]
         else:
             df = self.load_annotations()
-            if self.include_nuisance:
-                nuisance = self.load_nuisance_regressors()
-                df = pd.concat([df, nuisance], axis=1)
+            nuisance = self.load_nuisance_regressors()
+            df = pd.concat([df, nuisance], axis=1)
 
         if not self.precomputed:
             rs, ps = self.compute_mat(np.array(df))
@@ -244,8 +243,19 @@ class FeatureCorrelations:
             print('here')
             self.save(ps, 'ps')
         else:
-            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.npy')
-            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.npy')
+            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}_nuisance-True.npy')
+            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}_nuisance-True.npy')
+            if not self.include_nuisance:
+                indices = []
+                for i, col in enumerate(df.columns):
+                    if ('AlexNet' in col) or ('motion' in col):
+                        df.drop(columns=col, inplace=True)
+                    else:
+                        indices.append(i)
+                indices = np.array(indices)
+                rs = rs[:indices.max(), :indices.max()]
+                ps = ps[:indices.max(), :indices.max()]
+
         features = []
         for feature in df.columns:
             if feature == 'transitivity':
@@ -261,7 +271,7 @@ def main():
     parser.add_argument('--context', type=str, default='paper')
     parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
