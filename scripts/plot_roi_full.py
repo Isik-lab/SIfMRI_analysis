@@ -54,6 +54,7 @@ class PlotROIPrediction:
         self.process = 'PlotROIPrediction'
         self.n_perm = args.n_perm
         self.individual = args.individual
+        self.reliability_mean = args.reliability_mean
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -79,12 +80,11 @@ class PlotROIPrediction:
         data_list = []
         for roi in self.all_rois:
             files = glob.glob(f'{self.out_dir}/ROIPrediction/*roi-{roi}*reliability*pkl')
-            r2 = 0
-            for f in files:
+            r2 = np.zeros(len(files))
+            for i, f in enumerate(files):
                 in_data = load_pkl(f)
-                r2 += in_data['reliability']
-            r2 /= len(files)
-            data = {'roi': roi, 'reliability': r2}
+                r2[i] = in_data['reliability']
+            data = {'roi': roi, 'reliability_min': r2.min(), 'reliability_max': r2.max(), 'reliability_mean': r2.mean()}
             data_list.append(data)
         df = pd.DataFrame(data_list)
         df.replace({'face-pSTS': 'STS-Face',
@@ -100,7 +100,6 @@ class PlotROIPrediction:
         data_list = []
         for roi in self.all_rois:
             files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*roi-{roi}*pkl')
-            print(f'*{name}*roi-{roi}*', len(files))
             r2 = 0
             r2null = np.zeros(self.n_perm)
             r2var = np.zeros(self.n_perm)
@@ -117,11 +116,9 @@ class PlotROIPrediction:
             data['low_ci'], data['high_ci'] = np.percentile(r2var, [2.5, 97.5])
             data_list.append(data)
         df = pd.DataFrame(data_list)
+        df = df.loc[df.roi != 'TPJ'] #drop TPJ
 
-        df['p_corrected'] = 1
-        for roi in self.all_rois:
-                rows = (df.roi == roi)
-                df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
+        df['p_corrected'] = multiple_comp_correct(df['p'])
         df['significant'] = 'ns'
         df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
         df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
@@ -140,7 +137,6 @@ class PlotROIPrediction:
         # Load the results in their own dictionaries and create a dataframe
         data_list = []
         files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}*pkl')
-        print(name, len(files))
         for f in files:
             data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
@@ -153,10 +149,9 @@ class PlotROIPrediction:
             df.drop(columns=['reliability', 'r2null', 'r2var'], inplace=True)
 
             df['p_corrected'] = 1
-            for roi in self.all_rois:
-                for subj in self.subjs:
-                    rows = (df.sid == subj) & (df.roi == roi)
-                    df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
+            for subj in self.subjs:
+                rows = (df.sid == subj)
+                df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
             df['significant'] = 'ns'
             df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
             df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
@@ -178,19 +173,31 @@ class PlotROIPrediction:
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
         sns.set_theme(context='poster', style='white', rc=custom_params)
         _, ax = plt.subplots(1, figsize=(int(len(self.rois)*3), 8))
-        sns.barplot(x='roi', y='reliability',
-                    color=[0.8, 0.8, 0.8], edgecolor=[0.2, 0.2, 0.2],
-                    ax=ax, data=df)
         sns.barplot(x='roi', y='r2',
                     color=[0.87, 0.67, 0.87], edgecolor=[0.2, 0.2, 0.2],
                     ax=ax, data=df)
-        y_max = df.reliability.max() + 0.04
-        for bar, roi in zip(ax.patches[int(len(ax.patches)/2):], self.rois):
+
+        if self.reliability_mean:
+            y_max = df.reliability_mean.max() + 0.04
+        else:
+            y_max = df.reliability_max.max() + 0.04
+
+        for bar, roi in zip(ax.patches, self.rois):
             y1 = df.loc[(df.roi == roi), 'low_ci'].item()
             y2 = df.loc[(df.roi == roi), 'high_ci'].item()
             sig = df.loc[(df.roi == roi), 'significant'].item()
             width = bar.get_width()
             x = bar.get_x() + (width/2)
+            #Plot noise ceiling
+            if self.reliability_mean:
+                r1 = df.loc[df.roi == roi, 'reliability_mean'].item()
+                ax.plot([x-(width/2), x+(width/2)], [r1, r1], color='k', alpha=0.1)
+            else:
+                r1 = df.loc[df.roi == roi, 'reliability_min'].item()
+                r2 = df.loc[df.roi == roi, 'reliability_max'].item()
+                ax.fill_between([x-(width/2), x+(width/2)], r1, r2,
+                                color='k', alpha=0.1)
+            #Plot error bars
             ax.plot([x, x], [y1, y2], 'k')
             if sig != 'ns':
                 ax.text(x, y_max - 0.02, sig,
@@ -264,6 +271,7 @@ class PlotROIPrediction:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stream', type=str, default='lateral')
+    parser.add_argument('--reliability_mean', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--individual', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=10000)
     parser.add_argument('--data_dir', '-data', type=str,

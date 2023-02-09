@@ -162,7 +162,7 @@ class FeatureCorrelations:
         # ticks = np.linspace(vmin, vmax, num=12).round(decimals=1)
         cbar = plt.colorbar(fraction=0.046, pad=0.04)
         cbar.ax.tick_params(size=0)
-        cbar.set_label(label=r"Correlation ($r$)", size=label_size + 2)
+        cbar.set_label(label=r"Rank correlation ($rho$)", size=label_size + 2)
         for t in cbar.ax.get_yticklabels():
             t.set_fontsize(label_size)
 

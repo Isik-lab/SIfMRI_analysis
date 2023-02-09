@@ -81,7 +81,7 @@ process = 'ROI_ANOVA'
 Path(f'{out_dir}/{process}').mkdir(exist_ok=True, parents=True)
 cat1 = 'social'
 cat2 = 'scene_object'
-roi1 = 'aSTS'
+roi1 = 'pSTS'
 roi2 = 'FFA'
 for sid in ['01', '02', '03', '04']:
     reliability_file = f'{out_dir}/Reliability/sub-{sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'

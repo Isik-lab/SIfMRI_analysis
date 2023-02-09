@@ -114,6 +114,7 @@ class PlotROIPrediction:
                 data['low_ci'], data['high_ci'] = np.percentile(r2var, [2.5, 97.5])
                 data_list.append(data)
         df = pd.DataFrame(data_list)
+        df = df.loc[df.roi != 'TPJ']
 
         df['p_corrected'] = 1
         for roi in self.all_rois:
@@ -148,12 +149,6 @@ class PlotROIPrediction:
                 data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
 
-        # Remove TPJ and rename some ROIs
-        df.replace({'face-pSTS': 'STS-Face',
-                    'pSTS': 'pSTS-SI',
-                    'aSTS': 'aSTS-SI'},
-                   inplace=True)
-
         # Perform FDR correction and make a column for how the marker should appear
         df.drop(columns=['reliability'], inplace=True)
         df.replace({'transitivity': 'object',
@@ -161,16 +156,25 @@ class PlotROIPrediction:
                     'joint_action': 'joint action'}, inplace=True)
         df['feature'] = pd.Categorical(df['feature'], ordered=True,
                                         categories=self.features)
+        #Remove TPJ before multiple comparisons correction
+        df = df.loc[df.roi != 'TPJ']
 
         df['p_corrected'] = 1
-        for roi in self.rois:
+        for roi in self.all_rois:
             for subj in self.subjs:
                 rows = (df.sid == subj) & (df.roi == roi)
+                print(roi, subj, np.sum(rows))
                 df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
         df['significant'] = 'ns'
         df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
         df.loc[(df['p_corrected'] < 0.01) & (df['p_corrected'] >= 0.001), 'significant'] = '**'
         df.loc[(df['p_corrected'] < 0.001), 'significant'] = '**'
+
+        # Rename some ROIs
+        df.replace({'face-pSTS': 'STS-Face',
+                    'pSTS': 'pSTS-SI',
+                    'aSTS': 'aSTS-SI'},
+                   inplace=True)
 
         # Make sid categorical
         self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.05

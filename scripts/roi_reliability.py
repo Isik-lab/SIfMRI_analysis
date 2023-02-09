@@ -65,7 +65,7 @@ class ROIPrediction:
         data = dict()
         data['reliability'] = self.load_files()
         self.add_info2data(data)
-        # self.save_results(data)
+        self.save_results(data)
         print(f"reliability = {data['reliability']:4f} \n")
 
 

@@ -105,7 +105,6 @@ class PlotROIPrediction:
         data_list = []
         for category, roi in itertools.product(self.all_categories, self.all_rois):
             files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}-{category}_roi-{roi}*pkl')
-            print(f'{name}-{category}_roi-{roi}', len(files))
             if files:
                 r2 = 0
                 r2null = np.zeros(self.n_perm)
@@ -138,7 +137,6 @@ class PlotROIPrediction:
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
         self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.05
-        print(self.y_max)
         df.replace(self.file_rename_map, inplace=True)
         df = df.loc[df['roi'].isin(self.rois)]
         df['roi'] = pd.Categorical(df['roi'], ordered=True,
@@ -152,19 +150,19 @@ class PlotROIPrediction:
         data_list = []
         for category in self.all_categories:
             files = glob.glob(f'{self.out_dir}/ROIPrediction/*{name}-{category}_roi*pkl')
-            print(category, len(files))
             for f in files:
                 data_list.append(load_pkl(f))
         df = pd.DataFrame(data_list)
 
-        # Remove TPJ and rename some ROIs
+        # Remove TPJ and drop some columns
         df.drop(columns=['unique_variance', 'feature', 'r2var', 'r2null'], inplace=True)
+        # Remove TPJ before multiple comparisons correction
+        df = df.loc[df.roi != 'TPJ']
 
-        # Perform FDR correction and make a column for how the marker should appear
         df['p_corrected'] = 1
-        for subj in self.subjs:
-            for roi in self.all_rois:
-                rows = (df.roi == roi) & (df.sid == subj)
+        for roi in self.all_rois:
+            for subj in self.subjs:
+                rows = (df.sid == subj) & (df.roi == roi)
                 df.loc[rows, 'p_corrected'] = multiple_comp_correct(df.loc[rows, 'p'])
         df['significant'] = 'ns'
         df.loc[(df['p_corrected'] < 0.05) & (df['p_corrected'] >= 0.01), 'significant'] = '*'
@@ -176,7 +174,6 @@ class PlotROIPrediction:
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
         self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.05
-        print(self.y_max)
         df = df.loc[df['roi'].isin(self.rois)]
 
         # Make sid categorical
