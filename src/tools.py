@@ -9,6 +9,51 @@ import nibabel as nib
 import math
 
 
+def camera_switcher(hemi, view):
+    if view == 'lateral':
+        if hemi == 'lh':
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=-1.5, y=0, z=0)
+            )
+        else:
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.5, y=0, z=0)
+            )
+    elif view == 'medial':
+        if hemi == 'lh':
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.75, y=0, z=0)
+            )
+        else:
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=-1.75, y=0, z=0)
+            )
+    elif view == 'ventral':
+        if hemi == 'lh':
+            camera = dict(
+                up=dict(x=0, y=1, z=0),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=0, y=0, z=-2.5)
+            )
+        else:
+            camera = dict(
+                up=dict(x=0, y=1, z=0),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=0, y=0, z=-2.5)
+            )
+    else:
+        raise 'invalid view'
+    return camera
+
+
 def round_decimals_up(number:float, decimals:int=2):
     """
     Returns a value rounded up to a specific number of decimal places.

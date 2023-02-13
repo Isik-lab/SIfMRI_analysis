@@ -7,7 +7,7 @@ import argparse
 import seaborn as sns
 import nibabel as nib
 from scipy import ndimage
-import matplotlib.pyplot as plt
+from src.tools import camera_switcher
 
 
 def roi2contrast(roi):
@@ -20,51 +20,6 @@ def roi2contrast(roi):
     d['SI-pSTS'] = 'interactVsNoninteract'
     d['EVC'] = 'EVC'
     return d[roi]
-
-
-def camera_switcher(hemi, view):
-    if view == 'lateral':
-        if hemi == 'lh':
-            camera = dict(
-                up=dict(x=0, y=0, z=1),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=-1.5, y=0, z=0)
-            )
-        else:
-            camera = dict(
-                up=dict(x=0, y=0, z=1),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=1.5, y=0, z=0)
-            )
-    elif view == 'medial':
-        if hemi == 'lh':
-            camera = dict(
-                up=dict(x=0, y=0, z=1),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=1.75, y=0, z=0)
-            )
-        else:
-            camera = dict(
-                up=dict(x=0, y=0, z=1),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=-1.75, y=0, z=0)
-            )
-    elif view == 'ventral':
-        if hemi == 'lh':
-            camera = dict(
-                up=dict(x=0, y=1, z=0),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=0, y=0, z=-2.5)
-            )
-        else:
-            camera = dict(
-                up=dict(x=0, y=1, z=0),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=0, y=0, z=-2.5)
-            )
-    else:
-        raise 'invalid view'
-    return camera
 
 
 def roi_cmap():
@@ -108,6 +63,7 @@ class SurfaceStats:
         self.in_file_prefix = ''
         self.out_file_prefix = ''
         self.figure_prefix = ''
+        self.base = ''
 
     def get_file_names(self):
         if self.unique_variance:
@@ -213,8 +169,10 @@ class SurfaceStats:
                                              view=view,
                                              cmap=self.cmap,
                                              hemi=hemi_name)
-                fig.figure.update_layout(scene_camera=camera_switcher(hemi_, view))
-                fig.figure.write_image(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.pdf')
+                fig.figure.update_layout(scene_camera=camera_switcher(hemi_, view),
+                                         paper_bgcolor="rgba(0,0,0,0)",
+                                         plot_bgcolor="rgba(0,0,0,0)")
+                fig.figure.write_image(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.svg')
 
             # Save an interactive plot with colorbar
             fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
@@ -227,7 +185,7 @@ class SurfaceStats:
                                          view='lateral',
                                          cmap=self.cmap,
                                          hemi=hemi_name)
-            fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
+            fig.figure.write_html(f'{self.figure_dir}/html_files/{self.base}_hemi-{hemi_}.html')
 
     def plot_one_hemi(self, hemi_):
         surface_data = self.compute_surf_stats(hemi_)

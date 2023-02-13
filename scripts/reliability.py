@@ -9,7 +9,7 @@ import nibabel as nib
 import seaborn as sns
 import src.tools as tools
 from pathlib import Path
-import matplotlib.pyplot as plt
+from src.tools import camera_switcher
 
 
 def save_np_and_nib(np_arr, shape, affine, header, out):
@@ -114,24 +114,30 @@ class Reliability():
                f'{self.data_dir}/freesurfer/sub-{self.sid}/surf/{hemi}.sulc'
 
     def plot_stats(self, surf_mesh, bg_map, surf_map, hemi):
-        file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}.jpg'
-        if hemi == 'rh':
-            hemi = 'right'
+        if hemi == 'lh':
+            hemi_name = 'left'
         else:
-            hemi = 'left'
-        _, ax = plt.subplots(1, figsize=(10, 10),
-                               subplot_kw={'projection': '3d'})
-        plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                               roi_map=surf_map**2,
-                               bg_map=bg_map,
-                               ax=ax,
-                               threshold=self.threshold**2,
-                               vmax=1.,
-                               cmap=self.cmap,
-                               hemi=hemi,
-                               view='lateral',
-                               colorbar=True,
-                               output_file=file)
+            hemi_name = 'right'
+
+        surf_map = np.nan_to_num(surf_map)
+        surf_map[surf_map < 0] = 0
+        if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
+            for view in ['ventral', 'lateral', 'medial']:
+                file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}_view-{view}.svg'
+                fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                             roi_map=surf_map,
+                                             bg_map=bg_map,
+                                             vmax=1.,
+                                             threshold=self.threshold,
+                                             engine='plotly',
+                                             colorbar=False,
+                                             view=view,
+                                             cmap=self.cmap,
+                                             hemi=hemi_name)
+                fig.figure.update_layout(scene_camera=camera_switcher(hemi, view),
+                                         paper_bgcolor="rgba(0,0,0,0)",
+                                         plot_bgcolor="rgba(0,0,0,0)")
+                fig.figure.write_image(file)
 
     def plot_each_hemi(self, filename):
         for hemi in ['lh', 'rh']:
