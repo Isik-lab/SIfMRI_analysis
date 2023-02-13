@@ -155,7 +155,7 @@ class FeatureCorrelations:
                 # weight = 'bold' if ps[j, i] < 0.05 else 'normal'
                 if ps[j, i] < 0.05:
                     label = label if np.round_(label, decimals=1) != 0 else int(0)
-                    print(f'{ticks[j+1]}, {ticks[i]}, r = {label:.2f}, p = {ps[j, i]:.3f}')
+                    print(f'{ticks[j+1]}, {ticks[i]}, r = {label:.2f}, p = {ps[j, i]:.4f}')
                     ax.text(i, j, '{:.1f}'.format(label), ha='center', va='center',
                             color='black', fontsize=r_size, weight='bold')
         ax.grid(False)
@@ -197,7 +197,7 @@ class FeatureCorrelations:
         plt.close()
 
     def save(self, arr, name):
-        np.save(f'{self.out_dir}/{self.process}/{name}_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.npy', arr)
+        np.save(f'{self.out_dir}/{self.process}/{name}_rsa-{self.rsa}_set-{self.set}.npy', arr)
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
@@ -227,24 +227,17 @@ class FeatureCorrelations:
         return pd.DataFrame(highD_data, columns=cols)
 
     def run(self):
-        if self.rsa:
-            df = pd.read_csv(f'{self.out_dir}/FeatureRDMs/rdms_set-{self.set}.csv')
-            columns = df.columns.to_list()
-            columns.remove('AlexNet conv5')
-            df = df[columns]
-        else:
-            df = self.load_annotations()
-            nuisance = self.load_nuisance_regressors()
-            df = pd.concat([df, nuisance], axis=1)
+        df = self.load_annotations()
+        nuisance = self.load_nuisance_regressors()
+        df = pd.concat([df, nuisance], axis=1)
 
         if not self.precomputed:
             rs, ps = self.compute_mat(np.array(df))
             self.save(rs, 'rs')
-            print('here')
             self.save(ps, 'ps')
         else:
-            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}_nuisance-True.npy')
-            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}_nuisance-True.npy')
+            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}.npy')
+            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}.npy')
             if not self.include_nuisance:
                 indices = []
                 for i, col in enumerate(df.columns):
@@ -266,12 +259,12 @@ class FeatureCorrelations:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_perm', type=int, default=int(5e3))
+    parser.add_argument('--n_perm', type=int, default=int(10e3))
     parser.add_argument('--set', type=str, default='both')
     parser.add_argument('--context', type=str, default='paper')
     parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

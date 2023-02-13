@@ -35,7 +35,7 @@ def subj2shade(key):
 
 def cat2color(key=None):
     d = dict()
-    d['AlexNet conv2'] = np.array([0.7, 0.7, 0.7])
+    d['AlexNet-conv2'] = np.array([0.7, 0.7, 0.7])
     d['motion energy'] = np.array([0.7, 0.7, 0.7])
     d['scene & object'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
     d['social primitives'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
@@ -52,6 +52,7 @@ class PlotROIPrediction:
         self.process = 'PlotROIPrediction'
         self.n_perm = args.n_perm
         self.individual = args.individual
+        self.stream = args.stream
         self.include_nuisance = args.include_nuisance
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
@@ -67,7 +68,7 @@ class PlotROIPrediction:
         else:
             self.out_prefix = 'group_'
 
-        if args.stream == 'lateral':
+        if self.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.out_prefix += 'lateral-rois_'
         else:
@@ -80,7 +81,7 @@ class PlotROIPrediction:
                 self.file_id = '_dropped-categorywithnuisance'
                 self.out_prefix += 'dropped-categorywithnuisance'
                 self.all_categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social', 'affective']
-                self.categories = ['AlexNet conv2', 'motion energy',
+                self.categories = ['AlexNet-conv2', 'motion energy',
                                    'scene & object', 'social primitives',
                                    'social interaction', 'affective']
                 self.file_rename_map = {key: val for key, val in zip(self.all_categories, self.categories)}
@@ -96,7 +97,7 @@ class PlotROIPrediction:
             self.out_prefix += 'category'
             self.y_label = 'Explained variance'
             self.all_categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social', 'affective']
-            self.categories = ['AlexNet conv2', 'motion energy',
+            self.categories = ['AlexNet-conv2', 'motion energy',
                                'scene & object', 'social primitives',
                                'social interaction', 'affective']
             self.file_rename_map = {key: val for key, val in zip(self.all_categories, self.categories)}
@@ -136,9 +137,9 @@ class PlotROIPrediction:
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
-        self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.05
         df.replace(self.file_rename_map, inplace=True)
         df = df.loc[df['roi'].isin(self.rois)]
+        self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.01
         df['roi'] = pd.Categorical(df['roi'], ordered=True,
                                    categories=self.rois)
         df['category'] = pd.Categorical(df['category'], ordered=True,
@@ -173,7 +174,7 @@ class PlotROIPrediction:
                     'pSTS': 'pSTS-SI',
                     'aSTS': 'aSTS-SI'},
                    inplace=True)
-        self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.05
+        self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.01
         df = df.loc[df['roi'].isin(self.rois)]
 
         # Make sid categorical
@@ -186,17 +187,24 @@ class PlotROIPrediction:
                                    categories=self.rois)
         return df
 
-    def plot_group_results(self, df):
+    def plot_group_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='poster', style='white', rc=custom_params)
-        _, axes = plt.subplots(1, len(self.rois), figsize=(int(len(self.rois) * 6), 8))
+        sns.set_theme(context='paper', style='ticks', rc=custom_params)
+        if self.stream == 'lateral':
+            fig, axes = plt.subplots(2, 4, figsize=(6.5, 3),
+                                    sharey=True, sharex=True)
+            axes = axes.flatten()
+        else:
+            _, axes = plt.subplots(1, len(self.rois), figsize=(4.3, 2.5),
+                                   sharex=True, sharey=True)
+
 
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]
             sns.barplot(x='category', y='r2', palette='gray', saturation=0.8,
                         data=cur_df,
                         ax=ax)
-            ax.set_title(roi, fontsize=26)
+            ax.set_title(roi, fontsize=font+2)
             ax.set_xlabel('')
             ax.set_ylim([0, self.y_max])
 
@@ -204,23 +212,30 @@ class PlotROIPrediction:
             label_format = '{:,.2f}'
             y_ticklocs = ax.get_yticks().tolist()
             ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
-            ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=20)
+            ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=font)
 
             # Change the xaxis font size and colors
             ax.set_xticklabels(self.categories,
-                               fontsize=20,
+                               fontsize=font,
                                rotation=45, ha='right')
-            for ticklabel, pointer in zip(self.categories, ax.get_xticklabels()):
-                color = cat2color(ticklabel)
-                # color[-1] = 1.
-                pointer.set_color(color)
-                pointer.set_weight('bold')
+            # for ticklabel, pointer in zip(self.categories, ax.get_xticklabels()):
+            #     color = cat2color(ticklabel)
+            #     # color[-1] = 1.
+            #     pointer.set_color(color)
+            #     pointer.set_weight('bold')
 
             # Remove the yaxis label from all plots except the two leftmost plots
-            if i == 0:
-                ax.set_ylabel(f'{self.y_label} ($r^2$)', fontsize=22)
+            if i == 0 or (self.stream == 'lateral' and i == 4):
+                ax.set_ylabel(f'{self.y_label} ($r^2$)', fontsize=font)
             else:
                 ax.set_ylabel('')
+
+            # if self.stream == 'lateral' and i >= 3:
+            #     ax.set_xticklabels(self.categories,
+            #                        fontsize=font,
+            #                        rotation=45, ha='right')
+            # else:
+            #     ax.set_xticklabels([])
 
             # Manipulate the color and add error bars
             for bar, category in zip(ax.patches, self.categories):
@@ -232,11 +247,13 @@ class PlotROIPrediction:
                 x = bar.get_x() + (width/2)
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':
-                    ax.text(x, self.y_max - 0.02, sig,
+                    ax.text(x, self.y_max - 0.05, sig,
                             horizontalalignment='center',
-                            fontsize=16)
+                            fontsize=font+2)
                 bar.set_color(color)
             ax.legend([], [], frameon=False)
+        if self.stream == 'lateral':
+            fig.delaxes(axes[-1])
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
