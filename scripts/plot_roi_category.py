@@ -35,8 +35,8 @@ def subj2shade(key):
 
 def cat2color(key=None):
     d = dict()
-    d['AlexNet-conv2'] = np.array([0.7, 0.7, 0.7])
-    d['motion energy'] = np.array([0.7, 0.7, 0.7])
+    d['AlexNet-conv2'] = np.array([0.8, 0.8, 0.8, 0.8])
+    d['motion energy'] = np.array([0.8, 0.8, 0.8, 0.8])
     d['scene & object'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
     d['social primitives'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
     d['social interaction'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
@@ -54,6 +54,7 @@ class PlotROIPrediction:
         self.individual = args.individual
         self.stream = args.stream
         self.include_nuisance = args.include_nuisance
+        self.unique_variance = args.unique_variance
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
@@ -75,7 +76,7 @@ class PlotROIPrediction:
             self.rois = ['FFA', 'PPA']
             self.out_prefix += 'ventral-rois_'
 
-        if args.unique_variance:
+        if self.unique_variance:
             self.y_label = 'Unique variance'
             if self.include_nuisance:
                 self.file_id = '_dropped-categorywithnuisance'
@@ -139,10 +140,8 @@ class PlotROIPrediction:
                    inplace=True)
         df.replace(self.file_rename_map, inplace=True)
         df = df.loc[df['roi'].isin(self.rois)]
-        if self.stream == 'lateral':
-            self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.01
-        else:
-            self.y_max = tools.round_decimals_up(df.high_ci.max(), 1) + 0.07
+
+        self.y_max = tools.round_decimals_up(df.high_ci.max(), 2) + 0.025
         df['roi'] = pd.Categorical(df['roi'], ordered=True,
                                    categories=self.rois)
         df['category'] = pd.Categorical(df['category'], ordered=True,
@@ -180,7 +179,7 @@ class PlotROIPrediction:
         df = df.loc[df['roi'].isin(self.rois)]
 
         #Set y_max
-        self.y_max = tools.round_decimals_up(df.high_ci.max(), 2) + 0.05
+        self.y_max = tools.round_decimals_up(df.high_ci.max(), 2) + 0.01
 
         # Make sid categorical
         df.replace(self.file_rename_map, inplace=True)
@@ -254,7 +253,7 @@ class PlotROIPrediction:
                 x = bar.get_x() + (width/2)
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':
-                    ax.text(x, self.y_max - 0.05, sig,
+                    ax.text(x, self.y_max - 0.01, sig,
                             horizontalalignment='center',
                             fontsize=font+2)
                 bar.set_color(color)
@@ -278,7 +277,7 @@ class PlotROIPrediction:
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]
             sns.barplot(x='category', y='r2',
-                        hue='sid', palette='gray', saturation=0.8,
+                        hue='sid', palette='gray',
                         data=cur_df,
                         ax=ax).set(title=roi)
             ax.set_xlabel('')
@@ -311,21 +310,21 @@ class PlotROIPrediction:
 
             # Plot vertical lines to separate the bars
             ax.vlines(np.arange(0.5, len(self.categories) - 0.5),
-                      ymin=0, ymax=self.y_max - 0.01,
-                      colors='lightgray')
+                      ymin=0, ymax=self.y_max - 0.005,
+                      colors='lightgray', alpha=0.5)
 
             # Manipulate the color and add error bars
             for bar, (subj, category) in zip(ax.patches, itertools.product(self.subjs, self.categories)):
                 color = cat2color(category)
                 color[:-1] = color[:-1] * subj2shade(subj)
+                bar.set_color(color)
                 y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()
                 y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'high_ci'].item()
                 sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'significant'].item()
                 x = bar.get_x() + 0.1
                 ax.plot([x, x], [y1, y2], 'k', linewidth=0.75)
                 if sig != 'ns':
-                    ax.scatter(x, self.y_max - 0.03, marker='o', s=1, color=color)
-                bar.set_color(color)
+                    ax.scatter(x, self.y_max - 0.01, marker='o', s=1, color=color)
 
             ax.legend([], [], frameon=False)
         if self.stream == 'lateral':

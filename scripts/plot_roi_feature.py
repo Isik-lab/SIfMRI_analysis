@@ -227,7 +227,7 @@ class PlotROIPrediction:
 
             # Remove the yaxis label from all plots except the two leftmost plots
             if i == 0 or (self.stream == 'lateral' and i == 4):
-                ax.set_ylabel(f'{self.y_label} ($r^2$)', fontsize=font)
+                ax.set_ylabel(f'{self.y_label} ($r^2$)', fontsize=font+2)
             else:
                 ax.set_ylabel('')
 
@@ -241,7 +241,7 @@ class PlotROIPrediction:
                 x = bar.get_x() + (width / 2)
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':
-                    ax.text(x, self.y_max - 0.05, sig,
+                    ax.text(x, self.y_max - 0.005, sig,
                             horizontalalignment='center',
                             fontsize=font + 2)
                 bar.set_color(color)
@@ -298,8 +298,8 @@ class PlotROIPrediction:
 
             # Plot vertical lines to separate the bars
             ax.vlines(np.arange(0.5, len(self.features) - 0.5),
-                      ymin=0, ymax=self.y_max - 0.01,
-                      colors='lightgray')
+                      ymin=0, ymax=np.round(self.y_max, 2),
+                      colors='lightgray', alpha=0.5)
 
             # Manipulate the color and add error bars
             for bar, (subj, feature) in zip(ax.patches, itertools.product(self.subjs, self.features)):
@@ -309,9 +309,9 @@ class PlotROIPrediction:
                 y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.feature == feature), 'high_ci'].item()
                 sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.feature == feature), 'significant'].item()
                 x = bar.get_x() + 0.1
-                ax.plot([x, x], [y1, y2], 'k', linewidth=0.75)
+                ax.plot([x, x], [y1, y2], 'k', linewidth=0.6)
                 if sig != 'ns':
-                    ax.scatter(x, self.y_max - 0.03, marker='o', s=1, color=color)
+                    ax.scatter(x, self.y_max - 0.005, marker='o', s=1, color=color)
                 bar.set_color(color)
 
             ax.legend([], [], frameon=False)

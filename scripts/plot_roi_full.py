@@ -52,6 +52,7 @@ def subj2shade(key):
 class PlotROIPrediction:
     def __init__(self, args):
         self.process = 'PlotROIPrediction'
+        self.stream = args.stream
         self.n_perm = args.n_perm
         self.individual = args.individual
         self.reliability_mean = args.reliability_mean
@@ -67,7 +68,7 @@ class PlotROIPrediction:
         else:
             self.out_prefix = 'group_'
 
-        if args.stream == 'lateral':
+        if self.stream == 'lateral':
             self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
             self.roi_cmap = sns.color_palette("hls")[:len(self.rois)]
             self.out_prefix += 'lateral-rois_full-model'
@@ -169,10 +170,13 @@ class PlotROIPrediction:
                                    categories=self.rois)
         return df
 
-    def plot_group_results(self, df):
+    def plot_group_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='poster', style='white', rc=custom_params)
-        _, ax = plt.subplots(1, figsize=(int(len(self.rois)*3), 8))
+        sns.set_theme(context='talk', style='whitegrid', rc=custom_params)
+        if self.stream == 'lateral':
+            _, ax = plt.subplots(1, figsize=(6.5, 2))
+        else:
+            _, ax = plt.subplots(1, figsize=(2, 2))
         sns.barplot(x='roi', y='r2',
                     color=[0.87, 0.67, 0.87], edgecolor=[0.2, 0.2, 0.2],
                     ax=ax, data=df)
@@ -181,6 +185,17 @@ class PlotROIPrediction:
             y_max = df.reliability_mean.max() + 0.04
         else:
             y_max = df.reliability_max.max() + 0.04
+        ax.set_ylim([0, y_max])
+
+        ax.set_xlabel('')
+        ax.set_xticklabels(self.rois, fontsize=font)
+
+        # Change the ytick font size
+        label_format = '{:,.2f}'
+        y_ticklocs = ax.get_yticks().tolist()
+        ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
+        ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=font)
+        ax.set_ylabel('Explained variance ($r^2$)', fontsize=font + 2)
 
         for bar, roi in zip(ax.patches, self.rois):
             y1 = df.loc[(df.roi == roi), 'low_ci'].item()
@@ -196,22 +211,25 @@ class PlotROIPrediction:
                 r1 = df.loc[df.roi == roi, 'reliability_min'].item()
                 r2 = df.loc[df.roi == roi, 'reliability_max'].item()
                 ax.fill_between([x-(width/2), x+(width/2)], r1, r2,
-                                color='k', alpha=0.1)
+                                color='k', alpha=0.25, edgecolor=[1, 1, 1, 0])
             #Plot error bars
-            ax.plot([x, x], [y1, y2], 'k')
+            ax.plot([x, x], [y1, y2], 'k', linewidth=1.5)
             if sig != 'ns':
                 ax.text(x, y_max - 0.02, sig,
                         horizontalalignment='center')
         ax.legend([], [], frameon=False)
         ax.set_xlabel('')
-        ax.set_ylabel('Explained variance ($r^2$)', fontsize=22)
+        ax.set_ylabel('Explained variance ($r^2$)', fontsize=font+2)
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
-    def plot_individual_results(self, df):
+    def plot_individual_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='poster', style='white', rc=custom_params)
-        _, ax = plt.subplots(1, figsize=(int(len(self.rois)*3), 8))
+        sns.set_theme(context='paper', style='whitegrid', rc=custom_params)
+        if self.stream == 'lateral':
+            _, ax = plt.subplots(1, figsize=(6.5, 2))
+        else:
+            _, ax = plt.subplots(1, figsize=(2, 2))
 
         sns.barplot(x='roi', y='reliability',
                     hue='sid', color=[0.7, 0.7, 0.7],
@@ -221,15 +239,23 @@ class PlotROIPrediction:
                     hue='sid', color=[0.8, 0, 0.8],
                     ax=ax, data=df)
 
-        y_max = 0.7
+        y_max = df.reliability.max() + 0.05
         ax.set_ylim([0, y_max])
 
         ax.set_xlabel('')
-        ax.set_xticklabels(self.rois, fontsize=20)
+        ax.set_xticklabels(self.rois, fontsize=font)
+
+        # Change the ytick font size
+        label_format = '{:,.2f}'
+        y_ticklocs = ax.get_yticks().tolist()
+        ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
+        ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=font)
+        ax.set_ylabel('Explained variance ($r^2$)', fontsize=font+2)
 
         # Plot vertical lines to separate the bars
-        for x in np.arange(0.5, len(self.rois) - 0.5):
-            ax.plot([x, x], [0, y_max - (y_max / 20)], '0.8')
+        ax.vlines(np.arange(0.5, len(self.rois) - 0.5),
+                  ymin=0, ymax=np.round(y_max),
+                  colors='lightgray', alpha=0.5)
 
         # Manipulate the color and add error bars
         for bar, (subj, roi) in zip(ax.patches[int(len(ax.patches) / 2):],
@@ -243,13 +269,12 @@ class PlotROIPrediction:
             sig = df.loc[(df.sid == subj) & (df.roi == roi),
                          'significant'].item()
             x = bar.get_x() + 0.1
-            ax.plot([x, x], [y1, y2], 'k')
+            ax.plot([x, x], [y1, y2], 'k', linewidth=1.5)
             if sig != 'ns':
-                ax.scatter(x, y_max - 0.02, marker='o', color=color, edgecolors=[0.2, 0.2, 0.2])
+                ax.scatter(x, y_max - 0.02, marker='o', color=color, s=8, edgecolors=[0.2, 0.2, 0.2])
             bar.set_facecolor(color)
             bar.set_edgecolor((.2, .2, .2))
         ax.legend([], [], frameon=False)
-        ax.set_ylabel('Explained variance ($r^2$)', fontsize=22)
         plt.tight_layout()
         plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
