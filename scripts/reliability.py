@@ -123,14 +123,15 @@ class Reliability():
         surf_map[surf_map < 0] = 0
         if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
             for view in ['ventral', 'lateral', 'medial']:
-                file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}_view-{view}.svg'
+                colorbar = True if view == 'lateral' and hemi == 'rh' else False
+                file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}_view-{view}.png'
                 fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                              roi_map=surf_map,
                                              bg_map=bg_map,
                                              vmax=1.,
                                              threshold=self.threshold,
                                              engine='plotly',
-                                             colorbar=False,
+                                             colorbar=colorbar,
                                              view=view,
                                              cmap=self.cmap,
                                              hemi=hemi_name)
