@@ -261,7 +261,7 @@ class PlotROIPrediction:
         if self.stream == 'lateral':
             fig.delaxes(axes[-1])
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
 
     def plot_individual_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
@@ -330,7 +330,7 @@ class PlotROIPrediction:
         if self.stream == 'lateral':
             fig.delaxes(axes[-1])
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
 
     def run(self):
         if self.individual:
