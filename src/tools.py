@@ -241,15 +241,16 @@ def mask_img(img, mask, fill=0.):
     return masked_img
 
 
-def add_svg(current_canvas, file, x, y, offset=40, scaling_factor=None):
+def add_svg(current_canvas, file, x, y, offset=50, scaling_factor=None, max_width=None):
     canvas_width = current_canvas._pagesize[0]
     drawing = svg2rlg(file)
     if scaling_factor is None:
-        scaling_factor = canvas_width / drawing.width
-    print(scaling_factor)
+        if max_width is None:
+            scaling_factor = canvas_width / drawing.width
+        else:
+            scaling_factor = max_width / drawing.width
     drawing.scale(scaling_factor, scaling_factor)
     y_pos = y-drawing.height+offset
-    print(drawing.height)
     renderPDF.draw(drawing, current_canvas,
                    x, y_pos,
                    showBoundary=False)

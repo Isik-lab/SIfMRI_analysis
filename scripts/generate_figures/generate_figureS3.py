@@ -25,13 +25,13 @@ canvas_height = canvas_height_in*pixel_per_in
 # Open canvas
 c = canvas.Canvas(f'{out_path}/figure{figure_number}.pdf', pagesize=(canvas_width, canvas_height))
 x0 = 5
-y0 = canvas_height
+y0 = canvas_height - 10
 
 
 # Add the lateral individual bar plot
 barplot_file = f'{figure_dir}/PlotROIPrediction/individual_lateral-rois_full-model.svg'
 y_pos, scaling_factor = add_svg(c, barplot_file, x0, y0)
-c.drawString(x0, y0-10, 'a')
+c.drawString(x0, y0, 'a')
 
 # Add the ventral group bar plot
 y1 = y_pos - 10
