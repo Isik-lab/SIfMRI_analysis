@@ -8,8 +8,8 @@ import string
 
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
-canvas_height_in = 2.25
-figure_number = 'S17'
+canvas_height_in = 4.5
+figure_number = 'S15'
 surface_path = f'{figure_dir}/SurfaceStats/features_unique'
 features = ['transitivity', 'communication']
 out_path = f'{figure_dir}/{process}'

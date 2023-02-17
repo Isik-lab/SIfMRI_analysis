@@ -9,14 +9,14 @@ import string
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
 canvas_height_in = 3.375
-analysis = 'categories_unique'
+analysis = 'categories'
 if analysis == 'categories':
     surface_path = f'{figure_dir}/SurfaceStats/{analysis}'
     figure_number_start = 8
     plot_name = 'category'
 elif analysis == 'categories_unique':
     surface_path = f'{figure_dir}/SurfaceStats/{analysis}'
-    figure_number_start = 12
+    figure_number_start = 11
     plot_name = 'dropped-categorywithnuisance'
 else:
     raise Exception('analysis input must be categories or categories_unique')
@@ -36,17 +36,17 @@ margins = 2 #inches
 canvas_width = canvas_width - (pixel_per_in * margins)
 alphabet = string.ascii_lowercase
 
-
-for subj in range(4):
-    c = canvas.Canvas(f'{out_path}/figureS{figure_number_start+subj}.pdf', pagesize=(canvas_width, canvas_height))
-    sid = str(subj + 1).zfill(2)
+for isubj, subj in enumerate([1, 3, 4]):
+    out_name = f'{out_path}/figureS{figure_number_start+isubj}.pdf'
+    print(out_name)
+    c = canvas.Canvas(out_name, pagesize=(canvas_width, canvas_height))
+    sid = str(subj).zfill(2)
     x1 = 5
     y1 = canvas_height
-    for i, category in enumerate(categories):
+    for icategory, category in enumerate(categories):
         file = f"{surface_path}/sub-{sid}/sub-{sid}_{plot_name}-{category}_view-{view}_hemi-lh.png"
-        figure = alphabet[i]
+        figure = alphabet[icategory]
         if os.path.exists(file):
-            print(file)
             add_img(c, file,
                     x1, y1,
                     scaling_factor=scaling_factor)
