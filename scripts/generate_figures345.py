@@ -19,6 +19,7 @@ def scale_svg(drawing, scaling_factor=None, max_width=468):
     Scale a reportlab.graphics.shapes.Drawing()
     object while maintaining the aspect ratio
     """
+    print(drawing.width, drawing.height)
     if scaling_factor is None:
         scaling_factor = canvas_width/drawing.width
     drawing.scale(scaling_factor, scaling_factor)
@@ -37,13 +38,28 @@ def add_svg(current_canvas, file, x, y, offset=50):
 
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
-analysis = 'full'
-canvas_height_in = 2.75
-figure_number = 2
-plot_name = 'category'
-canvas_height_add_in = 0
+analysis = 'categories'
+canvas_height_in = 4
+if analysis == 'categories':
+    figure_number = 3
+    plot_name = 'category'
+    categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social']
+    canvas_height_add_in = 1
+elif analysis == 'categories_unique':
+    figure_number = 4
+    plot_name = 'dropped-categorywithnuisance'
+    categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social']
+    canvas_height_add_in = 1
+elif analysis == 'features_unique':
+    figure_number = 5
+    plot_name = 'dropped-featurewithnuisance'
+    categories = ['transitivity', 'communication']
+    canvas_height_add_in = 0
+else:
+    raise Exception('analysis input must be categories, categories_unique, or feature_unique')
 sid = str(2).zfill(2)
-barplot_file = f'{figure_dir}/PlotROIPrediction/group_lateral-rois_full-model.svg'
+surface_path = f'{figure_dir}/SurfaceStats/{analysis}/sub-{sid}'
+barplot_file = f'{figure_dir}/PlotROIPrediction/group_lateral-rois_{plot_name}.svg'
 out_path = f'{figure_dir}/{process}'
 Path(out_path).mkdir(exist_ok=True, parents=True)
 hemis = ['lh', 'rh']
@@ -65,30 +81,25 @@ y_pos = add_svg(c, barplot_file, 1, canvas_height)
 c.setFont("Helvetica", 10)
 c.drawString(5, canvas_height-10, 'a')
 
-# Reliability
 x1 = 5
 y1 = y_pos - 10
-surface_path = f'{figure_dir}/Reliability/'
-add_img(c, f"{surface_path}/sub-{sid}_space-T1w_desc-test-fracridge_hemi-lh_view-{view}.png",
-        x1, y1,
-        scaling_factor=scaling_factor)
-add_img(c, f"{surface_path}/sub-{sid}_space-T1w_desc-test-fracridge_hemi-rh_view-{view}.png",
-        x1+65, y1,
-        scaling_factor=scaling_factor)
-c.drawString(x1, y1, 'b')
-
-# Full Model
-x1 += horizontal_shift
-surface_path = f'{figure_dir}/SurfaceStats/{analysis}/sub-{sid}'
-add_img(c, f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-lh.png",
-        x1, y1,
-        scaling_factor=scaling_factor)
-add_img(c, f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-rh.png",
-        x1+65, y1,
-        scaling_factor=scaling_factor)
-c.drawString(x1, y1, 'c')
+for i, (category, figure) in enumerate(zip(categories, ['b', 'c', 'd', 'e', 'f'])):
+    print(f"{surface_path}/sub-{sid}_{plot_name}-{category}_view-{view}_hemi-lh.png")
+    print(x1, y1)
+    add_img(c, f"{surface_path}/sub-{sid}_{plot_name}-{category}_view-{view}_hemi-lh.png",
+            x1, y1,
+            scaling_factor=scaling_factor)
+    add_img(c, f"{surface_path}/sub-{sid}_{plot_name}-{category}_view-{view}_hemi-rh.png",
+            x1+65, y1,
+            scaling_factor=scaling_factor)
+    c.drawString(x1, y1, figure)
+    if (x1+(horizontal_shift*1.5)) > canvas_width:
+        x1 = 5
+        y1 -= verticle_shift
+    else:
+        x1 += horizontal_shift
 
 c.rotate(90)
 c.setFont("Helvetica", 3)
-c.drawString(18, -147, "Explained variance (r2)")
+c.drawString((canvas_height_add_in*pixel_per_in)+18, -147, "Explained variance (r2)")
 c.save()
