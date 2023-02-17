@@ -309,9 +309,9 @@ class PlotROIPrediction:
                 ax.set_ylabel('')
 
             # Plot vertical lines to separate the bars
-            ax.vlines(np.arange(0.5, len(self.categories) - 0.5),
-                      ymin=0, ymax=self.y_max - 0.005,
-                      colors='lightgray', alpha=0.5)
+            # ax.vlines(np.arange(0.5, len(self.categories) - 0.5),
+            #           ymin=0, ymax=self.y_max - 0.005,
+            #           colors='lightgray', alpha=0.5)
 
             # Manipulate the color and add error bars
             for bar, (subj, category) in zip(ax.patches, itertools.product(self.subjs, self.categories)):

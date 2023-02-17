@@ -221,7 +221,7 @@ class PlotROIPrediction:
         ax.set_xlabel('')
         ax.set_ylabel('Explained variance ($r^2$)', fontsize=font+2)
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
 
     def plot_individual_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
@@ -253,9 +253,9 @@ class PlotROIPrediction:
         ax.set_ylabel('Explained variance ($r^2$)', fontsize=font+2)
 
         # Plot vertical lines to separate the bars
-        ax.vlines(np.arange(0.5, len(self.rois) - 0.5),
-                  ymin=0, ymax=np.round(y_max),
-                  colors='lightgray', alpha=0.5)
+        # ax.vlines(np.arange(0.5, len(self.rois) - 0.5),
+        #           ymin=0, ymax=np.round(y_max),
+        #           colors='lightgray', alpha=0.5)
 
         # Manipulate the color and add error bars
         for bar, (subj, roi) in zip(ax.patches[int(len(ax.patches) / 2):],
@@ -276,7 +276,7 @@ class PlotROIPrediction:
             bar.set_edgecolor((.2, .2, .2))
         ax.legend([], [], frameon=False)
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
 
     def run(self):
         if self.individual:

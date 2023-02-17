@@ -249,7 +249,7 @@ class PlotROIPrediction:
         if self.stream == 'lateral':
             fig.delaxes(axes[-1])
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
 
     def plot_individual_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
@@ -297,9 +297,9 @@ class PlotROIPrediction:
                 ax.set_ylabel('')
 
             # Plot vertical lines to separate the bars
-            ax.vlines(np.arange(0.5, len(self.features) - 0.5),
-                      ymin=0, ymax=np.round(self.y_max, 2),
-                      colors='lightgray', alpha=0.5)
+            # ax.vlines(np.arange(0.5, len(self.features) - 0.5),
+            #           ymin=0, ymax=np.round(self.y_max, 2),
+            #           colors='lightgray', alpha=0.5)
 
             # Manipulate the color and add error bars
             for bar, (subj, feature) in zip(ax.patches, itertools.product(self.subjs, self.features)):
@@ -318,7 +318,7 @@ class PlotROIPrediction:
         if self.stream == 'lateral':
             fig.delaxes(axes[-1])
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
 
     def run(self):
         if self.individual:
