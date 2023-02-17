@@ -155,25 +155,27 @@ class SurfaceStats:
         surf_map[surf_map < 0] = 0
         if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
             threshold = surf_map[np.invert(np.isclose(surf_map, 0))].min()
-            max_val = surf_map.max()
-            print(f'smallest value = {threshold:.3f}')
-            print(f'largest value = {max_val:.3f}')
-            for view in ['ventral', 'lateral', 'medial']:
-                colorbar = True if view == 'lateral' and hemi_ == 'rh' else False
-                fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                             roi_map=surf_map,
-                                             bg_map=bg_map,
-                                             vmax=self.vmax,
-                                             threshold=threshold,
-                                             engine='plotly',
-                                             colorbar=colorbar,
-                                             view=view,
-                                             cmap=self.cmap,
-                                             hemi=hemi_name)
-                fig.figure.update_layout(scene_camera=camera_switcher(hemi_, view),
-                                         paper_bgcolor="rgba(0,0,0,0)",
-                                         plot_bgcolor="rgba(0,0,0,0)")
-                fig.figure.write_image(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.png')
+        else:
+            threshold = 0
+        max_val = surf_map.max()
+        print(f'smallest value = {threshold:.3f}')
+        print(f'largest value = {max_val:.3f}')
+        for view in ['ventral', 'lateral', 'medial']:
+            colorbar = True if view == 'lateral' and hemi_ == 'rh' else False
+            fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                         roi_map=surf_map,
+                                         bg_map=bg_map,
+                                         vmax=self.vmax,
+                                         threshold=threshold,
+                                         engine='plotly',
+                                         colorbar=colorbar,
+                                         view=view,
+                                         cmap=self.cmap,
+                                         hemi=hemi_name)
+            fig.figure.update_layout(scene_camera=camera_switcher(hemi_, view),
+                                     paper_bgcolor="rgba(0,0,0,0)",
+                                     plot_bgcolor="rgba(0,0,0,0)")
+            fig.figure.write_image(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.png')
 
     def plot_one_hemi(self, hemi_):
         surface_data = self.compute_surf_stats(hemi_)

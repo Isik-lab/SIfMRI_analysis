@@ -7,7 +7,7 @@ from src.tools import add_svg
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
 canvas_height_in = 9
-figure_number = 'S4'
+figure_number = 'S6'
 sid = str(2).zfill(2)
 out_path = f'{figure_dir}/{process}'
 Path(out_path).mkdir(exist_ok=True, parents=True)
