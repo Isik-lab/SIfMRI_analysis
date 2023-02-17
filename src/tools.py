@@ -2,6 +2,9 @@
 # coding: utf-8
 
 import numpy as np
+from reportlab.graphics import renderPDF
+from reportlab.lib.utils import ImageReader
+from svglib.svglib import svg2rlg
 from tqdm import tqdm
 from scipy.spatial.distance import squareform
 from statsmodels.stats.multitest import fdrcorrection
@@ -236,3 +239,26 @@ def mask_img(img, mask, fill=0.):
     if type(img) is nib.nifti1.Nifti1Image:
         masked_img = nib.Nifti1Image(masked_img, img.affine, img.header)
     return masked_img
+
+
+def add_svg(current_canvas, file, x, y, offset=40, scaling_factor=None):
+    canvas_width = current_canvas._pagesize[0]
+    drawing = svg2rlg(file)
+    if scaling_factor is None:
+        scaling_factor = canvas_width / drawing.width
+    print(scaling_factor)
+    drawing.scale(scaling_factor, scaling_factor)
+    y_pos = y-drawing.height+offset
+    print(drawing.height)
+    renderPDF.draw(drawing, current_canvas,
+                   x, y_pos,
+                   showBoundary=False)
+    return y_pos, scaling_factor
+
+
+def add_img(current_canvas, file, x, y, scaling_factor=0.25):
+    pil_img = ImageReader(file)
+    img_width, img_height = pil_img._image._size
+    new_width, new_height = int(img_width * scaling_factor), int(img_height * scaling_factor)
+    current_canvas.drawImage(pil_img, x, y-new_height,
+                             new_width, new_height, mask="auto")

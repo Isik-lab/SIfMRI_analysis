@@ -1,39 +1,7 @@
 from pathlib import Path
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
-from svglib.svglib import svg2rlg
-from reportlab.graphics import renderPDF
-
-
-def add_img(current_canvas, file, x, y, scaling_factor=0.25):
-    pil_img = ImageReader(file)
-    img_width, img_height = pil_img._image._size
-    new_width, new_height = int(img_width * scaling_factor), int(img_height * scaling_factor)
-    current_canvas.drawImage(pil_img, x, y-new_height,
-                             new_width, new_height, mask="auto")
-
-
-def scale_svg(drawing, scaling_factor=None, max_width=468):
-    """
-    Scale a reportlab.graphics.shapes.Drawing()
-    object while maintaining the aspect ratio
-    """
-    print(drawing.width, drawing.height)
-    if scaling_factor is None:
-        scaling_factor = canvas_width/drawing.width
-    drawing.scale(scaling_factor, scaling_factor)
-    return drawing
-
-
-def add_svg(current_canvas, file, x, y, offset=50):
-    drawing = svg2rlg(file)
-    scaled_drawing = scale_svg(drawing)
-    y_pos = y-scaled_drawing.height+offset
-    renderPDF.draw(scaled_drawing, current_canvas,
-                   x, y_pos,
-                   showBoundary=False)
-    return y_pos
+from src.tools import add_svg, add_img
 
 
 process = 'PaperFigures'
@@ -77,7 +45,7 @@ print(canvas_width, canvas_height)
 
 # Add the barplot
 c = canvas.Canvas(f'{out_path}/figure{figure_number}.pdf', pagesize=(canvas_width, canvas_height))
-y_pos = add_svg(c, barplot_file, 1, canvas_height)
+y_pos, _ = add_svg(c, barplot_file, 1, canvas_height)
 c.setFont("Helvetica", 10)
 c.drawString(5, canvas_height-10, 'a')
 

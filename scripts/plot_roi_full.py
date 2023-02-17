@@ -229,7 +229,7 @@ class PlotROIPrediction:
         if self.stream == 'lateral':
             _, ax = plt.subplots(1, figsize=(6.5, 2))
         else:
-            _, ax = plt.subplots(1, figsize=(2, 2))
+            _, ax = plt.subplots(1, figsize=(2.5, 2))
 
         sns.barplot(x='roi', y='reliability',
                     hue='sid', color=[0.7, 0.7, 0.7],
