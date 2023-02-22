@@ -1,7 +1,7 @@
 import nilearn.image
 import numpy as np
 from matplotlib import gridspec, ticker
-from matplotlib.cm import get_cmap
+import matplotlib as mpl
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import itertools
 import matplotlib.pyplot as plt
@@ -15,82 +15,70 @@ import seaborn as sns
 def custom_palette(rgb=True):
     colors = dict()
     if rgb:
+        colors['white'] = tuple(np.array([256., 256., 256.]) / 256)
+        colors['gray'] = tuple(np.array([225., 225., 225.]) / 256)
+        colors['black'] = tuple(np.array([50., 50., 50.]) / 256)
+        colors['bluegray'] = tuple(np.array([149., 167., 228.]) / 256)
         colors['mustard'] = tuple(np.array([245., 221., 64.]) / 256)
-        colors['reddish'] = tuple(np.array([218., 83., 91.]) / 256)
         colors['purple'] = tuple(np.array([133., 88., 244.]) / 256)
         colors['cyan'] = tuple(np.array([115., 210., 223.]) / 256)
-        colors['gray'] = tuple(np.array([128., 128., 128.]) / 256)
+        colors['reddish'] = tuple(np.array([218., 83., 91.]) / 256)
     else:
+        colors['gray'] = '#808080'
+        colors['bluegray'] = '#95A7E4'
         colors['mustard'] = '#F5DD40'
-        colors['reddish'] = '#DA535B'
         colors['purple'] = '#8558F4'
         colors['cyan'] = '#73D2DF'
-        colors['gray'] = '#808080'
+        colors['reddish'] = '#DA535B'
     return colors
 
 
 def feature_categories():
     d = dict()
-    d['indoor'] = 'visual'
-    d['expanse'] = 'visual'
-    d['object'] = 'visual'
+    d['AlexNet-conv2'] = 'low-level model'
+    d['motion energy'] = 'low-level model'
+    d['indoor'] = 'scene & object'
+    d['expanse'] = 'scene & object'
+    d['object'] = 'scene & object'
     d['agent distance'] = 'social primitive'
     d['facingness'] = 'social primitive'
-    d['joint action'] = 'social'
-    d['communication'] = 'social'
-    # d['cooperation'] = 'social'
-    # d['dominance'] = 'social'
-    # d['intimacy'] = 'social'
+    d['joint action'] = 'social interaction'
+    d['communication'] = 'social interaction'
     d['valence'] = 'affective'
     d['arousal'] = 'affective'
-    d['motion energy'] = 'low-level model'
-    d['AlexNet conv2'] = 'low-level model'
-    d['AlexNet conv5'] = 'low-level model'
     return d
 
-
-def feature_colors():
+def category_colors():
     d = dict()
-    d['indoor'] = 'mustard'
-    d['expanse'] = 'mustard'
-    d['object'] = 'mustard'
-    d['agent distance'] = 'purple'
-    d['facingness'] = 'purple'
-    d['joint action'] = 'cyan'
-    d['communication'] = 'cyan'
-    # d['cooperation'] = 'cyan'
-    # d['dominance'] = 'cyan'
-    # d['intimacy'] = 'cyan'
-    d['valence'] = 'reddish'
-    d['arousal'] = 'reddish'
-    d['motion energy'] = 'gray'
-    d['AlexNet conv2'] = 'gray'
-    d['AlexNet conv5'] = 'gray'
+    d['filler'] = 'white'
+    d['AlexNet-conv2'] = 'black'
+    d['motion energy'] = 'bluegray'
+    d['scene & object'] = 'mustard'
+    d['social primitive'] = 'purple'
+    d['social interaction'] = 'cyan'
+    d['affective'] = 'reddish'
     return d
-
-
-def custom_seaborn_cmap():
-    colors = custom_palette(rgb=False)
-    colors = list(colors.values())
-    palette = sns.color_palette(colors, as_cmap=True)
-    return palette
-
 
 def custom_nilearn_cmap():
     palette = custom_palette()
-    colors = feature_colors()
-    cmap = sns.color_palette('Paired', len(colors), as_cmap=True)
-    out_colors = []
-    for i, feature in enumerate(colors.keys()):
-        color = colors[feature]
-        rgb = palette[color]
-        out_colors.append(rgb)
-        cmap._lut[i] = list(rgb) + [1.]
-    cmap.colors = tuple(out_colors)
+    colors = category_colors()
+    cmaplist = [palette[colors[category]] + (1.,) for category in colors.keys()]
+    cmap = mpl.colors.LinearSegmentedColormap.from_list(
+        'Custom cmap', cmaplist, len(colors))
 
-    cmap._lut[cmap._i_over] = [0., 0., 0., 0.]
-    cmap._lut[cmap._i_under] = [0., 0., 0., 0.]
-    cmap._lut[cmap._i_bad] = [0., 0., 0., 0.]
+    # # cmap = sns.color_palette('Paired', len(colors), as_cmap=True)
+    # out_colors = []
+    # for i, category in enumerate(colors.keys()):
+    #     color = colors[category]
+    #     rgb = palette[color]
+    #     out_colors.append(rgb)
+    #     cmap._lut[i] = list(rgb) + [1.]
+    #     cmap._lut[i+1] = list(rgb) + [1.]
+    # cmap.colors = tuple(out_colors)
+    #
+    # cmap._lut[cmap._i_over] = [0., 0., 0., 0.]
+    # cmap._lut[cmap._i_under] = [0., 0., 0., 0.]
+    # cmap._lut[cmap._i_bad] = [0., 0., 0., 0.]
     return cmap
 
 
