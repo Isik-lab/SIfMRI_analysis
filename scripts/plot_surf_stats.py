@@ -164,9 +164,10 @@ class SurfaceStats:
         surf_map[surf_map < 0] = 0
         if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
             threshold = surf_map[np.invert(np.isclose(surf_map, 0))].min()
+            max_val = surf_map.max()
         else:
-            threshold = 0
-        max_val = surf_map.max()
+            threshold = 0.001
+            max_val = 0.01
         print(f'smallest value = {threshold:.3f}')
         print(f'largest value = {max_val:.3f}')
         for view in ['ventral', 'lateral', 'medial']:
