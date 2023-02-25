@@ -47,6 +47,7 @@ class SurfaceStats:
         self.process = 'SurfaceStats'
         self.sid = str(args.s_num).zfill(2)
         self.unique_variance = args.unique_variance
+        self.filtered = args.filtered
         self.feature = args.feature
         self.category = args.category
         self.ROIs = args.ROIs
@@ -85,10 +86,18 @@ class SurfaceStats:
                 base = f'sub-{self.sid}_full-model'
                 analysis = 'full'
         self.vmax = get_vmax(analysis)
-        self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2filtered.nii.gz'
-        self.out_file_prefix = f'{self.out_dir}/{self.process}/{base}'
-        Path(f'{self.figure_dir}/{analysis}/sub-{self.sid}').mkdir(parents=True, exist_ok=True)
-        self.figure_prefix = f'{self.figure_dir}/{analysis}/sub-{self.sid}/{base}'
+        if self.filtered:
+            self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2filtered.nii.gz'
+            self.out_file_prefix = f'{self.out_dir}/{self.process}/filtered'
+            self.figure_prefix = f'{self.figure_dir}/{analysis}/sub-{self.sid}/filtered'
+        else:
+            self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2.nii.gz'
+            self.out_file_prefix = f'{self.out_dir}/{self.process}/unfiltered'
+            self.figure_prefix = f'{self.figure_dir}/{analysis}/sub-{self.sid}/unfiltered'
+        Path(self.figure_prefix).mkdir(parents=True, exist_ok=True)
+        Path(self.out_file_prefix).mkdir(parents=True, exist_ok=True)
+        self.figure_prefix = f'{self.figure_prefix}/{base}'
+        self.out_file_prefix = f'{self.out_file_prefix}/{base}'
         print(self.in_file_prefix)
         print(self.out_file_prefix)
         print(self.figure_prefix)
@@ -193,6 +202,7 @@ def main():
     parser.add_argument('--s_num', '-s', type=str, default=1)
     parser.add_argument('--category', type=str, default=None)
     parser.add_argument('--feature', type=str, default=None)
+    parser.add_argument('--filtered', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--ROIs', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,

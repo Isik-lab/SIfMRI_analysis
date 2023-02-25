@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-
+import PIL
 import numpy as np
 from reportlab.graphics import renderPDF
 from reportlab.lib.utils import ImageReader
@@ -257,8 +257,9 @@ def add_svg(current_canvas, file, x, y, offset=50, scaling_factor=None, max_widt
     return y_pos, scaling_factor
 
 
-def add_img(current_canvas, file, x, y, scaling_factor=0.25):
+def add_img(current_canvas, file, x, y, scaling_factor=0.25, rotate=0):
     pil_img = ImageReader(file)
+    pil_img._image.rotate(rotate, PIL.Image.NEAREST, expand=1)
     img_width, img_height = pil_img._image._size
     new_width, new_height = int(img_width * scaling_factor), int(img_height * scaling_factor)
     current_canvas.drawImage(pil_img, x, y-new_height,

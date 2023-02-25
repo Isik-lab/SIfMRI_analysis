@@ -34,7 +34,8 @@ def regress(X_train_, y_train_, X_test_):
 
 
 def get_annotated_features(df,
-                           category=None, feature=None, unique_variance=False):
+                           category=None, feature=None,
+                           unique_variance=False):
     if unique_variance:
         if category is not None:
             columns = df.columns.to_list()
