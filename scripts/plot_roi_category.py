@@ -33,10 +33,14 @@ def subj2shade(key):
     return d[key]
 
 
-def cat2color(key=None):
+def cat2color(key=None, light_gray=False):
     d = dict()
-    d['AlexNet-conv2'] = np.array([0.8, 0.8, 0.8, 0.8])
-    d['motion energy'] = np.array([0.8, 0.8, 0.8, 0.8])
+    if light_gray:
+        d['AlexNet-conv2'] = np.array([0.7, 0.7, 0.7, 0.8])
+        d['motion energy'] = np.array([0.6953125, 0.7421875, 1., 0.8])
+    else:
+        d['AlexNet-conv2'] = np.array([0.1953125, 0.1953125, 0.1953125, 0.8])
+        d['motion energy'] = np.array([0.1953125, 0.2421875, 0.5, 0.8])
     d['scene & object'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
     d['social primitives'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
     d['social interaction'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
@@ -193,10 +197,10 @@ class PlotROIPrediction:
 
     def plot_group_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='paper', style='whitegrid', rc=custom_params)
+        sns.set_theme(context='paper', style='white', rc=custom_params)
         if self.stream == 'lateral':
             fig, axes = plt.subplots(2, 4, figsize=(6.5, 3),
-                                    sharey=True, sharex=False)
+                                    sharey=False, sharex=False)
             axes = axes.flatten()
         else:
             _, axes = plt.subplots(1, len(self.rois), figsize=(4.3, 2),
@@ -226,10 +230,15 @@ class PlotROIPrediction:
                                    rotation=45, ha='right')
                 else:
                     ax.set_xticklabels([])
+
+                if i != 0 or i != 4:
+                    ax.set_ylabel('')
             else:
                 ax.set_xticklabels(self.categories,
                                    fontsize=font,
                                    rotation=45, ha='right')
+                if i != 0:
+                    ax.set_ylabel('')
 
             # for ticklabel, pointer in zip(self.categories, ax.get_xticklabels()):
             #     color = cat2color(ticklabel)
@@ -245,7 +254,7 @@ class PlotROIPrediction:
 
             # Manipulate the color and add error bars
             for bar, category in zip(ax.patches, self.categories):
-                color = cat2color(category)
+                color = cat2color(category, self.individual)
                 y1 = cur_df.loc[(cur_df.category == category), 'low_ci'].item()
                 y2 = cur_df.loc[(cur_df.category == category), 'high_ci'].item()
                 sig = cur_df.loc[(cur_df.category == category), 'significant'].item()
@@ -265,14 +274,14 @@ class PlotROIPrediction:
 
     def plot_individual_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='paper', style='whitegrid', rc=custom_params)
+        sns.set_theme(context='paper', style='white', rc=custom_params)
         if self.stream == 'lateral':
             fig, axes = plt.subplots(2, 4, figsize=(6.5, 3),
-                                    sharey=True, sharex=False)
+                                    sharey=False, sharex=False)
             axes = axes.flatten()
         else:
             _, axes = plt.subplots(1, len(self.rois), figsize=(4.3, 2),
-                                   sharex=True, sharey=True)
+                                   sharex=True, sharey=False)
 
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]
@@ -297,10 +306,16 @@ class PlotROIPrediction:
                                    rotation=45, ha='right')
                 else:
                     ax.set_xticklabels([])
+
+                if i != 0 or i != 4:
+                    ax.set_ylabel('')
             else:
                 ax.set_xticklabels(self.categories,
                                    fontsize=font,
                                    rotation=45, ha='right')
+                if i != 0:
+                    ax.set_ylabel('')
+
 
             # Remove the yaxis label from all plots except the two leftmost plots
             if i == 0 or (self.stream == 'lateral' and i == 4):
@@ -315,7 +330,7 @@ class PlotROIPrediction:
 
             # Manipulate the color and add error bars
             for bar, (subj, category) in zip(ax.patches, itertools.product(self.subjs, self.categories)):
-                color = cat2color(category)
+                color = cat2color(category, self.individual)
                 color[:-1] = color[:-1] * subj2shade(subj)
                 bar.set_color(color)
                 y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()

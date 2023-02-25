@@ -57,6 +57,17 @@ def permutation_test(a, b, test_inds=None,
     return r_true, p, r_null
 
 
+def get_color(label):
+    colors = feature_colors()
+    palette = custom_palette(rgb=False)
+    out = 'gray'
+    for key in colors.keys():
+        if key in label:
+            out = palette[colors[key]]
+            break
+    return out
+
+
 class FeatureCorrelations:
     def __init__(self, args):
         self.process = 'FeatureCorrelations'
@@ -166,17 +177,11 @@ class FeatureCorrelations:
         for t in cbar.ax.get_yticklabels():
             t.set_fontsize(label_size)
 
-        colors = feature_colors()
-        palette = custom_palette(rgb=False)
-
         # y axis
         ax.set_yticks(np.arange(nqs - 1))
         ax.set_yticklabels(ticks[1:])
         for ticklabel, pointer in zip(ticks[1:], ax.get_yticklabels()):
-            if ticklabel in colors.keys():
-                pointer.set_color(palette[colors[ticklabel]])
-            else:
-                pointer.set_color('gray')
+            pointer.set_color(get_color(ticklabel))
             pointer.set_weight('bold')
             pointer.set_fontsize(label_size)
 
@@ -184,10 +189,7 @@ class FeatureCorrelations:
         ax.set_xticks(np.arange(nqs - 1))
         ax.set_xticklabels(ticks[:-1], rotation=90, ha='center')
         for ticklabel, pointer in zip(ticks[:-1], ax.get_xticklabels()):
-            if ticklabel in colors.keys():
-                pointer.set_color(palette[colors[ticklabel]])
-            else:
-                pointer.set_color('gray')
+            pointer.set_color(get_color(ticklabel))
             pointer.set_weight('bold')
             pointer.set_fontsize(label_size)
 
@@ -222,7 +224,7 @@ class FeatureCorrelations:
             alexnet = alexnet[sort_indices, :] # Reorganize the videos to alphabetical
             moten = moten[sort_indices, :]
         highD_data = np.hstack([alexnet, moten])
-        cols = [f'AlexNet conv2 PC{i + 1}' for i in range(alexnet.shape[-1])]
+        cols = [f'AlexNet-conv2 PC{i + 1}' for i in range(alexnet.shape[-1])]
         cols += [f'motion energy PC{i + 1}' for i in range(moten.shape[-1])]
         return pd.DataFrame(highD_data, columns=cols)
 
@@ -253,6 +255,8 @@ class FeatureCorrelations:
         for feature in df.columns:
             if feature == 'transitivity':
                 feature = 'object'
+            elif feature == 'expanse':
+                feature = 'spatial expanse'
             features.append(feature)
         self.plot(rs, ps, features)
 

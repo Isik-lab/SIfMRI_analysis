@@ -4,11 +4,9 @@ import numpy as np
 from nilearn import plotting, surface
 from pathlib import Path
 import argparse
-import seaborn as sns
 import nibabel as nib
 from src.tools import camera_switcher
-from src.custom_plotting import custom_nilearn_cmap
-import matplotlib as mpl
+from src.custom_plotting import custom_roi_palette
 
 
 class ROIMap:
@@ -26,7 +24,7 @@ class ROIMap:
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         print(vars(self))
-        self.cmap = mpl.colormaps['Set1']
+        self.cmap = custom_roi_palette()
         self.ROIS = ['EVC', 'MT', 'EBA', 'LOC', 'FFA', 'PPA', 'pSTS', 'face-pSTS', 'aSTS']
 
 

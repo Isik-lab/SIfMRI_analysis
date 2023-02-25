@@ -49,7 +49,7 @@ c.drawString(x1, y1-10, 'b')
 
 # Full Model
 x1 += horizontal_shift
-surface_path = f'{figure_dir}/SurfaceStats/{analysis}/sub-{sid}'
+surface_path = f'{figure_dir}/SurfaceStats/{analysis}'
 add_img(c, f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-lh.png",
         x1, y1,
         scaling_factor=scaling_factor)

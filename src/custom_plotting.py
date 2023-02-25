@@ -12,20 +12,29 @@ import nibabel as nib
 import seaborn as sns
 
 
+def custom_roi_palette():
+    import matplotlib as mpl
+    cmap = mpl.colormaps['Set1']
+    colors = list(cmap.colors)
+    colors[-1] = (.2, .2, .2)
+    cmap.colors = tuple(colors)
+    return cmap
+
+
 def custom_palette(rgb=True):
     colors = dict()
     if rgb:
         colors['white'] = tuple(np.array([256., 256., 256.]) / 256)
-        colors['gray'] = tuple(np.array([225., 225., 225.]) / 256)
-        colors['black'] = tuple(np.array([50., 50., 50.]) / 256)
-        colors['bluegray'] = tuple(np.array([149., 167., 228.]) / 256)
+        colors['gray'] = tuple(np.array([50., 50., 50.]) / 256)
+        colors['bluegray'] = tuple(np.array([50., 62., 128.]) / 256)
         colors['mustard'] = tuple(np.array([245., 221., 64.]) / 256)
         colors['purple'] = tuple(np.array([133., 88., 244.]) / 256)
         colors['cyan'] = tuple(np.array([115., 210., 223.]) / 256)
         colors['reddish'] = tuple(np.array([218., 83., 91.]) / 256)
     else:
-        colors['gray'] = '#808080'
-        colors['bluegray'] = '#95A7E4'
+        colors['white'] = '#FFFFFF'
+        colors['gray'] = '#323232'
+        colors['bluegray'] = '#323E7F'
         colors['mustard'] = '#F5DD40'
         colors['purple'] = '#8558F4'
         colors['cyan'] = '#73D2DF'
@@ -48,16 +57,35 @@ def feature_categories():
     d['arousal'] = 'affective'
     return d
 
+
 def category_colors():
     d = dict()
     d['filler'] = 'white'
-    d['AlexNet-conv2'] = 'black'
+    d['AlexNet-conv2'] = 'gray'
     d['motion energy'] = 'bluegray'
     d['scene & object'] = 'mustard'
     d['social primitive'] = 'purple'
     d['social interaction'] = 'cyan'
     d['affective'] = 'reddish'
     return d
+
+
+def feature_colors():
+    d = dict()
+    d['filler'] = 'white'
+    d['AlexNet-conv2'] = 'gray'
+    d['motion energy'] = 'bluegray'
+    d['indoor'] = 'mustard'
+    d['expanse'] = 'mustard'
+    d['object'] = 'mustard'
+    d['agent distance'] = 'purple'
+    d['facingness'] = 'purple'
+    d['joint action'] = 'cyan'
+    d['communication'] = 'cyan'
+    d['valence'] = 'reddish'
+    d['arousal'] = 'reddish'
+    return d
+
 
 def custom_nilearn_cmap():
     palette = custom_palette()

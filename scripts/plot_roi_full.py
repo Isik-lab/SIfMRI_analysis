@@ -172,7 +172,7 @@ class PlotROIPrediction:
 
     def plot_group_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='talk', style='whitegrid', rc=custom_params)
+        sns.set_theme(context='talk', style='white', rc=custom_params)
         if self.stream == 'lateral':
             _, ax = plt.subplots(1, figsize=(6.5, 2))
         else:
@@ -225,7 +225,7 @@ class PlotROIPrediction:
 
     def plot_individual_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='paper', style='whitegrid', rc=custom_params)
+        sns.set_theme(context='paper', style='white', rc=custom_params)
         if self.stream == 'lateral':
             _, ax = plt.subplots(1, figsize=(6.5, 2))
         else:

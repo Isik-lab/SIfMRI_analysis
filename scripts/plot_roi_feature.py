@@ -182,14 +182,14 @@ class PlotROIPrediction:
 
     def plot_group_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='paper', style='whitegrid', rc=custom_params)
+        sns.set_theme(context='paper', style='white', rc=custom_params)
         if self.stream == 'lateral':
             fig, axes = plt.subplots(2, 4, figsize=(6.5, 3),
-                                     sharey=True, sharex=False)
+                                     sharey=False, sharex=False)
             axes = axes.flatten()
         else:
             _, axes = plt.subplots(1, len(self.rois), figsize=(4.3, 2),
-                                   sharex=True, sharey=True)
+                                   sharex=True, sharey=False)
 
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]
@@ -214,10 +214,15 @@ class PlotROIPrediction:
                                        rotation=45, ha='right')
                 else:
                     ax.set_xticklabels([])
+
+                if i != 0 or i != 4:
+                    ax.set_ylabel('')
             else:
                 ax.set_xticklabels(self.features,
                                    fontsize=font,
                                    rotation=45, ha='right')
+            if i != 0:
+                ax.set_ylabel('')
 
             # for ticklabel, pointer in zip(self.features, ax.get_xticklabels()):
             #     color = feature2color(ticklabel)
@@ -253,14 +258,14 @@ class PlotROIPrediction:
 
     def plot_individual_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='paper', style='whitegrid', rc=custom_params)
+        sns.set_theme(context='paper', style='white', rc=custom_params)
         if self.stream == 'lateral':
             fig, axes = plt.subplots(2, 4, figsize=(6.5, 3),
-                                     sharey=True, sharex=False)
+                                     sharey=False, sharex=False)
             axes = axes.flatten()
         else:
             _, axes = plt.subplots(1, len(self.rois), figsize=(4.3, 2),
-                                   sharex=True, sharey=True)
+                                   sharex=True, sharey=False)
 
         for i, (ax, roi) in enumerate(zip(axes, self.rois)):
             cur_df = df.loc[df.roi == roi]
@@ -285,10 +290,15 @@ class PlotROIPrediction:
                                        rotation=45, ha='right')
                 else:
                     ax.set_xticklabels([])
+
+                if i != 0 or i != 4:
+                    ax.set_ylabel('')
             else:
                 ax.set_xticklabels(self.features,
                                    fontsize=font,
                                    rotation=45, ha='right')
+            if i != 0:
+                ax.set_ylabel('')
 
             # Remove the yaxis label from all plots except the two leftmost plots
             if i == 0 or (self.stream == 'lateral' and i == 4):
