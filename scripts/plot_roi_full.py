@@ -174,7 +174,10 @@ class PlotROIPrediction:
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
         sns.set_theme(context='talk', style='white', rc=custom_params)
         if self.stream == 'lateral':
-            _, ax = plt.subplots(1, figsize=(6.5, 2))
+            if self.individual:
+                _, ax = plt.subplots(1, figsize=(6.5, 2))
+            else:
+                _, ax = plt.subplots(1, figsize=(3, 2))
         else:
             _, ax = plt.subplots(1, figsize=(2, 2))
         sns.barplot(x='roi', y='r2',
@@ -188,7 +191,8 @@ class PlotROIPrediction:
         ax.set_ylim([0, y_max])
 
         ax.set_xlabel('')
-        ax.set_xticklabels(self.rois, fontsize=font)
+        ax.set_xticklabels(self.rois, fontsize=font,
+                           rotation=45, ha='right')
 
         # Change the ytick font size
         label_format = '{:,.2f}'
@@ -211,12 +215,14 @@ class PlotROIPrediction:
                 r1 = df.loc[df.roi == roi, 'reliability_min'].item()
                 r2 = df.loc[df.roi == roi, 'reliability_max'].item()
                 ax.fill_between([x-(width/2), x+(width/2)], r1, r2,
-                                color='k', alpha=0.25, edgecolor=[1, 1, 1, 0])
+                                color='k', alpha=0.25, edgecolor=[1, 1, 1, 0],
+                                zorder=0)
             #Plot error bars
             ax.plot([x, x], [y1, y2], 'k', linewidth=1.5)
             if sig != 'ns':
                 ax.text(x, y_max - 0.02, sig,
-                        horizontalalignment='center')
+                        horizontalalignment='center',
+                        fontsize=font + 2)
         ax.legend([], [], frameon=False)
         ax.set_xlabel('')
         ax.set_ylabel('Explained variance ($r^2$)', fontsize=font+2)
@@ -243,7 +249,8 @@ class PlotROIPrediction:
         ax.set_ylim([0, y_max])
 
         ax.set_xlabel('')
-        ax.set_xticklabels(self.rois, fontsize=font)
+        ax.set_xticklabels(self.rois, fontsize=font,
+                           rotation=45, ha='right')
 
         # Change the ytick font size
         label_format = '{:,.2f}'
