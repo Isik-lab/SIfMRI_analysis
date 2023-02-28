@@ -58,14 +58,16 @@ figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/f
 canvas_height_in = 7
 surface_path = f'{figure_dir}/SurfaceStats/features_unique'
 # features = ['transitivity', 'communication']
-feature = 'communication'
-need_rotation = False
+feature = 'facingness'
+need_rotation = True
 if feature == 'transitivity':
     figure_number = 'S12'
 elif feature == 'communication':
     figure_number = 'S13'
+elif feature == 'facingness':
+    figure_number = 'S14'
 else:
-    raise Exception('feature input must be communication or transitivity')
+    raise Exception('feature input must be communication, facingness, or transitivity')
 if need_rotation:
     rotate_img_files(f'{surface_path}/sub*/*/', 'lh')
     rotate_img_files(f'{surface_path}/sub*/*/', 'rh')
