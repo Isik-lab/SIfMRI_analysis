@@ -7,25 +7,25 @@ from src.tools import add_svg, add_img
 
 def hshifts(view_key, hemi_key):
     d = dict()
-    d['lateral'] = {'lh': 25, 'rh': -25}
+    d['lateral'] = {'lh': 20, 'rh': -20}
     d['medial'] = {'lh': 0, 'rh': 0}
-    d['ventral'] = {'lh': 14, 'rh': -40}
+    d['ventral'] = {'lh': 10, 'rh': -35}
     return d[view_key][hemi_key]
 
 
 def vshifts(key):
     d = dict()
     d['lateral'] = 0
-    d['medial'] = -40
-    d['ventral'] = -55
+    d['medial'] = -55
+    d['ventral'] = -82
     return d[key]
 
 
 def scaling_factor(key):
     d = dict()
-    d['lateral'] = 0.1
-    d['medial'] = 0.1
-    d['ventral'] = 0.14
+    d['lateral'] = 0.135
+    d['medial'] = 0.135
+    d['ventral'] = 0.175
     return d[key]
 
 
@@ -53,9 +53,9 @@ def rotate_img_files(path, hemi):
 
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
-analysis = 'full_model'
-need_rotation = False
-canvas_height_in = 3.5
+analysis = 'rois'
+need_rotation = True
+canvas_height_in = 4.1
 if analysis == 'reliability':
     figure_number = 'S5'
     surface_path = f'{figure_dir}/Reliability'
@@ -74,9 +74,9 @@ out_path = f'{figure_dir}/{process}'
 Path(out_path).mkdir(exist_ok=True, parents=True)
 hemis = ['lh', 'rh']
 views = ['lateral', 'medial', 'ventral']
-horizontal_shift = 250
-rh_shift = 120
-verticle_shift = 125
+horizontal_shift = 240
+rh_shift = 130
+vertical_shift = 150
 canvas_width, _ = letter
 pixel_per_in = canvas_width/8.5
 canvas_height = canvas_height_in*pixel_per_in
@@ -106,11 +106,12 @@ for i, (subj, figure) in enumerate(zip(range(4), ['a', 'b', 'c', 'd'])):
                 scaling_factor=scaling_factor(view), rotate=rotation(view, 'rh'))
     if (x1+(horizontal_shift*1.5)) > canvas_width:
         x1 = 5
-        y1 -= verticle_shift
+        y1 -= vertical_shift
     else:
         x1 += horizontal_shift
 
-c.rotate(90)
-c.setFont("Helvetica", 5)
-c.drawString(canvas_height-65, -215, "Explained variance (r2)")
+if analysis != 'rois':
+    c.rotate(90)
+    c.setFont("Helvetica", 5)
+    c.drawString(canvas_height-65, -215, "Explained variance (r2)")
 c.save()

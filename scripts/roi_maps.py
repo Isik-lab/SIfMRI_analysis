@@ -25,13 +25,14 @@ class ROIMap:
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         print(vars(self))
         self.cmap = custom_roi_palette()
-        self.ROIS = ['EVC', 'MT', 'EBA', 'LOC', 'FFA', 'PPA', 'pSTS', 'face-pSTS', 'aSTS']
+        self.ROIS = ['EVC', 'MT', 'LOC', 'EBA', 'FFA', 'PPA', 'pSTS', 'face-pSTS', 'aSTS']
 
 
     def compute_preference_map(self):
         if not os.path.exists(self.volume_map) or self.overwrite:
             map = None
             for icat, roi in enumerate(self.ROIS):
+                print(roi)
                 files = sorted(glob.glob(f'{self.infile_prefix}/sub-{self.sid}*roi-{roi}*mask.nii.gz'))
                 for file in files:
                     print(icat, roi, file)
