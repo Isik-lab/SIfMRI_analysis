@@ -68,11 +68,11 @@ for vid in [low_com, high_com]:
     ax.set_xticklabels(features,
                        fontsize=20,
                        rotation=45, ha='right')
-    for ticklabel, pointer in zip(features, ax.get_xticklabels()):
-        color = feature2color(ticklabel)
-        # color[-1] = 1.
-        pointer.set_color(color)
-        pointer.set_weight('bold')
+    # for ticklabel, pointer in zip(features, ax.get_xticklabels()):
+    #     color = feature2color(ticklabel)
+    #     # color[-1] = 1.
+    #     pointer.set_color(color)
+    #     pointer.set_weight('bold')
 
     # Manipulate the color and add error bars
     for bar, feature in zip(ax.patches, features):
