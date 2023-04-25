@@ -9,10 +9,13 @@ from itertools import product
 
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
+analysis = 'rois'
+need_rotation = True
 canvas_height_in = 4.1
-surface_path = f'{figure_dir}/PrefMap'
-figure_number = 'S7'
-analyses = ['category', 'uniquecategory']
+figure_number = 'S4'
+reliability_path = f'{figure_dir}/Reliability'
+full_path = f'{figure_dir}/SurfaceStats/full'
+both_paths = [reliability_path, full_path]
 
 out_path = f'{figure_dir}/{process}'
 Path(out_path).mkdir(exist_ok=True, parents=True)
@@ -33,9 +36,12 @@ c = canvas.Canvas(f'{out_path}/figure{figure_number}.pdf', pagesize=(canvas_widt
 
 x1 = 5
 y1 = canvas_height
-for i, (subj, analysis) in enumerate(product(range(4), analyses)):
+for i, (subj, surface_path) in enumerate(product(range(4), both_paths)):
     sid = str(subj+1).zfill(2)
-    file = f"{surface_path}/sub-{sid}_{analysis}_preference_view-{view}_hemi-lh.png"
+    if 'Reliability' in surface_path:
+        file = f"{surface_path}/sub-{sid}_space-T1w_desc-test-fracridge_hemi-lh_view-{view}.png"
+    else:
+        file = f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-lh.png"
     add_img(c, file,
             x1, y1, scaling_factor=scaling_factor)
     add_img(c, file.replace('hemi-lh', 'hemi-rh'),
@@ -48,7 +54,7 @@ for i, (subj, analysis) in enumerate(product(range(4), analyses)):
 
 x1 = 5
 y1 = canvas_height
-for i, (subj, analysis) in enumerate(product(analyses, range(4))):
+for i, (subj, feature) in enumerate(product(both_paths, range(4))):
     c.drawString(x1, y1 - 10, alc[i])
     if i == 3:
         x1 += horizontal_shift

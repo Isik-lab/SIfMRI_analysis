@@ -53,16 +53,12 @@ def rotate_img_files(path, hemi):
 
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
-analysis = 'categories'
-need_rotation = False
+analysis = 'rois'
+need_rotation = True
 canvas_height_in = 4.1
-surface_path = f'{figure_dir}/PrefMap'
-if analysis == 'categories':
-    figure_number = 'S9'
-elif analysis == 'categories_unique':
-    figure_number = 'S10'
-else:
-    raise Exception('analysis input must be categories or categories_unique')
+figure_number = 'S2'
+surface_path = f'{figure_dir}/ROIMap'
+
 if need_rotation:
     rotate_img_files(surface_path, 'lh')
     rotate_img_files(surface_path, 'rh')
@@ -88,20 +84,26 @@ for i, (subj, figure) in enumerate(zip(range(4), ['a', 'b', 'c', 'd'])):
     sid = str(subj+1).zfill(2)
     c.drawString(x1, y1 - 10, figure)
     for view in views:
-        if analysis == 'categories':
-            file = f"{surface_path}/sub-{sid}_category_preference_view-{view}_hemi-lh.png"
+        if analysis == 'reliability':
+            file = f"{surface_path}/sub-{sid}_space-T1w_desc-test-fracridge_hemi-lh_view-{view}.png"
+        elif analysis == 'full_model':
+            file = f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-lh.png"
         else:
-            file = f"{surface_path}/sub-{sid}_uniquecategory_preference_view-{view}_hemi-lh.png"
+            file = f"{surface_path}/sub-{sid}_roi-map_view-{view}_hemi-lh.png"
         add_img(c, file,
-                x1 + hshifts(view, 'lh'), y1 + vshifts(view),
+                x1+hshifts(view, 'lh'), y1+vshifts(view),
                 scaling_factor=scaling_factor(view), rotate=rotation(view, 'lh'))
         add_img(c, file.replace('hemi-lh', 'hemi-rh'),
-                x1 + hshifts(view, 'rh') + rh_shift, y1 + vshifts(view),
+                x1+hshifts(view, 'rh')+rh_shift, y1+vshifts(view),
                 scaling_factor=scaling_factor(view), rotate=rotation(view, 'rh'))
-    if (x1 + (horizontal_shift * 1.5)) > canvas_width:
+    if (x1+(horizontal_shift*1.5)) > canvas_width:
         x1 = 5
         y1 -= vertical_shift
     else:
         x1 += horizontal_shift
 
+if analysis != 'rois':
+    c.rotate(90)
+    c.setFont("Helvetica", 5)
+    c.drawString(canvas_height-65, -215, "Explained variance (r2)")
 c.save()

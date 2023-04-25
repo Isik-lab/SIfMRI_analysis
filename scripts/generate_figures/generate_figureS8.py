@@ -1,66 +1,64 @@
+import itertools
+import os
 from pathlib import Path
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from src.tools import add_svg
+from src.tools import add_img
+from string import ascii_lowercase as alc
+from itertools import product
 
 
 process = 'PaperFigures'
 figure_dir = '/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/reports/figures'
-canvas_height_in = 4.5
+analysis = 'rois'
+need_rotation = True
+canvas_height_in = 4.1
 figure_number = 'S8'
-sid = str(2).zfill(2)
+surface_path = f'{figure_dir}/SurfaceStats/features_unique'
+features = ['transitivity', 'facingness', 'communication']
+
 out_path = f'{figure_dir}/{process}'
 Path(out_path).mkdir(exist_ok=True, parents=True)
-horizontal_shift = 240
-
-#Get width
+hemis = ['lh', 'rh']
+view = 'lateral'
+horizontal_shift = 155
+rh_shift = 70
+vertical_shift = 75
 canvas_width, _ = letter
 pixel_per_in = canvas_width/8.5
+canvas_height = canvas_height_in*pixel_per_in
 margins = 2 #inches
 canvas_width = canvas_width - (pixel_per_in * margins)
-#Get height in pixels
-canvas_height = canvas_height_in*pixel_per_in
-#Define figure width, 2 inches becuase that is how big these figures should be
-max_width = canvas_width / 2.1
+scaling_factor = 0.1
 
-# Open canvas
-c = canvas.Canvas(f'{out_path}/figure{figure_number}.pdf',
-                  pagesize=(canvas_width, canvas_height))
-x0 = 5
-y0 = canvas_height
 
-# Add the ventral group category bar plot
-barplot_file = f'{figure_dir}/PlotROIPrediction/group_ventral-rois_category.svg'
-y_pos, _ = add_svg(c, barplot_file, x0, y0+75, offset=0, max_width=max_width)
-c.drawString(x0, y0-10, 'a')
+# Open the canvas
+c = canvas.Canvas(f'{out_path}/figure{figure_number}.pdf', pagesize=(canvas_width, canvas_height))
 
-# Add the ventral individual category bar plot
-barplot_file = f'{figure_dir}/PlotROIPrediction/individual_ventral-rois_category.svg'
-add_svg(c, barplot_file, x0+horizontal_shift, y0+75, offset=0, max_width=max_width)
-c.drawString(x0+horizontal_shift, y0-10, 'b')
+x1 = 5
+y1 = canvas_height
+for i, (subj, feature) in enumerate(product(range(4), features)):
+    sid = str(subj+1).zfill(2)
+    file = f"{surface_path}/sub-{sid}/unfiltered/sub-{sid}_dropped-featurewithnuisance-{feature}_view-{view}_hemi-lh.png"
+    print(file)
+    add_img(c, file,
+            x1, y1, scaling_factor=scaling_factor)
+    add_img(c, file.replace('hemi-lh', 'hemi-rh'),
+            x1 + rh_shift, y1, scaling_factor=scaling_factor)
+    if (x1+(horizontal_shift*1.5)) > canvas_width:
+        x1 = 5
+        y1 -= vertical_shift
+    else:
+        x1 += horizontal_shift
 
-# Add the ventral group category_unique bar plot
-barplot_file = f'{figure_dir}/PlotROIPrediction/group_ventral-rois_dropped-categorywithnuisance.svg'
-y_pos1, _ = add_svg(c, barplot_file, x0, y_pos+75, offset=0, max_width=max_width)
-c.drawString(x0, y_pos-10, 'c')
-
-# Add the ventral individual category_unique bar plot
-barplot_file = f'{figure_dir}/PlotROIPrediction/individual_ventral-rois_dropped-categorywithnuisance.svg'
-add_svg(c, barplot_file,
-                    x0+horizontal_shift, y_pos+75, offset=0,
-                    max_width=max_width)
-c.drawString(x0+horizontal_shift, y_pos-10, 'd')
-
-# Add the ventral group feature_unique bar plot
-barplot_file = f'{figure_dir}/PlotROIPrediction/group_ventral-rois_dropped-featurewithnuisance.svg'
-add_svg(c, barplot_file, x0, y_pos1+75, offset=0, max_width=max_width)
-c.drawString(x0, y_pos1-10, 'e')
-
-# Add the ventral individual feature_unique bar plot
-barplot_file = f'{figure_dir}/PlotROIPrediction/individual_ventral-rois_dropped-featurewithnuisance.svg'
-add_svg(c, barplot_file,
-        x0+horizontal_shift, y_pos1+75, offset=0,
-        max_width=max_width)
-c.drawString(x0+horizontal_shift, y_pos1-10, 'f')
+x1 = 5
+y1 = canvas_height
+for i, (subj, feature) in enumerate(product(features, range(4))):
+    c.drawString(x1, y1 - 10, alc[i])
+    if i == 3 or i == 7:
+        x1 += horizontal_shift
+        y1 = canvas_height
+    else:
+        y1 -= vertical_shift
 
 c.save()
