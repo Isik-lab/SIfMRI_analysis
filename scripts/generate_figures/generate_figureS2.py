@@ -84,12 +84,7 @@ for i, (subj, figure) in enumerate(zip(range(4), ['a', 'b', 'c', 'd'])):
     sid = str(subj+1).zfill(2)
     c.drawString(x1, y1 - 10, figure)
     for view in views:
-        if analysis == 'reliability':
-            file = f"{surface_path}/sub-{sid}_space-T1w_desc-test-fracridge_hemi-lh_view-{view}.png"
-        elif analysis == 'full_model':
-            file = f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-lh.png"
-        else:
-            file = f"{surface_path}/sub-{sid}_roi-map_view-{view}_hemi-lh.png"
+        file = f"{surface_path}/sub-{sid}_roi-map_view-{view}_hemi-lh.png"
         add_img(c, file,
                 x1+hshifts(view, 'lh'), y1+vshifts(view),
                 scaling_factor=scaling_factor(view), rotate=rotation(view, 'lh'))
@@ -102,8 +97,4 @@ for i, (subj, figure) in enumerate(zip(range(4), ['a', 'b', 'c', 'd'])):
     else:
         x1 += horizontal_shift
 
-if analysis != 'rois':
-    c.rotate(90)
-    c.setFont("Helvetica", 5)
-    c.drawString(canvas_height-65, -215, "Explained variance (r2)")
 c.save()
