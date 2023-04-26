@@ -121,6 +121,18 @@ class Reliability():
 
         surf_map = np.nan_to_num(surf_map)
         surf_map[surf_map < 0] = 0
+
+        fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                     roi_map=surf_map,
+                                     bg_map=bg_map,
+                                     vmax=1.,
+                                     threshold=self.threshold,
+                                     engine='plotly',
+                                     colorbar=True,
+                                     cmap=self.cmap,
+                                     hemi=hemi_name)
+        fig.figure.write_html(f'{self.figure_dir}/sub-{self.sid}_hemi-{hemi}.html')
+
         if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
             for view in ['ventral', 'lateral', 'medial']:
                 colorbar = True if view == 'lateral' and hemi == 'rh' else False
@@ -160,9 +172,9 @@ def main():
     parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--ses_or_pres', type=str, default='')
-    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

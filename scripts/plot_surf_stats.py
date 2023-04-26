@@ -47,7 +47,7 @@ class SurfaceStats:
         self.process = 'SurfaceStats'
         self.sid = str(args.s_num).zfill(2)
         self.unique_variance = args.unique_variance
-        self.filtered = args.filtered
+        self.unfiltered = args.unfiltered
         self.feature = args.feature
         self.category = args.category
         self.ROIs = args.ROIs
@@ -86,14 +86,15 @@ class SurfaceStats:
                 base = f'sub-{self.sid}_full-model'
                 analysis = 'full'
         self.vmax = get_vmax(analysis)
-        if self.filtered:
-            self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2filtered.nii.gz'
-            self.out_file_prefix = f'{self.out_dir}/{self.process}/filtered'
-            self.figure_prefix = f'{self.figure_dir}/{analysis}/sub-{self.sid}/filtered'
-        else:
+        if self.unfiltered:
             self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2.nii.gz'
             self.out_file_prefix = f'{self.out_dir}/{self.process}/unfiltered'
             self.figure_prefix = f'{self.figure_dir}/{analysis}/sub-{self.sid}/unfiltered'
+
+        else:
+            self.in_file_prefix = f'{self.out_dir}/VoxelPermutation/{base}_r2filtered.nii.gz'
+            self.out_file_prefix = f'{self.out_dir}/{self.process}/filtered'
+            self.figure_prefix = f'{self.figure_dir}/{analysis}/sub-{self.sid}/filtered'
         Path(self.figure_prefix).mkdir(parents=True, exist_ok=True)
         Path(self.out_file_prefix).mkdir(parents=True, exist_ok=True)
         self.figure_prefix = f'{self.figure_prefix}/{base}'
@@ -170,6 +171,18 @@ class SurfaceStats:
             max_val = 0.01
         print(f'smallest value = {threshold:.3f}')
         print(f'largest value = {max_val:.3f}')
+
+        fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                     roi_map=surf_map,
+                                     bg_map=bg_map,
+                                     vmax=1.,
+                                     threshold=threshold,
+                                     engine='plotly',
+                                     colorbar=True,
+                                     cmap=self.cmap,
+                                     hemi=hemi_name)
+        fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
+
         for view in ['ventral', 'lateral', 'medial']:
             colorbar = True if view == 'lateral' and hemi_ == 'rh' else False
             fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
@@ -203,7 +216,7 @@ def main():
     parser.add_argument('--s_num', '-s', type=str, default=1)
     parser.add_argument('--category', type=str, default=None)
     parser.add_argument('--feature', type=str, default=None)
-    parser.add_argument('--filtered', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--unfiltered', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--ROIs', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,

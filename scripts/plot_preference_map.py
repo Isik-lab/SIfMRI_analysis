@@ -37,7 +37,6 @@ class PrefMap:
         # self.cmap = mpl.colormaps['Accent']
         self.categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social', 'affective']
 
-
     def compute_preference_map(self):
         if not os.path.exists(self.volume_map) or self.overwrite:
             map = None
@@ -77,6 +76,16 @@ class PrefMap:
         else:
             hemi_name = 'right'
 
+        fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                     roi_map=surf_map,
+                                     bg_map=bg_map,
+                                     engine='plotly',
+                                     threshold=1.,
+                                     colorbar=True,
+                                     cmap=self.cmap,
+                                     hemi=hemi_name)
+        fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
+
         for view in ['lateral', 'ventral', 'medial']:
             colorbar = True if view == 'lateral' and hemi_ == 'rh' else False
             fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
@@ -92,7 +101,6 @@ class PrefMap:
                                      paper_bgcolor="rgba(0,0,0,0)",
                                      plot_bgcolor="rgba(0,0,0,0)")
             fig.figure.write_image(f'{self.figure_prefix}_view-{view}_hemi-{hemi_}.png')
-
 
     def run(self):
         self.compute_preference_map()
