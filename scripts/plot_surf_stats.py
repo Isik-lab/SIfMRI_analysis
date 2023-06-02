@@ -53,7 +53,7 @@ class SurfaceStats:
         self.ROIs = args.ROIs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.vmax = 1
+        self.vmax = 0.1
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
@@ -172,18 +172,18 @@ class SurfaceStats:
         print(f'smallest value = {threshold:.3f}')
         print(f'largest value = {max_val:.3f}')
 
-        fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                     roi_map=surf_map,
-                                     bg_map=bg_map,
-                                     vmax=1.,
-                                     threshold=threshold,
-                                     engine='plotly',
-                                     colorbar=True,
-                                     cmap=self.cmap,
-                                     hemi=hemi_name)
-        fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
+        # fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+        #                              roi_map=surf_map,
+        #                              bg_map=bg_map,
+        #                              vmax=self.vmax,
+        #                              threshold=threshold,
+        #                              engine='plotly',
+        #                              colorbar=True,
+        #                              cmap=self.cmap,
+        #                              hemi=hemi_name)
+        # fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
 
-        for view in ['ventral', 'lateral', 'medial']:
+        for view in ['lateral']:#['ventral', 'lateral', 'medial']:
             colorbar = True if view == 'lateral' and hemi_ == 'rh' else False
             fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                          roi_map=surf_map,
