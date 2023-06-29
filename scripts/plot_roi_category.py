@@ -66,7 +66,7 @@ class PlotROIPrediction:
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         self.y_max = 0
         self.subjs = ['01', '02', '03', '04']
-        self.all_rois = ['EVC', 'MT', 'EBA', 'LOC', 'FFA', 'PPA', 'face-pSTS', 'pSTS', 'aSTS']
+        self.all_rois = ['EVC', 'MT', 'EBA', 'LOC', 'FFA', 'PPA', 'pSTS', 'aSTS']
 
         if self.individual:
             self.out_prefix = 'individual_'
@@ -74,7 +74,7 @@ class PlotROIPrediction:
             self.out_prefix = 'group_'
 
         if self.stream == 'lateral':
-            self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'STS-Face', 'aSTS-SI']
+            self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS-SI', 'aSTS-SI']
             self.out_prefix += 'lateral-rois_'
         else:
             self.rois = ['FFA', 'PPA']
@@ -197,9 +197,9 @@ class PlotROIPrediction:
 
     def plot_group_results(self, df, font=6):
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='paper', style='white', rc=custom_params)
+        sns.set_theme(context='poster', style='white', rc=custom_params)
         if self.stream == 'lateral':
-            fig, axes = plt.subplots(2, 4, figsize=(6.5, 3),
+            fig, axes = plt.subplots(3, 2, figsize=(9, 12),
                                     sharey=False, sharex=False)
             axes = axes.flatten()
         else:
@@ -212,7 +212,7 @@ class PlotROIPrediction:
             sns.barplot(x='category', y='r2', palette='gray', saturation=0.8,
                         data=cur_df,
                         ax=ax)
-            ax.set_title(roi, fontsize=font+2)
+            ax.set_title(roi)
             ax.set_xlabel('')
             ax.set_ylim([0, self.y_max])
 
@@ -220,22 +220,13 @@ class PlotROIPrediction:
             label_format = '{:,.2f}'
             y_ticklocs = ax.get_yticks().tolist()
             ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
-            ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=font)
+            ax.set_yticklabels([label_format.format(x) for x in y_ticklocs])
 
             # Change the xaxis font size and colors
             if self.stream == 'lateral':
-                if i > 3:
-                    ax.set_xticklabels(self.categories,
-                                   fontsize=font,
-                                   rotation=45, ha='right')
-                else:
-                    ax.set_xticklabels([])
-
-                if i != 0 or i != 4:
-                    ax.set_ylabel('')
+                ax.set_xticklabels([])
             else:
                 ax.set_xticklabels(self.categories,
-                                   fontsize=font,
                                    rotation=45, ha='right')
                 if i != 0:
                     ax.set_ylabel('')
@@ -247,8 +238,8 @@ class PlotROIPrediction:
             #     pointer.set_weight('bold')
 
             # Remove the yaxis label from all plots except the two leftmost plots
-            if i == 0 or (self.stream == 'lateral' and i == 4):
-                ax.set_ylabel(f'{self.y_label} ($r^2$)', fontsize=font)
+            if i == 0 or i == 2 or i == 4:
+                ax.set_ylabel(f'{self.y_label} ($r^2$)')
             else:
                 ax.set_ylabel('')
 
@@ -262,98 +253,16 @@ class PlotROIPrediction:
                 x = bar.get_x() + (width/2)
                 ax.plot([x, x], [y1, y2], 'k')
                 if sig != 'ns':
-                    ax.text(x, self.y_max - 0.01, sig,
-                            horizontalalignment='center',
-                            fontsize=font+2)
+                    ax.text(x, self.y_max - 0.03, sig,
+                            horizontalalignment='center')
                 bar.set_color(color)
             ax.legend([], [], frameon=False)
-        if self.stream == 'lateral':
-            fig.delaxes(axes[-1])
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
-
-    def plot_individual_results(self, df, font=6):
-        custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(context='paper', style='white', rc=custom_params)
-        if self.stream == 'lateral':
-            fig, axes = plt.subplots(2, 4, figsize=(6.5, 3),
-                                    sharey=False, sharex=False)
-            axes = axes.flatten()
-        else:
-            _, axes = plt.subplots(1, len(self.rois), figsize=(4.3, 2),
-                                   sharex=True, sharey=False)
-
-        for i, (ax, roi) in enumerate(zip(axes, self.rois)):
-            cur_df = df.loc[df.roi == roi]
-            sns.barplot(x='category', y='r2',
-                        hue='sid', palette='gray',
-                        data=cur_df,
-                        ax=ax).set(title=roi)
-            ax.set_xlabel('')
-            ax.set_ylim([0, self.y_max])
-
-            # Change the ytick font size
-            label_format = '{:,.2f}'
-            y_ticklocs = ax.get_yticks().tolist()
-            ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
-            ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=font)
-
-            # Change the xaxis font size and colors
-            if self.stream == 'lateral':
-                if i > 3:
-                    ax.set_xticklabels(self.categories,
-                                   fontsize=font,
-                                   rotation=45, ha='right')
-                else:
-                    ax.set_xticklabels([])
-
-                if i != 0 or i != 4:
-                    ax.set_ylabel('')
-            else:
-                ax.set_xticklabels(self.categories,
-                                   fontsize=font,
-                                   rotation=45, ha='right')
-                if i != 0:
-                    ax.set_ylabel('')
-
-
-            # Remove the yaxis label from all plots except the two leftmost plots
-            if i == 0 or (self.stream == 'lateral' and i == 4):
-                ax.set_ylabel(f'{self.y_label} ($r^2$)', fontsize=font)
-            else:
-                ax.set_ylabel('')
-
-            # Plot vertical lines to separate the bars
-            # ax.vlines(np.arange(0.5, len(self.categories) - 0.5),
-            #           ymin=0, ymax=self.y_max - 0.005,
-            #           colors='lightgray', alpha=0.5)
-
-            # Manipulate the color and add error bars
-            for bar, (subj, category) in zip(ax.patches, itertools.product(self.subjs, self.categories)):
-                color = cat2color(category, self.individual)
-                color[:-1] = color[:-1] * subj2shade(subj)
-                bar.set_color(color)
-                y1 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'low_ci'].item()
-                y2 = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'high_ci'].item()
-                sig = cur_df.loc[(cur_df.sid == subj) & (cur_df.category == category), 'significant'].item()
-                x = bar.get_x() + 0.1
-                ax.plot([x, x], [y1, y2], 'k', linewidth=0.75)
-                if sig != 'ns':
-                    ax.scatter(x, self.y_max - 0.01, marker='o', s=1, color=color)
-
-            ax.legend([], [], frameon=False)
-        if self.stream == 'lateral':
-            fig.delaxes(axes[-1])
-        plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.svg')
+        plt.savefig(f'{self.figure_dir}/{self.out_prefix}.pdf')
 
     def run(self):
-        if self.individual:
-            data = self.load_individual_data(self.file_id)
-            self.plot_individual_results(data)
-        else:
-            data = self.load_group_data(self.file_id)
-            self.plot_group_results(data)
+        data = self.load_group_data(self.file_id)
+        self.plot_group_results(data)
         data.to_csv(f'{self.out_dir}/{self.process}/{self.out_prefix}.csv', index=False)
         print(data.head())
 

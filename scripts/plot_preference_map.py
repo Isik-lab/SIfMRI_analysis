@@ -41,7 +41,7 @@ class PrefMap:
         if not os.path.exists(self.volume_map) or self.overwrite:
             map = None
             for icat, category in enumerate(self.categories):
-                file = f'{self.infile_prefix}-{category}_r2filtered.nii.gz'
+                file = f'{self.infile_prefix}-{category}_r2.nii.gz'
                 brain = nib.load(file)
                 brain_arr = np.array(brain.dataobj)
                 if map is None:

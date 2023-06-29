@@ -53,7 +53,7 @@ class SurfaceStats:
         self.ROIs = args.ROIs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.vmax = 0.1
+        self.vmax = None
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
@@ -163,14 +163,17 @@ class SurfaceStats:
 
         surf_map = np.nan_to_num(surf_map)
         surf_map[surf_map < 0] = 0
-        if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
+        if (np.sum(np.invert(np.isclose(surf_map, 0))) > 0) & (hemi_ == 'lh'):
             threshold = surf_map[np.invert(np.isclose(surf_map, 0))].min()
             max_val = surf_map.max()
+            self.vmax = max_val - 0.05
         else:
             threshold = 0.001
             max_val = 0.01
+            vmax = 0.01
         print(f'smallest value = {threshold:.3f}')
         print(f'largest value = {max_val:.3f}')
+        print(f'vmax = {self.vmax:.3f}')
 
         # fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
         #                              roi_map=surf_map,
@@ -189,7 +192,6 @@ class SurfaceStats:
                                          roi_map=surf_map,
                                          bg_map=bg_map,
                                          vmax=self.vmax,
-                                         threshold=threshold,
                                          engine='plotly',
                                          colorbar=colorbar,
                                          view=view,
