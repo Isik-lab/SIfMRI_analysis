@@ -2,14 +2,10 @@
 # coding: utf-8
 import PIL
 import numpy as np
-from reportlab.graphics import renderPDF
-from reportlab.lib.utils import ImageReader
-from svglib.svglib import svg2rlg
 from tqdm import tqdm
 from scipy.spatial.distance import squareform
-from statsmodels.stats.multitest import fdrcorrection
-import nibabel as nib
 import math
+from scipy.stats import spearmanr
 
 
 def camera_switcher(hemi, view):
@@ -73,6 +69,7 @@ def round_decimals_up(number:float, decimals:int=2):
 
 
 def filter_r(rs, ps, p_crit=0.05, correct=True, threshold=True):
+    from statsmodels.stats.multitest import fdrcorrection
     rs_out = rs.copy()
     if correct:
         _, ps_corrected = fdrcorrection(ps, method='p', alpha=0.05, is_sorted=False)
@@ -87,10 +84,10 @@ def filter_r(rs, ps, p_crit=0.05, correct=True, threshold=True):
 
 
 def corr(x, y):
-    x_m = x - np.mean(x)
-    y_m = y - np.mean(y)
-    numer = np.sum(x_m * y_m)
-    denom = np.sqrt(np.sum(x_m * x_m) * np.sum(y_m * y_m))
+    x_m = x - np.nanmean(x)
+    y_m = y - np.nanmean(y)
+    numer = np.nansum(x_m * y_m)
+    denom = np.sqrt(np.nansum(x_m * x_m) * np.nansum(y_m * y_m))
     if denom != 0:
         return numer / denom
     else:
@@ -128,23 +125,37 @@ def calculate_p(r_null_, r_true_, n_perm_, H0_):
     return p_
 
 
-def bootstrap(a, b, n_perm=int(5e3), square=True):
+def bootstrap(a, b, n_perm=int(5e3), square=True, verbose=True):
     # Randomly sample and recompute r^2 n_perm times
-    r2_var = np.zeros((n_perm, a.shape[-1]))
-    for i in tqdm(range(n_perm), total=n_perm):
-        inds = np.random.default_rng(i).choice(np.arange(a.shape[0]),
-                                               size=a.shape[0])
-        if a.ndim == 3:
-            a_sample = a[inds, ...].reshape(a.shape[0] * a.shape[1], a.shape[-1])
-            b_sample = b[inds, ...].reshape(b.shape[0] * b.shape[1], b.shape[-1])
-        else:  # a.ndim == 2:
-            a_sample = a[inds, :]
-            b_sample = b[inds, :]
-        r = corr2d(a_sample, b_sample)
-        if square:
-            r2_var[i, :] = np.sign(r)*(r**2)
-        else:
+    if verbose:
+        iter_loop = tqdm(range(n_perm), total=n_perm)
+    else:
+        iter_loop = range(n_perm)
+
+    if a.ndim > 1 :
+        r2_var = np.zeros((n_perm, a.shape[-1]))
+        for i in iter_loop:
+            inds = np.random.default_rng(i).choice(np.arange(a.shape[0]),
+                                                   size=a.shape[0])
+            if a.ndim == 3:
+                a_sample = a[inds, ...].reshape(a.shape[0] * a.shape[1], a.shape[-1])
+                b_sample = b[inds, ...].reshape(b.shape[0] * b.shape[1], b.shape[-1])
+            else:
+                a_sample = a[inds, :]
+                b_sample = b[inds, :]
+            r = corr2d(a_sample, b_sample)
+            if square:
+                r = np.sign(r)*(r**2)
             r2_var[i, :] = r
+    else:
+        r2_var = np.zeros((n_perm,))
+        for i in iter_loop:
+            inds = np.random.default_rng(i).choice(np.arange(a.shape[0]),
+                                                   size=a.shape[0])
+            r = corr(a[inds], b[inds])
+            if square:
+                r = np.sign(r)*(r**2)
+            r2_var[i] = r
     return r2_var
 
 
@@ -166,37 +177,70 @@ def bootstrap_unique_variance(a, b, c, n_perm=int(5e3)):
     return r2_var
 
 
-def perm(a, b, n_perm=int(5e3), H0='greater', square=True):
-    if a.ndim == 3:
-        a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
-        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
-        r = corr2d(a_not_shuffle, b)
-    else:
-        r = corr2d(a, b)
+def spearmanr_perm(a, b, n_perm=int(5e3), H0='greater'):
+    rho = spearmanr(a, b).statistic
+    rho_null = np.zeros((n_perm,))
+
+    for i in range(n_perm):
+        inds = np.random.default_rng(i).permutation(a.shape[0])
+        a_shuffle = a[inds]
+        rho_null[i] = spearmanr(a_shuffle, b).statistic
+
+    # Get the p-value depending on the type of test
+    p = calculate_p(rho_null, rho, n_perm, H0)
+    return rho, p, rho_null
+
+
+def perm(a, b, n_perm=int(5e3), H0='greater', square=True, verbose=True):
+    if a.ndim > 1:
+        r2_null = np.zeros((n_perm, a.shape[-1]))
+        if a.ndim == 3:
+            a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
+            b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
+            r = corr2d(a_not_shuffle, b)
+        else: #a.ndim == 2:
+            r = corr2d(a, b)
+    else: #a.ndim == 1:
+        r = corr(a, b)
+        r2_null = np.zeros((n_perm,))
 
     if square:
-        r2 = (r**2) * np.sign(r)
+        r_out = (r**2) * np.sign(r)
     else:
-        r2 = r.copy()
+        r_out = r.copy()
 
-    r2_null = np.zeros((n_perm, a.shape[-1]))
-    for i in tqdm(range(n_perm), total=n_perm):
+    if verbose:
+        iter_loop = tqdm(range(n_perm), total=n_perm)
+    else:
+        iter_loop = range(n_perm)
+
+    for i in iter_loop:
         inds = np.random.default_rng(i).permutation(a.shape[0])
         if a.ndim == 3:
             a_shuffle = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
-        else:  # a.ndim == 2:
+        elif a.ndim == 2:
             a_shuffle = a[inds, :]
+        else:# a.ndim == 1:
+            a_shuffle = a[inds]
 
-        r = corr2d(a_shuffle, b)
+        if a.ndim > 1:
+            r = corr2d(a_shuffle, b)
+        else:
+            r = corr(a_shuffle, b)
 
         if square:
-            r2_null[i, :] = (r**2) * np.sign(r)
+            r2 = (r**2) * np.sign(r)
         else:
+            r2 = r.copy()
+
+        if a.ndim > 1:
             r2_null[i, :] = r
+        else:
+            r2_null[i] = r
 
     # Get the p-value depending on the type of test
-    p = calculate_p(r2_null, r2, n_perm, H0)
-    return r2, p, r2_null
+    p = calculate_p(r2_null, r_out, n_perm, H0)
+    return r_out, p, r2_null
 
 
 def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
@@ -228,6 +272,7 @@ def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
 
 
 def mask_img(img, mask, fill=0.):
+    import nibabel as nib
     if type(img) is nib.nifti1.Nifti1Image:
         masked_img = np.array(img.dataobj)
         mask = np.array(mask.dataobj)
@@ -242,6 +287,8 @@ def mask_img(img, mask, fill=0.):
 
 
 def add_svg(current_canvas, file, x, y, offset=50, scaling_factor=None, max_width=None):
+    from reportlab.graphics import renderPDF
+    from svglib.svglib import svg2rlg
     canvas_width = current_canvas._pagesize[0]
     drawing = svg2rlg(file)
     if scaling_factor is None:
@@ -258,6 +305,7 @@ def add_svg(current_canvas, file, x, y, offset=50, scaling_factor=None, max_widt
 
 
 def add_img(current_canvas, file, x, y, scaling_factor=0.25, rotate=0):
+    from reportlab.lib.utils import ImageReader
     pil_img = ImageReader(file)
     pil_img._image.rotate(rotate, PIL.Image.NEAREST, expand=1)
     img_width, img_height = pil_img._image._size

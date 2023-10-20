@@ -52,15 +52,15 @@ c.drawString(x2+10, y2-20, 'b')
 # Full Model
 y3 = y2 - 95
 surface_path = f'{figure_dir}/SurfaceStats/{analysis}'
-add_img(c, f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-lh.png",
+add_img(c, f"{surface_path}/sub-{sid}/filtered/sub-{sid}_full-model_view-{view}_hemi-lh.png",
         x2, y3,
         scaling_factor=scaling_factor)
-add_img(c, f"{surface_path}/sub-{sid}_full-model_view-{view}_hemi-rh.png",
+add_img(c, f"{surface_path}/sub-{sid}/filtered/sub-{sid}_full-model_view-{view}_hemi-rh.png",
         x2+rh_shift, y3,
         scaling_factor=scaling_factor)
 c.drawString(x2+5, y3-15, 'c')
 
-c.rotate(90)
-c.setFont("Helvetica", 5)
-c.drawString(y3+25, -1*(canvas_width-3), "Explained variance (r2)")
+# c.rotate(90)
+# c.setFont("Helvetica", 5)
+# c.drawString(y3+25, -1*(canvas_width-3), "Explained variance (r2)")
 c.save()

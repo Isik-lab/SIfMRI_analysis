@@ -54,9 +54,9 @@ for analysis in ['categories', 'categories_unique', 'features_unique']:
     c.drawString(x1+5, y1-25, 'b')
     for view in views:
         if analysis == 'categories':
-            file = f"{surface_path}/sub-{sid}_category_preference_view-{view}_hemi-lh.png"
+            file = f"{surface_path}/sub-{sid}_category_preference_filtered_view-{view}_hemi-lh.png"
         elif analysis == 'categories_unique':
-            file = f"{surface_path}/sub-{sid}_uniquecategory_preference_view-{view}_hemi-lh.png"
+            file = f"{surface_path}/sub-{sid}_uniquecategory_preference_filtered_view-{view}_hemi-lh.png"
         else:
             file = f"{surface_path}/sub-{sid}_dropped-featurewithnuisance-communication_view-{view}_hemi-lh.png"
         add_img(c, file,

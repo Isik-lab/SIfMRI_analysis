@@ -51,22 +51,25 @@ print(df.feature.unique())
 for vid in [low_com, high_com]:
     cur_df = df.loc[df.video_name == vid]
     custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-    sns.set_theme(context='poster', style='white', rc=custom_params)
-    _, ax = plt.subplots(1, figsize=(6, 6))
+    sns.set_theme(context='paper', style='white', rc=custom_params)
+    _, ax = plt.subplots(1, figsize=(1.75, 1.5))
 
     sns.barplot(x='feature', y='Rating', data=cur_df, ax=ax)
     ax.set_xlabel('')
     ax.set_ylim([0, 1])
 
     # Change the ytick font size
-    label_format = '{:,.2f}'
+    label_format = '{:.1f}'
+    plt.locator_params(axis='y', nbins=3)
     y_ticklocs = ax.get_yticks().tolist()
     ax.yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
-    ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=20)
+    ax.set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=6)
+    ax.set_ylabel('Rating', fontsize=6)
+
+    ax.set_xticklabels(features, fontsize=6)
 
     # Change the xaxis font size and colors
     ax.set_xticklabels(features,
-                       fontsize=20,
                        rotation=45, ha='right')
     # for ticklabel, pointer in zip(features, ax.get_xticklabels()):
     #     color = feature2color(ticklabel)
@@ -80,4 +83,4 @@ for vid in [low_com, high_com]:
         bar.set_color(color)
     ax.legend([], [], frameon=False)
     plt.tight_layout()
-    plt.savefig(f"{figure_dir}/{vid.replace('mp4', 'pdf')}")
+    plt.savefig(f"{figure_dir}/{vid.replace('mp4', 'svg')}")

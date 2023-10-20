@@ -74,7 +74,9 @@ def feature_colors():
     d = dict()
     d['filler'] = 'white'
     d['AlexNet-conv2'] = 'gray'
-    d['motion energy'] = 'bluegray'
+    d['motion energy'] = 'gray'
+    d['face centrality'] = 'gray'
+    d['face area'] = 'gray'
     d['indoor'] = 'mustard'
     d['expanse'] = 'mustard'
     d['object'] = 'mustard'

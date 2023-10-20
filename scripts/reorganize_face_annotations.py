@@ -43,7 +43,14 @@ def reorg_annotations(in_file, out_file):
     bounding_box_data = []
     for video_json in data:
         video_name = video_json['data_row']['external_id']
+        # first_frame = True
         if video_json['projects']['clit3zloh00k4071d6x1lc5ej']['labels']:
+            # if first_frame:
+            #     print(video_name)
+            #     print(video_json['projects']['clit3zloh00k4071d6x1lc5ej']['labels'][0]['annotations']['frames'])
+            #     print('\n\n')
+            #     first_frame = False
+
             frames_json = video_json['projects']['clit3zloh00k4071d6x1lc5ej']['labels'][0]['annotations']['frames']
             for frame in frames_json.keys():
                 for face in frames_json[frame]['objects'].keys():
@@ -80,6 +87,7 @@ def count_remaining_videos(df):
     missing_videos = videos.merge(labeled_videos[['video_name', 'labeled']], how='outer')
     missing_videos = missing_videos[missing_videos.labeled.isna()]
     print(f'{len(missing_videos)} videos still to annotate')
+    print(missing_videos)
 
 
 def summarize_df(df, out_file):
@@ -91,12 +99,10 @@ def summarize_df(df, out_file):
 
 df = reorg_annotations('../data/raw/face_annotation/annotations.json',
                        '../data/raw/face_annotation/bounding_boxes.csv')
-summarize_df(df, '../data/raw/annotations/face_annotations.csv')
+summarize_df(df, '../data/raw/ /face_annotations.csv')
 annotated_videos = count_remaining_videos(df)
-# for video in df.video_name.unique():
-#     print(video)
-#     draw_bounding_boxes(f'../data/raw/videos/{video}',
-#                         f'../data/interim/FaceDetection/{video}',
-#                         df.loc[df.video_name == video].set_index(['frame', 'face']))
-
-
+for video in df.video_name.unique():
+    print(video)
+    draw_bounding_boxes(f'../data/raw/videos/{video}',
+                        f'../data/interim/FaceDetection/{video}',
+                        df.loc[df.video_name == video].set_index(['frame', 'face']))
