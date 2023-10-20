@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from sklearn.decomposition import PCA
+import pandas as pd
 
 
 def scale(train_, test_):
@@ -46,7 +47,7 @@ class ActivationPCA:
             X = np.load(f'{self.out_dir}/MotionEnergyActivations/motion_energy_set-{dataset}.npy')
             self.out_prefix = f'{self.out_dir}/{self.process}/moten_PCs'
         else: #if 'alexnet' in self.model:
-            X = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{dataset}_avgframe.npy')
+            X = np.load(f'{self.out_dir}/AlexNetActivations/alexnet_conv2_set-{dataset}.npy')
             self.out_prefix = f'{self.out_dir}/{self.process}/alexnet_PCs'
         return X
 
@@ -54,11 +55,24 @@ class ActivationPCA:
         np.save(f'{self.out_prefix}_set-train.npy', train_)
         np.save(f'{self.out_prefix}_set-test.npy', test_)
 
+    def save_df(self, train_, test_):
+        out_df = []
+        for data, split in zip([train_, test_], ['train', 'test']):
+            df = pd.read_csv(f'{self.data_dir}/annotations/{split}.csv')
+            df.sort_values(by=['video_name'], inplace=True)
+            data_df = pd.DataFrame({f'{self.model}_PC{i}': data[:, i] for i in range(data.shape[-1])})
+            df = pd.concat([df, data_df], axis=1)
+            df['split'] = split
+            out_df.append(df)
+        out_df = pd.concat(out_df)
+        out_df.to_csv(f'{self.out_prefix}.csv', index=False)
+
     def run(self):
         train = self.get_highD_data('train')
         test = self.get_highD_data('test')
         train, test = scale(train, test)
         train, test = pca(train, test, self.n_PCs)
+        self.save_df(train, test)
         print(train.shape)
         print(test.shape)
         self.save(train, test)

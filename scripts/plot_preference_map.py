@@ -16,20 +16,25 @@ class PrefMap:
         self.process = 'PrefMap'
         self.sid = str(args.s_num).zfill(2)
         self.overwrite = args.overwrite
+        self.filtered = args.filtered
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         self.unique_variance = args.unique_variance
         if self.unique_variance:
             self.figure_prefix = f'{self.figure_dir}/sub-{self.sid}_uniquecategory_preference'
-            self.volume_map = f'{self.out_dir}/{self.process}/sub-{self.sid}_uniquecategory-preference-map.nii.gz'
+            self.volume_map = f'{self.out_dir}/{self.process}/sub-{self.sid}_uniquecategory-preference-map'
             self.surf_map = f'{self.out_dir}/{self.process}/sub-{self.sid}_uniquecategory-preference-map_hemi'
             self.infile_prefix = f'{self.out_dir}/VoxelPermutation/sub-{self.sid}_dropped-categorywithnuisance'
         else:
             self.figure_prefix = f'{self.figure_dir}/sub-{self.sid}_category_preference'
-            self.volume_map = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-preference-map.nii.gz'
+            self.volume_map = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-preference-map'
             self.surf_map = f'{self.out_dir}/{self.process}/sub-{self.sid}_category-preference-map_hemi'
             self.infile_prefix = f'{self.out_dir}/VoxelPermutation/sub-{self.sid}_category'
+        if self.filtered:
+            self.figure_prefix += '_filtered'
+            self.surf_map += '_filtered'
+            self.volume_map += '_filtered'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         print(vars(self))
@@ -38,10 +43,13 @@ class PrefMap:
         self.categories = ['alexnet', 'moten', 'scene_object', 'social_primitive', 'social', 'affective']
 
     def compute_preference_map(self):
-        if not os.path.exists(self.volume_map) or self.overwrite:
+        if not os.path.exists(f'{self.volume_map}.nii.gz') or self.overwrite:
             map = None
             for icat, category in enumerate(self.categories):
-                file = f'{self.infile_prefix}-{category}_r2filtered.nii.gz'
+                if self.filtered:
+                    file = f'{self.infile_prefix}-{category}_r2filtered.nii.gz'
+                else:
+                    file = f'{self.infile_prefix}-{category}_r2.nii.gz'
                 brain = nib.load(file)
                 brain_arr = np.array(brain.dataobj)
                 if map is None:
@@ -52,13 +60,13 @@ class PrefMap:
             out_map[nonzero_inds] = np.argmax(map[nonzero_inds, :], axis=-1) + 1
             out_map = nib.Nifti1Image(out_map.reshape(brain.shape),
                                       affine=brain.affine, header=brain.header)
-            nib.save(out_map, self.volume_map)
+            nib.save(out_map, f'{self.volume_map}.nii.gz')
 
     def compute_surf_stats(self, hemi_):
         surface_file = f'{self.surf_map}-{hemi_}.mgz'
         if not os.path.exists(surface_file) or self.overwrite:
             cmd = '/Applications/freesurfer/bin/mri_vol2surf '
-            cmd += f'--src {self.volume_map} '
+            cmd += f'--src {self.volume_map}.nii.gz '
             cmd += f'--out {surface_file} '
             cmd += f'--regheader sub-{self.sid} '
             cmd += f'--hemi {hemi_} '
@@ -114,6 +122,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s_num', '-s', type=str, default=2)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--filtered', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')

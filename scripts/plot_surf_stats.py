@@ -34,7 +34,7 @@ def roi_cmap():
 
 
 def get_vmax(analysis):
-    d = dict(full=0.7,
+    d = dict(full=0.6,
              categories=0.6,
              features=0.25,
              categories_unique=0.25,
@@ -53,11 +53,11 @@ class SurfaceStats:
         self.ROIs = args.ROIs
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.vmax = 0.1
         self.figure_dir = f'{args.figure_dir}/{self.process}'
         Path(self.figure_dir).mkdir(exist_ok=True, parents=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         print(vars(self))
+        self.vmax = None
         self.cmap = sns.color_palette('magma', as_cmap=True)
         self.rois = ['MT', 'EBA', 'LOC', 'face-pSTS', 'pSTS', 'aSTS']
         self.roi_cmap = roi_cmap()
@@ -65,6 +65,8 @@ class SurfaceStats:
         self.out_file_prefix = ''
         self.figure_prefix = ''
         self.base = ''
+
+
 
     def get_file_names(self):
         if self.unique_variance:
@@ -163,7 +165,7 @@ class SurfaceStats:
 
         surf_map = np.nan_to_num(surf_map)
         surf_map[surf_map < 0] = 0
-        if np.sum(np.invert(np.isclose(surf_map, 0))) > 0:
+        if (np.sum(np.invert(np.isclose(surf_map, 0))) > 0) & (hemi_ == 'lh'):
             threshold = surf_map[np.invert(np.isclose(surf_map, 0))].min()
             max_val = surf_map.max()
         else:
@@ -171,25 +173,26 @@ class SurfaceStats:
             max_val = 0.01
         print(f'smallest value = {threshold:.3f}')
         print(f'largest value = {max_val:.3f}')
+        print(f'vmax = {max_val:.3f}')
+        print(f'enforced vmax = {self.vmax:.3f}')
 
-        # fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
-        #                              roi_map=surf_map,
-        #                              bg_map=bg_map,
-        #                              vmax=self.vmax,
-        #                              threshold=threshold,
-        #                              engine='plotly',
-        #                              colorbar=True,
-        #                              cmap=self.cmap,
-        #                              hemi=hemi_name)
-        # fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
+        fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
+                                     roi_map=surf_map,
+                                     bg_map=bg_map,
+                                     vmax=self.vmax,
+                                     threshold=threshold,
+                                     engine='plotly',
+                                     colorbar=True,
+                                     cmap=self.cmap,
+                                     hemi=hemi_name)
+        fig.figure.write_html(f'{self.figure_prefix}_hemi-{hemi_}.html')
 
         for view in ['lateral']:#['ventral', 'lateral', 'medial']:
-            colorbar = True if view == 'lateral' and hemi_ == 'rh' else False
+            colorbar = True if view == 'medial' and hemi_ == 'rh' else False
             fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
                                          roi_map=surf_map,
                                          bg_map=bg_map,
                                          vmax=self.vmax,
-                                         threshold=threshold,
                                          engine='plotly',
                                          colorbar=colorbar,
                                          view=view,

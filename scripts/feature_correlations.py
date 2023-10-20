@@ -5,271 +5,150 @@ import argparse
 import os
 import numpy as np
 import pandas as pd
-from sklearn.decomposition import PCA
 from tqdm import tqdm
-
+from statsmodels.stats.multitest import fdrcorrection
+from src.tools import perm
 import matplotlib.pyplot as plt
-from matplotlib import cm
 import seaborn as sns
-
-from scipy.stats import spearmanr
-from statsmodels.stats.multitest import multipletests
-from src.tools import calculate_p, mantel_permutation
-from src.custom_plotting import feature_colors, custom_palette
+import matplotlib
+matplotlib.use('TkAgg')
 
 
-def diag(arr, cut=True):
-    arr = np.tril(arr, -1)
-    arr[arr == 0] = 'NaN'
-    if cut:
-        return arr[1:, :-1]
+def q_map(q):
+    if 0.01 < q < 0.05:
+        out = '*'
+    elif 0.001 < q < 0.01:
+        out = '**'
+    elif q < 0.001:
+        out = '***'
     else:
-        return arr
-
-
-def pca(a, b=None, n_components=8):
-    pca_ = PCA(svd_solver='full', whiten=True, n_components=n_components)
-    a_out = pca_.fit_transform(a)
-    if b is not None:
-        b_out = pca_.transform(b)
-    else:
-        b_out = None
-    return a_out, b_out
-
-
-def permutation_test(a, b, test_inds=None,
-                     n_perm=int(5e3), H0='greater',
-                     rsa=False):
-    r_true, _ = spearmanr(a, b)
-    r_null = np.zeros(n_perm)
-    for i in range(n_perm):
-        if not rsa:
-            inds = np.random.default_rng(i).permutation(test_inds.shape[0])
-            if len(test_inds.shape) > 1:
-                inds = test_inds[inds, :].flatten()
-            a_shuffle = a[inds]
-        else:
-            a_shuffle = mantel_permutation(a, i)
-        r_null[i], _ = spearmanr(a_shuffle, b)
-
-    # Get the p-value depending on the type of test
-    p = calculate_p(r_null, r_true, n_perm, H0)
-    return r_true, p, r_null
-
-
-def get_color(label):
-    colors = feature_colors()
-    palette = custom_palette(rgb=False)
-    out = 'gray'
-    for key in colors.keys():
-        if key in label:
-            out = palette[colors[key]]
-            break
+        out = ''
     return out
+
+
+def feature2color(key=None):
+    d = dict()
+    d['indoor'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
+    d['spatial expanse'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
+    d['object'] = np.array([0.95703125, 0.86328125, 0.25, 0.8])
+    d['agent distance'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
+    d['facingness'] = np.array([0.51953125, 0.34375, 0.953125, 0.8])
+    d['joint action'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
+    d['communication'] = np.array([0.44921875, 0.8203125, 0.87109375, 0.8])
+    d['valence'] = np.array([0.8515625, 0.32421875, 0.35546875, 0.8])
+    d['arousal'] = np.array([0.8515625, 0.32421875, 0.35546875, 0.8])
+    if key is not None:
+        return d[key]
+    else:
+        return d
+
+
+def plot_feature_corr(faces, title=None, out_dir=None):
+    print(out_dir)
+    custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+    sns.set_theme(context='paper', style='white', rc=custom_params)
+    _, ax = plt.subplots(figsize=(3, 2.5))
+    sns.barplot(x='feature', y='r', data=faces,
+                errorbar=None,
+                zorder=1, color='gray')
+    ymin, ymax = ax.get_ylim()
+
+    faces.set_index('feature', inplace=True)
+    for x, label in zip(ax.get_xticks(), ax.get_xticklabels()):
+        ax.text(x, ymax,
+                faces.loc[label._text, 'sig_text'],
+                fontsize=10, horizontalalignment='center')
+
+    for bar, label in zip(ax.patches, ax.get_xticklabels()):
+        color = feature2color(label._text)
+        bar.set_color(color)
+    ax.set_ylim([ymin, ymax + (ymax * .2)])
+    ax.set_xlabel('')
+    ax.set_ylabel('Correlation ($r$)')
+    plt.title(title)
+    plt.xticks(rotation=45, ha='right', rotation_mode='anchor')
+    plt.tight_layout()
+    if out_dir is not None:
+        plt.savefig(out_dir)
+    plt.close('all')
 
 
 class FeatureCorrelations:
     def __init__(self, args):
         self.process = 'FeatureCorrelations'
         self.data_dir = args.data_dir
-        self.set = args.set
-        self.context = args.context
         self.n_perm = args.n_perm
-        self.plot_dists = args.plot_dists
         self.precomputed = args.precomputed
-        self.include_nuisance = args.include_nuisance
-        self.rsa = args.rsa
-        if self.rsa:
-            self.H0 = 'greater'
-        else:
-            self.H0 = 'two_tailed'
+        self.H0 = 'two_tailed'
         self.out_dir = f'{args.out_dir}'
         self.figure_dir = f'{args.figure_dir}/{self.process}'
-        if not os.path.exists(self.figure_dir):
-            os.mkdir(self.figure_dir)
-        if os.path.exists(self.figure_dir) and self.rsa \
-                and not os.path.exists(f'{self.figure_dir}/dists_rsa-{self.rsa}_set-{self.set}'):
-            os.mkdir(f'{self.figure_dir}/dists_rsa-{self.rsa}_set-{self.set}')
-        if not os.path.exists(f'{self.out_dir}/{self.process}'):
-            os.mkdir(f'{self.out_dir}/{self.process}')
+        self.features = ['indoor', 'expanse', 'transitivity', 'agent distance', 'facingness',
+                         'joint action', 'communication', 'valence', 'arousal']
+        self.plotting_features = ['indoor', 'spatial expanse', 'object', 'agent distance', 'facingness',
+                                  'joint action', 'communication', 'valence', 'arousal']
+        self.plot_feature_rename = {old: new for old, new in zip(self.features, self.plotting_features)}
 
-    def plotting_dists(self, r, p, r_dist, name):
-        _, ax = plt.subplots()
-        sns.histplot(r_dist, element="step")
-        ys = np.arange(0, self.n_perm / 5)
-        xs = np.ones_like(ys) * r
-        ax.plot(xs, ys, '--r')
-        lim = np.abs(r) + .1
-        plt.xlim([lim * -1, lim])
-        plt.title(f'r = {r:.3f}, p = {p:.5f}')
-        plt.savefig(f'{self.figure_dir}/dists_rsa-{self.rsa}_set-{self.set}/{name}.pdf')
-        plt.close()
+    def save(self, df, name):
+        df.to_csv(f'{self.out_dir}/{self.process}/{name}.csv', index=False)
 
-    def pairwise_corr(self, mat, correct=True):
+    def load(self, name):
+        df = pd.read_csv(f'{self.out_dir}/{self.process}/{name}.csv')
+        df.feature = pd.Categorical(df.feature,
+                                    categories=self.plotting_features,
+                                    ordered=True)
+        df.fillna('', inplace=True)
+        return df
+
+    def compute_correlation(self, df, face_parm):
         ps = []
-        d = mat.shape[-1]
-        a = np.ones((d, d), dtype='bool')
-        rows, cols = np.where(np.tril(a, -1))
-        count = 0
-        for i, j in tqdm(zip(rows, cols), total=len(rows)):
-            if self.rsa:
-                test_inds = None
-            else:
-                test_inds = np.arange(mat[:, i].size)
-            r, p, r_dist = permutation_test(mat[:, i], mat[:, j],
-                                            n_perm=self.n_perm,
-                                            test_inds=test_inds,
-                                            H0=self.H0, rsa=self.rsa)
-            if self.plot_dists:
-                count += 1
-                self.plotting_dists(r, p, r_dist, str(count).zfill(2))
+        out_df = []
+        for feature in tqdm(self.features, total=len(self.features)):
+            r, p, rnull = perm(df[feature].to_numpy(), df[face_parm].to_numpy(),
+                                       n_perm=self.n_perm,
+                                       H0=self.H0, square=False, verbose=False)
             ps.append(p)
-        ps = np.array(ps)
-        if correct:
-            _, ps, _, _ = multipletests(ps, method='fdr_bh')
-        return ps
+            out_df.append({'feature': feature, 'r': r, 'p': p,
+                           'q': 1, 'sig': False, 'sig_text': ''})
+        out_df = pd.DataFrame(out_df).set_index('feature')
+        sigs, qs = fdrcorrection(ps)
 
-    def compute_mat(self, ratings):
-        rsm, _ = spearmanr(ratings)
-        ps = self.pairwise_corr(ratings)
-        plotting_rsm = diag(rsm)
-        p_bool = np.zeros_like(plotting_rsm)#, dtype='bool')
-        i, j = np.where(~np.isnan(plotting_rsm))
-        p_bool[i, j] = ps
-        return plotting_rsm, p_bool
-
-    def plot(self, rs, ps, ticks):
-        if self.context == 'talk' or self.context == 'paper':
-            r_size = 12
-            label_size = 16
-        else:
-            r_size = 24
-            label_size = 30
-
-        nqs = len(ticks)
-        sns.set(rc={'figure.figsize': (15, 15)}, context=self.context)
-        fig, ax = plt.subplots()
-
-        vmax = 0.7  # np.nanmax(np.abs(rs))
-        if self.rsa:
-            vmin = 0
-            cmap = cm.get_cmap(sns.color_palette("light:b", as_cmap=True))
-        else:
-            vmin = -1 * vmax
-            cmap = cm.get_cmap(sns.diverging_palette(210, 15, s=90, l=40, n=11, as_cmap=True))
-        cmap.set_bad('white')
-
-        plt.imshow(rs, cmap=cmap, vmin=vmin, vmax=vmax)
-        for ((j, i), label) in np.ndenumerate(rs):
-            if not np.isnan(rs[j, i]):
-                # color = 'black' if ps[j, i] < 0.05 else 'white'
-                # weight = 'bold' if ps[j, i] < 0.05 else 'normal'
-                if ps[j, i] < 0.05:
-                    label = label if np.round_(label, decimals=1) != 0 else int(0)
-                    print(f'{ticks[j+1]}, {ticks[i]}, r = {label:.2f}, p = {ps[j, i]:.4f}')
-                    ax.text(i, j, '{:.1f}'.format(label), ha='center', va='center',
-                            color='black', fontsize=r_size, weight='bold')
-        ax.grid(False)
-        # ticks = np.linspace(vmin, vmax, num=12).round(decimals=1)
-        cbar = plt.colorbar(fraction=0.046, pad=0.04)
-        cbar.ax.tick_params(size=0)
-        cbar.set_label(label=r"Rank correlation ($rho$)", size=label_size + 2)
-        for t in cbar.ax.get_yticklabels():
-            t.set_fontsize(label_size)
-
-        # y axis
-        ax.set_yticks(np.arange(nqs - 1))
-        ax.set_yticklabels(ticks[1:])
-        for ticklabel, pointer in zip(ticks[1:], ax.get_yticklabels()):
-            pointer.set_color(get_color(ticklabel))
-            pointer.set_weight('bold')
-            pointer.set_fontsize(label_size)
-
-        # x axis
-        ax.set_xticks(np.arange(nqs - 1))
-        ax.set_xticklabels(ticks[:-1], rotation=90, ha='center')
-        for ticklabel, pointer in zip(ticks[:-1], ax.get_xticklabels()):
-            pointer.set_color(get_color(ticklabel))
-            pointer.set_weight('bold')
-            pointer.set_fontsize(label_size)
-
-        ax.grid(False)
-        plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/correlation-matrix_rsa-{self.rsa}_set-{self.set}_nuisance-{self.include_nuisance}.pdf')
-        plt.close()
-
-    def save(self, arr, name):
-        np.save(f'{self.out_dir}/{self.process}/{name}_rsa-{self.rsa}_set-{self.set}.npy', arr)
+        for feature, (sig, q) in zip(self.features, zip(sigs, qs)):
+            out_df.loc[feature, 'q'] = q
+            out_df.loc[feature, 'sig'] = sig
+            out_df.loc[feature, 'sig_text'] = q_map(q)
+        out_df.reset_index(drop=False, inplace=True)
+        out_df.replace(self.plot_feature_rename, inplace=True)
+        out_df.feature = pd.Categorical(out_df.feature,
+                                        categories=self.plotting_features,
+                                        ordered=True)
+        self.save(out_df, face_parm)
+        return out_df
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
-        if self.set != 'both':
-            subset = pd.read_csv(f'{self.data_dir}/annotations/{self.set}.csv')
-            df = df.merge(subset)
+        faces = pd.read_csv(f'{self.data_dir}/annotations/face_annotations.csv')
+        df = df.merge(faces, on='video_name')
         df = df.drop(columns=['video_name', 'cooperation', 'dominance', 'intimacy'])
         return df
 
-    def load_nuisance_regressors(self, n_components=8):
-        if self.set != 'both':
-            alexnet = np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-{self.set}.npy')
-            moten = np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-{self.set}.npy')
-        else:
-            train = pd.read_csv(f'{self.data_dir}/annotations/train.csv')
-            test = pd.read_csv(f'{self.data_dir}/annotations/test.csv')
-            sort_indices = pd.concat([train, test]).reset_index().sort_values(by='video_name').reset_index().level_0.to_numpy()
-            alexnet = np.vstack([np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-train.npy'),
-                                 np.load(f'{self.out_dir}/ActivationPCA/alexnet_PCs_set-test.npy')])
-            moten = np.vstack([np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-train.npy'),
-                                 np.load(f'{self.out_dir}/ActivationPCA/moten_PCs_set-test.npy')])
-            alexnet = alexnet[sort_indices, :] # Reorganize the videos to alphabetical
-            moten = moten[sort_indices, :]
-        highD_data = np.hstack([alexnet, moten])
-        cols = [f'AlexNet-conv2 PC{i + 1}' for i in range(alexnet.shape[-1])]
-        cols += [f'motion energy PC{i + 1}' for i in range(moten.shape[-1])]
-        return pd.DataFrame(highD_data, columns=cols)
-
     def run(self):
         df = self.load_annotations()
-        nuisance = self.load_nuisance_regressors()
-        df = pd.concat([df, nuisance], axis=1)
 
         if not self.precomputed:
-            rs, ps = self.compute_mat(np.array(df))
-            self.save(rs, 'rs')
-            self.save(ps, 'ps')
+            face_area = self.compute_correlation(df, 'face_area')
+            face_centrality = self.compute_correlation(df, 'face_centrality')
         else:
-            rs = np.load(f'{self.out_dir}/{self.process}/rs_rsa-{self.rsa}_set-{self.set}.npy')
-            ps = np.load(f'{self.out_dir}/{self.process}/ps_rsa-{self.rsa}_set-{self.set}.npy')
-            if not self.include_nuisance:
-                indices = []
-                for i, col in enumerate(df.columns):
-                    if ('AlexNet' in col) or ('motion' in col):
-                        df.drop(columns=col, inplace=True)
-                    else:
-                        indices.append(i)
-                indices = np.array(indices)
-                rs = rs[:indices.max(), :indices.max()]
-                ps = ps[:indices.max(), :indices.max()]
+            face_area = self.load('face_area')
+            face_centrality = self.load('face_centrality')
 
-        features = []
-        for feature in df.columns:
-            if feature == 'transitivity':
-                feature = 'object'
-            elif feature == 'expanse':
-                feature = 'spatial expanse'
-            features.append(feature)
-        self.plot(rs, ps, features)
+        plot_feature_corr(face_area, title='Face area', out_dir=f'{self.figure_dir}/face_area.svg')
+        plot_feature_corr(face_centrality, title='Face centrality', out_dir=f'{self.figure_dir}/face_centrality.svg')
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_perm', type=int, default=int(10e3))
-    parser.add_argument('--set', type=str, default='both')
-    parser.add_argument('--context', type=str, default='paper')
-    parser.add_argument('--plot_dists', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--rsa', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--n_perm', type=int, default=int(5e3))
     parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

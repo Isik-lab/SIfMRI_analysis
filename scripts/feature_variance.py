@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from src.custom_plotting import feature_colors, custom_palette
+import matplotlib.ticker as mticker
 
 
 class FeatureVariance():
@@ -28,7 +29,7 @@ class FeatureVariance():
         ax.set_xlabel('Rating')
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.set_title(title.capitalize())
+        ax.set_title(title.capitalize(), fontsize=8)
 
     def load_annotations(self):
         df = pd.read_csv(f'{self.data_dir}/annotations/annotations.csv')
@@ -43,15 +44,34 @@ class FeatureVariance():
         palette = custom_palette(rgb=False)
         colors = feature_colors()
         df = self.load_annotations()
-        sns.set(style='white', context='poster', rc={'figure.figsize': (8, 14)})
+        sns.set(style='white', context='paper', rc={'figure.figsize': (2.5, 4)})
         fig, ax = plt.subplots(nrows=4, ncols=2, sharex=True, sharey=True)
         ax = ax.flatten()
         for i, feature in enumerate(df.columns):
             color = colors[feature]
             rgb = palette[color]
             self.plot(df, feature, rgb, ax[i])
+            ax[i].set_ylim([0, 100])
+
+            if i % 2 == 0:
+                #edit y ticks
+                label_format = '{:.0f}'
+                plt.locator_params(axis='y', nbins=3)
+                y_ticklocs = ax[i].get_yticks().tolist()
+                ax[i].yaxis.set_major_locator(mticker.FixedLocator(y_ticklocs))
+                ax[i].set_yticklabels([label_format.format(x) for x in y_ticklocs], fontsize=6)
+                ax[i].set_ylabel('Count', fontsize=8)
+
+            if feature == 'valence' or 'arousal':
+                #edit y ticks
+                label_format = '{:.1f}'
+                plt.locator_params(axis='x', nbins=3)
+                x_ticklocs = ax[i].get_xticks().tolist()
+                ax[i].xaxis.set_major_locator(mticker.FixedLocator(x_ticklocs))
+                ax[i].set_xticklabels([label_format.format(x) for x in x_ticklocs], fontsize=6)
+
         plt.tight_layout()
-        plt.savefig(f'{self.figure_dir}/set-{self.set}.pdf')
+        plt.savefig(f'{self.figure_dir}/set-{self.set}.svg')
 
 
 def main():
