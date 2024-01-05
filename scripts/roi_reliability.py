@@ -10,15 +10,23 @@ from src import tools
 import pickle
 
 
-def mask_img(img, mask):
+def mask_img(img, mask, img_shape=True):
     if type(img) is str:
         img = nib.load(img)
+    
     if type(mask) is str:
         mask = nib.load(mask)
+    
+    if type(img) == nib.nifti1.Nifti1Image:
+        img = np.array(img.dataobj)
 
-    arr = np.array(img.dataobj)
     mask = np.array(mask.dataobj, dtype=bool)
-    return arr[mask]
+    if img_shape:
+        img_out = img.copy()
+        img_out[mask] = 0 
+        return img_out
+    else:
+        return img[mask]
 
 
 class ROIPrediction:
@@ -42,7 +50,9 @@ class ROIPrediction:
         out_data = None
         for hemi in ['lh', 'rh']:
             roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*roi-{self.roi}*hemi-{hemi}*mask.nii.gz')[0]
-            one_hemi = mask_img(self.get_file_name(), roi_mask)
+            one_hemi = mask_img(self.get_file_name(),
+                                 f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-{self.step}_reliability-mask.nii.gz')
+            one_hemi = mask_img(one_hemi, roi_mask, img_shape=False)
             if out_data is None:
                 out_data = one_hemi ** 2 # square the values because the reliability map is just the correlation
             else:
@@ -65,7 +75,7 @@ class ROIPrediction:
         data = dict()
         data['reliability'] = self.load_files()
         self.add_info2data(data)
-        self.save_results(data)
+        # self.save_results(data)
         print(f"reliability = {data['reliability']:4f} \n")
 
 
