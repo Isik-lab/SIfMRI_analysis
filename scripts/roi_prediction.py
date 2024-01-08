@@ -89,6 +89,7 @@ class ROIPrediction:
             file = f'{top}/{self.in_file_prefix}_{name}.nii.gz'
             permutation_data = nib.load(file).get_fdata()[self.reliability_mask]
             roi_data = permutation_data[roi_mask].mean()
+        print(roi_data.shape)
         return roi_data
 
     def get_roi_data(self, name):
