@@ -1,35 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import glob
+from glob import glob
 import argparse
 from pathlib import Path
 import numpy as np
 import nibabel as nib
-from src import tools
 import pickle
+import os
 
 
-def mask_img(img, mask, img_shape=True):
-    if type(img) is str:
-        img = nib.load(img)
-    
-    if type(mask) is str:
-        mask = nib.load(mask)
-    
-    if type(img) == nib.nifti1.Nifti1Image:
-        img = np.array(img.dataobj)
-
-    mask = np.array(mask.dataobj, dtype=bool)
-    if img_shape:
-        img_out = img.copy()
-        img_out[mask] = 0 
-        return img_out
-    else:
-        return img[mask]
-
-
-class ROIPrediction:
+class ROIRelibility:
     def __init__(self, args):
         self.process = 'ROIPrediction'
         self.sid = str(args.s_num).zfill(2)
@@ -39,24 +20,29 @@ class ROIPrediction:
         self.out_dir = args.out_dir
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.out_file_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_roi-{self.roi}_reliability.pkl'
+        self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-{self.step}_stat-r_statmap.nii.gz'
+        self.reliability_mask_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-{self.step}_reliability-mask.nii.gz'
         print(vars(self))
+        print()
 
-    def get_file_name(self):
-        top = f'{self.out_dir}/Reliability'
-        file_name = f'{top}/sub-{self.sid}_space-T1w_desc-test-{self.step}_stat-r_statmap.nii.gz'
-        return file_name
-
-    def load_files(self):
-        out_data = None
+    def load_roi_mask(self, reliability_mask):
+        # Loop through the two hemispheres
+        roi_mask = []
         for hemi in ['lh', 'rh']:
-            roi_mask = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*roi-{self.roi}*hemi-{hemi}*mask.nii.gz')[0]
-            one_hemi = mask_img(self.get_file_name(),
-                                 f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-{self.step}_reliability-mask.nii.gz')
-            one_hemi = mask_img(one_hemi, roi_mask, img_shape=False)
-            if out_data is None:
-                out_data = one_hemi ** 2 # square the values because the reliability map is just the correlation
-            else:
-                out_data = np.concatenate([out_data, one_hemi ** 2])
+            hemi_mask_file = glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*roi-{self.roi}*hemi-{hemi}*mask.nii.gz')[0]
+            hemi_mask = nib.load(hemi_mask_file).get_fdata().astype('bool')
+            roi_mask.append(hemi_mask)
+        roi_mask = np.sum(roi_mask, axis=0).astype('bool')
+        return np.logical_and(roi_mask, reliability_mask)
+    
+    def load_files(self):
+        # Load the reliability file and the reliability mask
+        reliability = nib.load(self.reliability_file).get_fdata()
+        reliability_mask = nib.load(self.reliability_mask_file).get_fdata().astype('bool')
+        roi_mask = self.load_roi_mask(reliability_mask)
+        
+        # square the values because the reliability map is just the correlation
+        out_data = reliability[roi_mask] ** 2 
         return out_data.mean()
 
     def save_results(self, d):
@@ -75,7 +61,7 @@ class ROIPrediction:
         data = dict()
         data['reliability'] = self.load_files()
         self.add_info2data(data)
-        # self.save_results(data)
+        self.save_results(data)
         print(f"reliability = {data['reliability']:4f} \n")
 
 
@@ -89,7 +75,7 @@ def main():
     parser.add_argument('--out_dir', '-output', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/interim')
     args = parser.parse_args()
-    ROIPrediction(args).run()
+    ROIRelibility(args).run()
 
 if __name__ == '__main__':
     main()

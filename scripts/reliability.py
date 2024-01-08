@@ -49,7 +49,7 @@ class Reliability():
         self.cmap = sns.color_palette('magma', as_cmap=True)
         Path(self.figure_dir).mkdir(parents=True, exist_ok=True)
         Path(f'{args.out_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.output_file = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_stat-r_statmap'
+        self.output_file = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_stat-filteredr_statmap'
         print(vars(self))
 
     def load_even_or_odd(self, name):
@@ -88,6 +88,7 @@ class Reliability():
         r_mask = np.zeros_like(r_map, dtype='int')
         r_mask[(r_map >= self.threshold) & (~np.isnan(r_map))] = 1
         save_np_and_nib(r_mask, shape, affine, header, mask_name)
+        return r_mask.astype('bool')
 
     def compute_reliability(self):
         even, odd, shape, affine, header = self.load_betas()
@@ -96,11 +97,14 @@ class Reliability():
         print('computing the correlation')
         r_map = tools.corr2d(even, odd)
         r_map[r_map < 0] = 0  # Filter out the negative values
-        save_np_and_nib(r_map, shape, affine, header, self.output_file)
+        save_np_and_nib(r_map, shape, affine, header,
+                        f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_stat-r_statmap')
 
         # Reiliability mask
         mask_name = f'{self.out_dir}/{self.process}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_reliability-mask'
-        self.compute_reliability_mask(r_map, shape, affine, header, mask_name)
+        mask = self.compute_reliability_mask(r_map, shape, affine, header, mask_name)
+        r_map[~mask] = 0.
+        save_np_and_nib(r_map, shape, affine, header, self.output_file)
 
         # Transform the volume to the surface
         self.vol2surf(self.output_file, 'lh')
@@ -123,10 +127,11 @@ class Reliability():
         surf_map[surf_map < 0] = 0
 
         fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                     roi_map=surf_map,
+                                     roi_map=surf_map**2,
                                      bg_map=bg_map,
                                      vmax=1.,
-                                     threshold=self.threshold,
+                                     threshold=self.threshold**2,
+                                     vmin=None,
                                      engine='plotly',
                                      colorbar=True,
                                      cmap=self.cmap,
@@ -138,10 +143,11 @@ class Reliability():
                 colorbar = True if view == 'medial' and hemi == 'rh' else False
                 file = f'{self.figure_dir}/sub-{self.sid}_space-{self.space}_desc-{self.set}-{self.step}_hemi-{hemi}_view-{view}.png'
                 fig = plotting.plot_surf_roi(surf_mesh=surf_mesh,
-                                             roi_map=surf_map,
+                                             roi_map=surf_map**2,
                                              bg_map=bg_map,
                                              vmax=1.,
-                                             threshold=self.threshold,
+                                             threshold=self.threshold**2,
+                                             vmin=None,
                                              engine='plotly',
                                              colorbar=colorbar,
                                              view=view,
@@ -167,12 +173,12 @@ class Reliability():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--s_num', '-s', type=str, default='1')
+    parser.add_argument('--s_num', '-s', type=str, default='4')
     parser.add_argument('--set', type=str, default='test')
     parser.add_argument('--space', type=str, default='T1w')
     parser.add_argument('--step', type=str, default='fracridge')
     parser.add_argument('--ses_or_pres', type=str, default='')
-    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--precomputed', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--zscore_ses', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--smooth', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
