@@ -234,9 +234,9 @@ def perm(a, b, n_perm=int(5e3), H0='greater', square=True, verbose=True):
             r2 = r.copy()
 
         if a.ndim > 1:
-            r2_null[i, :] = r
+            r2_null[i, :] = r2
         else:
-            r2_null[i] = r
+            r2_null[i] = r2
 
     # Get the p-value depending on the type of test
     p = calculate_p(r2_null, r_out, n_perm, H0)
