@@ -362,9 +362,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stream', type=str, default='lateral')
     parser.add_argument('--n_perm', type=int, default=10000)
-    parser.add_argument('--individual', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--individual', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
                         default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_analysis/data/raw')
     parser.add_argument('--out_dir', '-output', type=str,

@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import glob
+from glob import glob
 import argparse
 from pathlib import Path
 import numpy as np
 import nibabel as nib
 from src import tools
 import pickle
-from sys import getsizeof
 
 
 def mask_img(img, mask):
@@ -38,11 +37,12 @@ class ROIPrediction:
         self.roi = args.roi
         self.data_dir = args.data_dir
         self.out_dir = args.out_dir
-        self.reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
+        print(vars(self))
+        reliability_file = f'{self.out_dir}/Reliability/sub-{self.sid}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz'
+        self.reliability_mask = nib.load(reliability_file).get_fdata().astype('bool')
         Path(f'{self.out_dir}/{self.process}').mkdir(exist_ok=True, parents=True)
         self.in_file_prefix = ''
         self.out_file_name = ''
-        print(vars(self))
 
     def get_file_name_base(self):
         if self.full_model:
@@ -69,54 +69,41 @@ class ROIPrediction:
         print(self.in_file_prefix)
         self.out_file_name = f'{self.out_dir}/{self.process}/{self.in_file_prefix}_roi-{self.roi}.pkl'
 
-    def load_roi_hemi_mask(self, hemi):
-        roi_file = glob.glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*{self.roi}*{hemi}*mask.nii.gz')[
-            0]
-        roi_mask = mask_img(roi_file, self.reliability_file).astype('bool')
-        return roi_mask
-
+    def load_roi_mask(self):
+        # Loop through the two hemispheres
+        roi_mask = []
+        for hemi in ['lh', 'rh']:
+            hemi_mask_file = glob(f'{self.data_dir}/localizers/sub-{self.sid}/sub-{self.sid}*roi-{self.roi}*hemi-{hemi}*mask.nii.gz')[0]
+            hemi_mask = nib.load(hemi_mask_file).get_fdata().astype('bool')
+            roi_mask.append(hemi_mask)
+        roi_mask = np.sum(roi_mask, axis=0).astype('bool')
+        return roi_mask[self.reliability_mask]
+            
     def load_files(self, name, roi_mask):
         top = f'{self.out_dir}/VoxelPermutation'
-        if 'null' not in name and 'var' not in name:
-            file = f'{top}/{self.in_file_prefix}_{name}.nii.gz'
-        else:
+        if 'null' in name or 'var' in name:
             file = f'{top}/dist/{self.in_file_prefix}_{name}.npy'
-        if 'npy' in file:
-            reliable_data = np.load(file)
-            roi_data = reliable_data[:, roi_mask]
+            permutation_data = np.load(file)
+            roi_data = permutation_data[:, roi_mask].mean(axis=-1)
         else:
-            reliable_data = mask_img(file, self.reliability_file)
-            roi_data = reliable_data[roi_mask]
+            file = f'{top}/{self.in_file_prefix}_{name}.nii.gz'
+            permutation_data = nib.load(file).get_fdata()[self.reliability_mask]
+            roi_data = permutation_data[roi_mask].mean()
+        print(roi_data.shape)
         return roi_data
 
-    def get_both_hemi_data(self, name):
-        both_hemi_data = None
-        for hemi in ['lh', 'rh']:
-            roi_mask = self.load_roi_hemi_mask(hemi)
-            if both_hemi_data is None:
-                both_hemi_data = self.load_files(name, roi_mask)
-            else:
-                if both_hemi_data.ndim > 1:
-                    both_hemi_data = np.concatenate([both_hemi_data,
-                                                     self.load_files(name, roi_mask)],
-                                                    axis=1)
-                else:
-                    both_hemi_data = np.concatenate([both_hemi_data,
-                                                     self.load_files(name, roi_mask)])
-        if both_hemi_data.ndim > 1:
-            mean_data = both_hemi_data.mean(axis=1)
-        else:
-            mean_data = both_hemi_data.mean()
-        return mean_data
+    def get_roi_data(self, name):
+        roi_mask = self.load_roi_mask()
+        return self.load_files(name, roi_mask)
 
     def get_variance(self, data):
-        r2var = self.get_both_hemi_data('r2var')
+        r2var = self.get_roi_data('r2var')
         data['r2var'] = r2var
         data['low_ci'], data['high_ci'] = np.percentile(r2var, [2.5, 97.5])
 
     def get_significance(self, data):
-        data['r2'] = self.get_both_hemi_data('r2')
-        r2null = self.get_both_hemi_data('r2null')
+        data['r2'] = self.get_roi_data('r2')
+        r2null = self.get_roi_data('r2null')
         data['r2null'] = r2null
         data['p'] = tools.calculate_p(r2null, data['r2'],
                                       n_perm_=len(r2null),
