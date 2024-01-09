@@ -15,12 +15,9 @@ feature=$2
 ml anaconda
 conda activate nibabel
 
-python voxel_permutation.py -s "$subj" \
-  --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
-  --data_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/raw \
-  --feature $feature --unique_variance --include_nuisance
+# s
 
-for roi in EVC MT EBA PPA FFA LOC pSTS face-pSTS aSTS TPJ; do
+for roi in EVC MT EBA PPA FFA LOC pSTS face-pSTS aSTS; do
   time python roi_prediction.py -s $subj \
     --roi $roi \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
