@@ -21,7 +21,6 @@ conda activate nibabel
 #    --full_model
 
 for roi in EVC MT EBA PPA FFA LOC pSTS face-pSTS aSTS; do
-for roi in EVC MT EBA PPA FFA LOC pSTS face-pSTS aSTS; do
   time python roi_prediction.py -s $subj \
     --roi $roi \
     --out_dir /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_analysis/data/interim \
