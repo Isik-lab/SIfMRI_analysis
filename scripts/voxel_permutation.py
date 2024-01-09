@@ -175,7 +175,7 @@ def main():
     parser.add_argument('--s_num', '-s', type=int, default=1)
     parser.add_argument('--category', type=str, default=None)
     parser.add_argument('--feature', type=str, default=None)
-    parser.add_argument('--full_model', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--full_model', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--unique_variance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--include_nuisance', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--n_perm', type=int, default=10000)
